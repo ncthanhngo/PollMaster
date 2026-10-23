@@ -33,3 +33,14 @@ Debug builds accept `-pmCreate <templateId> [-pmSection <n>]` launch arguments t
 
 `Application Support/PollMaster/{templates/<id>@<version>.json, records/<id>/record.json + media/}`;
 atomic writes, ~500 ms debounced autosave.
+
+## Phát hành TestFlight
+
+Bundle ID `com.evselab.pollmaster`, team `566SKQXVZT`, chứng chỉ Apple Distribution có sẵn trong keychain.
+
+1. Lưu Issuer ID của khóa App Store Connect (một lần):
+   `security add-generic-password -U -s pollmaster-asc-issuer -a pollmaster -w <issuer-uuid>`
+2. Lần đầu: tạo app trên appstoreconnect.apple.com → Apps → + → New App (iOS, tên `PollMaster`, ngôn ngữ Vietnamese,
+   Bundle ID `com.evselab.pollmaster`, SKU `pollmaster`). `scripts/asc-setup.py` báo nếu chưa có.
+3. Commit, rồi `./release-testflight.sh` — đăng ký bundle id + tạo/cài profile "PollMaster App Store" (idempotent), chạy test,
+   archive (số build = số commit), kiểm tra chữ ký, upload bằng altool.

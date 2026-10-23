@@ -389,7 +389,7 @@ sites.csv             // code,address,lat,lng (UTF-8 BOM) — có thể vắng
 ```
 Nhập: dự án cùng `id` đã có → hỏi "Cập nhật dự án <name>?" (cập nhật tên/mẫu/điểm, không đụng phiếu); `code` trùng dự án khác → tự thêm hậu tố `-2`.
 Mẫu: cài như import thường (cùng id+version đã có và nội dung khác → hỏi ghi đè). Lỗi → danh sách lỗi + "Sao chép lỗi".
-MIME: `application/zip`; iOS khai báo UTType `com.ncthanhngo.pollmaster.project` (đuôi `pmproject`) để mở trực tiếp từ Zalo/Mail/Tệp;
+MIME: `application/zip`; iOS khai báo UTType `com.evselab.pollmaster.project` (đuôi `pmproject`) để mở trực tiếp từ Zalo/Mail/Tệp;
 Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/zip` + `application/octet-stream`.
 
 ### 9.4 Xuất & sao lưu theo dự án

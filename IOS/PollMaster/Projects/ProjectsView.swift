@@ -4,7 +4,7 @@ import PollMasterCore
 
 extension UTType {
     /// `.pmproject`, declared in Info.plist (project.yml).
-    static let pollMasterProject = UTType(exportedAs: "com.ncthanhngo.pollmaster.project", conformingTo: .zip)
+    static let pollMasterProject = UTType(exportedAs: "com.evselab.pollmaster.project", conformingTo: .zip)
 }
 
 struct ProjectRoute: Hashable { let id: String }

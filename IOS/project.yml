@@ -1,6 +1,6 @@
 name: PollMaster
 options:
-  bundleIdPrefix: com.ncthanhngo
+  bundleIdPrefix: com.evselab
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -11,6 +11,8 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 566SKQXVZT
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 packages:
   PollMasterCore:
@@ -36,6 +38,10 @@ targets:
       path: PollMaster/Info.plist
       properties:
         CFBundleDisplayName: PollMaster
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Only Apple's own crypto (HTTPS for template URLs), so every build skips the export-compliance question.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -54,7 +60,7 @@ targets:
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         UTExportedTypeDeclarations:
-          - UTTypeIdentifier: com.ncthanhngo.pollmaster.project
+          - UTTypeIdentifier: com.evselab.pollmaster.project
             UTTypeDescription: Gói dự án PollMaster
             UTTypeConformsTo: [public.zip-archive, public.data]
             UTTypeTagSpecification:
@@ -64,10 +70,10 @@ targets:
           - CFBundleTypeName: Gói dự án PollMaster
             CFBundleTypeRole: Editor
             LSHandlerRank: Owner
-            LSItemContentTypes: [com.ncthanhngo.pollmaster.project]
+            LSItemContentTypes: [com.evselab.pollmaster.project]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ncthanhngo.pollmaster
+        PRODUCT_BUNDLE_IDENTIFIER: com.evselab.pollmaster
         PRODUCT_NAME: PollMaster
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1,2"
