@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -106,31 +107,21 @@ fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: 
         if (result.values.any { it }) fetch() else failed = true
     }
 
+    var manual by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = lat, enabled = enabled,
-                onValueChange = { lat = it; commit(it, lng, accuracy) },
-                label = { Text(stringResource(R.string.gps_lat)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = lng, enabled = enabled,
-                onValueChange = { lng = it; commit(lat, it, accuracy) },
-                label = { Text(stringResource(R.string.gps_lng)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                modifier = Modifier.weight(1f),
-            )
-        }
+        Button(
+            enabled = enabled && !busy,
+            onClick = { if (helper.hasPermission()) fetch() else rationale = true },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        ) { Text(stringResource(if (busy) R.string.gps_waiting else if (obj != null) R.string.gps_retry else R.string.gps_get)) }
         if (obj == null) {
             Text(stringResource(R.string.gps_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        accuracy?.let {
-            val good = it <= (field.maxAccuracy ?: DEFAULT_MAX_ACCURACY_M)
+        } else {
+            val good = accuracy == null || accuracy <= (field.maxAccuracy ?: DEFAULT_MAX_ACCURACY_M)
             Text(
-                stringResource(R.string.gps_accuracy, formatNumber(it, 0)) + if (good) "" else " — " + stringResource(R.string.gps_poor),
-                style = MaterialTheme.typography.bodyMedium,
+                formatNumber(obj["lat"].asDouble() ?: 0.0, 6) + ", " + formatNumber(obj["lng"].asDouble() ?: 0.0, 6) +
+                    (accuracy?.let { " ±" + formatNumber(it, 0) + " m" }.orEmpty()) + if (good) "" else " — " + stringResource(R.string.gps_poor),
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (good) okColor() else warnColor(),
             )
         }
@@ -143,10 +134,7 @@ fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: 
         }
         if (failed) Text(stringResource(R.string.gps_unavailable), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                enabled = enabled && !busy,
-                onClick = { if (helper.hasPermission()) fetch() else rationale = true },
-            ) { Text(stringResource(if (busy) R.string.gps_waiting else if (obj != null) R.string.gps_retry else R.string.gps_get)) }
+            OutlinedButton(enabled = enabled, onClick = { manual = !manual }) { Text(stringResource(R.string.gps_manual)) }
             val la = lat.toDoubleOrNull()
             val ln = lng.toDoubleOrNull()
             OutlinedButton(
@@ -156,6 +144,24 @@ fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: 
                     runCatching { context.startActivity(intent) }
                 },
             ) { Text(stringResource(R.string.gps_open_map)) }
+        }
+        if (manual) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = lat, enabled = enabled,
+                    onValueChange = { lat = it; commit(it, lng, accuracy) },
+                    label = { Text(stringResource(R.string.gps_lat)) }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = lng, enabled = enabled,
+                    onValueChange = { lng = it; commit(lat, it, accuracy) },
+                    label = { Text(stringResource(R.string.gps_lng)) }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
     if (rationale) {

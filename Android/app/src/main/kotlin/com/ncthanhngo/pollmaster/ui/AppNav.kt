@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ncthanhngo.pollmaster.ui.editor.FillScreen
 import com.ncthanhngo.pollmaster.ui.editor.OutlineScreen
 import com.ncthanhngo.pollmaster.ui.editor.ReviewScreen
 import com.ncthanhngo.pollmaster.ui.editor.RowFormScreen
@@ -19,6 +20,7 @@ private object Routes {
     const val SECTION = "editor/{recordId}/section/{sectionId}?focus={focus}"
     const val ROW = "editor/{recordId}/row/{tableId}/{rowId}?focus={focus}"
     const val REVIEW = "editor/{recordId}/review"
+    const val FILL = "editor/{recordId}/fill"
 
     fun template(id: String, version: String) = "template/${enc(id)}/${enc(version)}"
     fun outline(recordId: String) = "editor/$recordId"
@@ -27,6 +29,7 @@ private object Routes {
     fun row(recordId: String, tableId: String, rowId: String, focus: String? = null) =
         "editor/$recordId/row/${enc(tableId)}/${enc(rowId)}" + (focus?.let { "?focus=${enc(it)}" } ?: "")
     fun review(recordId: String) = "editor/$recordId/review"
+    fun fill(recordId: String) = "editor/$recordId/fill"
 
     private fun enc(s: String) = android.net.Uri.encode(s)
 }
@@ -73,6 +76,7 @@ fun AppNav() {
                 onBack = { nav.popBackStack() },
                 onSwitchSection = { nav.navigate(Routes.section(recordId, it)) { popUpTo(Routes.OUTLINE) } },
                 onOpenRow = { table, row -> nav.navigate(Routes.row(recordId, table, row)) },
+                onReview = { nav.navigate(Routes.review(recordId)) },
             )
         }
         composable(Routes.ROW, arguments = listOf(focusArg)) { entry ->
@@ -86,6 +90,7 @@ fun AppNav() {
                 onNextRow = { table, row ->
                     nav.navigate(Routes.row(recordId, table, row)) { popUpTo(Routes.ROW) { inclusive = true } }
                 },
+                onOpenField = { section, field -> nav.navigate(Routes.section(recordId, section, field)) },
             )
         }
         composable(Routes.REVIEW) { entry ->
@@ -95,6 +100,16 @@ fun AppNav() {
                 onBack = { nav.popBackStack() },
                 onJumpField = { section, field -> nav.navigate(Routes.section(recordId, section, field)) },
                 onJumpRow = { table, row, column -> nav.navigate(Routes.row(recordId, table, row, column)) },
+                onFillOneByOne = { nav.navigate(Routes.fill(recordId)) },
+            )
+        }
+        composable(Routes.FILL) { entry ->
+            val recordId = entry.arguments?.getString("recordId").orEmpty()
+            FillScreen(
+                recordId = recordId,
+                onBack = { nav.popBackStack() },
+                onOpenField = { section, field -> nav.navigate(Routes.section(recordId, section, field)) },
+                onOpenRow = { table, row, column -> nav.navigate(Routes.row(recordId, table, row, column)) },
             )
         }
     }

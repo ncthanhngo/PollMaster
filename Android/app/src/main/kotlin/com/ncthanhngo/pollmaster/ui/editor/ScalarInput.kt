@@ -44,11 +44,23 @@ fun ScalarInput(
     compact: Boolean = false,
     warn: RangeWarn? = null,
     quick: Boolean = false,
+    /** Largest chip when the field has `chipsRange` (already resolved against the record). */
+    chipsMax: Int? = null,
 ) {
+    when {
+        field.type == "multiline" -> TextInput(field, value, onValue, enabled, singleLine = false)
+        field.type == "number" -> NumberInput(field, value, onValue, enabled, integer = false, warn = warn)
+        field.type == "integer" && field.chipsRange != null && chipsMax != null && !compact ->
+            ChipsInput(field, field.chipsRange, chipsMax, value, onValue, enabled, warn)
+        field.type == "integer" && field.stepper && !compact -> StepperInput(field, value, onValue, enabled, warn)
+        field.type == "integer" -> NumberInput(field, value, onValue, enabled, integer = true, warn = warn)
+        else -> ScalarOther(field, value, onValue, enabled, compact, quick)
+    }
+}
+
+@Composable
+private fun ScalarOther(field: Field, value: JsonElement?, onValue: (JsonElement?) -> Unit, enabled: Boolean, compact: Boolean, quick: Boolean) {
     when (field.type) {
-        "multiline" -> TextInput(field, value, onValue, enabled, singleLine = false)
-        "number" -> NumberInput(field, value, onValue, enabled, integer = false, warn = warn)
-        "integer" -> NumberInput(field, value, onValue, enabled, integer = true, warn = warn)
         "singleChoice" -> SingleChoiceInput(field, value, onValue, enabled, quick)
         "multiChoice" -> MultiChoiceInput(field, value, onValue, enabled)
         "yesNo" -> YesNoInput(field, value, onValue, enabled, quick)
@@ -61,7 +73,8 @@ fun ScalarInput(
 }
 
 @Composable
-private fun Hint(field: Field): @Composable () -> Unit = { Text(field.hint ?: stringResource(R.string.input_placeholder)) }
+/** Placeholder of every input: always "Nhập…". The field's hint is shown once under the label, never inside a (narrow) box. */
+private fun Placeholder(): @Composable () -> Unit = { Text(stringResource(R.string.input_placeholder), maxLines = 1, softWrap = false) }
 
 @Composable
 private fun TextInput(field: Field, value: JsonElement?, onValue: (JsonElement?) -> Unit, enabled: Boolean, singleLine: Boolean) {
@@ -74,7 +87,8 @@ private fun TextInput(field: Field, value: JsonElement?, onValue: (JsonElement?)
         minLines = if (singleLine) 1 else 3,
         prefix = field.prefix?.let { { Text(it) } },
         suffix = field.unit?.let { { Text(it) } },
-        placeholder = Hint(field),
+        placeholder = Placeholder(),
+        trailingIcon = if (!singleLine) ({ DictationButton(enabled) { spoken -> onValue(JsonPrimitive(appendText(value.asText(), spoken))) } }) else null,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Sentences,
             imeAction = if (singleLine) ImeAction.Next else ImeAction.Default,
@@ -120,7 +134,7 @@ internal fun NumberInput(
         },
         singleLine = true,
         suffix = field.unit?.let { { Text(it) } },
-        placeholder = Hint(field),
+        placeholder = Placeholder(),
         leadingIcon = if (signed && enabled) ({ SignToggle(text) { text = it; onValue(it.replace(',', '.').toDoubleOrNull()?.let(::jsonOf)) } }) else null,
         keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal, imeAction = ImeAction.Next),
     )

@@ -63,7 +63,7 @@ class FieldWorkTest {
     // ---- template 1.1 ----
 
     @Test fun template11DecodesFieldWorkKeys() {
-        assertEquals("1.1", t.version)
+        assertEquals("1.2", t.version)
         val a01 = t.header.plus(t.sections.flatMap { it.items.filterIsInstance<Field>() }).first { it.id == "A-01" }
         assertEquals(mapOf("A-03" to "address"), a01.lookup?.fill)
         assertEquals("A-04", a01.lookup?.gps)
@@ -78,9 +78,9 @@ class FieldWorkTest {
         assertEquals(0, compareVersions("1.0", "1.0.0"))
         val store = TemplateStore(TestData.tempDir())
         store.install(TestData.templateText, false)
-        store.install(TestData.templateText.replace("\"version\": \"1.1\"", "\"version\": \"1.0\""), false)
-        assertEquals(listOf("1.0", "1.1"), store.list().map { it.version })
-        assertEquals(listOf("1.1"), newestVersions(store.list()).map { it.version })
+        store.install(TestData.templateText.replace("\"version\": \"1.2\"", "\"version\": \"1.0\""), false)
+        assertEquals(listOf("1.0", "1.2"), store.list().map { it.version })
+        assertEquals(listOf("1.2"), newestVersions(store.list()).map { it.version })
     }
 
     // ---- warnings ----

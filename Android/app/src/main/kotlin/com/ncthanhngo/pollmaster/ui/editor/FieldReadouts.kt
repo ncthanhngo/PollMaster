@@ -27,9 +27,10 @@ import com.ncthanhngo.pollmaster.ui.common.MessageDialog
 
 /** Read-only result of a `computed` field with the ƒx marker; tap shows the formula. */
 @Composable
-fun ComputedBox(field: Field, env: EditorEnv) {
+fun ComputedBox(field: Field, env: EditorEnv, round: Int? = null) {
     var showFormula by remember { mutableStateOf(false) }
-    val text = env.formatter.display(field, null, env.engine.computeField(field))
+    val computed = env.engine.computeField(field).let { if (round != null && it is List<*>) it.getOrNull(round) else it }
+    val text = env.formatter.display(field, null, computed)
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,

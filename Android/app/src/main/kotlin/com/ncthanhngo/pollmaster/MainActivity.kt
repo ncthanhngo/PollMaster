@@ -36,10 +36,11 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalContainer provides container) {
                 val compact by container.settings.compactMode.collectAsState()
                 val contrast by container.settings.highContrast.collectAsState()
+                val oneHand by container.settings.oneHand.collectAsState()
                 val mode by container.settings.themeMode.collectAsState()
                 val dark = mode.isDark(isSystemInDarkTheme())
                 LaunchedEffect(dark) { applyWindowTheme(dark) }
-                PollMasterTheme(UiPrefs(compact, contrast, dark)) { AppNav() }
+                PollMasterTheme(UiPrefs(compact, contrast, dark, oneHand)) { AppNav() }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,23 +23,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.FieldValue
 import com.ncthanhngo.pollmaster.core.sites.Site
+import com.ncthanhngo.pollmaster.ui.common.rememberSitesCsvPicker
 import kotlinx.serialization.json.JsonElement
 
 /** Text input plus "Chọn từ danh sách": picking a site fills the other fields named by `lookup.fill`. */
 @Composable
 fun LookupInput(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, enabled: Boolean, onValue: (JsonElement?) -> Unit) {
+    val context = LocalContext.current
     var choosing by remember { mutableStateOf(false) }
     var conflict by remember { mutableStateOf<Site?>(null) }
     val controller = env.controller
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ScalarInput(field.copy(lookup = null), fv?.v, onValue, enabled)
-        OutlinedButton(enabled = enabled, onClick = { choosing = true }) { Text(stringResource(R.string.lookup_choose)) }
+        // No imported list yet: the button loads one (CSV picker) and opens the chooser right after.
+        val loadCsv = rememberSitesCsvPicker { result ->
+            result.onSuccess { choosing = true }
+                .onFailure { Toast.makeText(context, context.getString(R.string.settings_sites_error, it.message.orEmpty()), Toast.LENGTH_LONG).show() }
+        }
+        OutlinedButton(enabled = enabled, onClick = { if (env.sites.isEmpty()) loadCsv() else choosing = true }) {
+            Text(stringResource(if (env.sites.isEmpty()) R.string.lookup_load_csv else R.string.lookup_choose))
+        }
     }
     if (choosing) {
         SitePicker(env.sites, onDismiss = { choosing = false }) { site ->

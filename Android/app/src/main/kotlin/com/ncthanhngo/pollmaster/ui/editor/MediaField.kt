@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +75,8 @@ fun MediaField(
     referenceOnly: Boolean = false,
     /** Overrides the capture button text (e.g. "Quay video lượt này"). */
     captureLabel: String? = null,
+    /** Increment to open the camera from outside (e.g. OCR without photos). */
+    captureTrigger: Int = 0,
 ) {
     val context = LocalContext.current
     val container = LocalContainer.current
@@ -151,6 +154,12 @@ fun MediaField(
         if (granted) launchCapture() else Toast.makeText(context, R.string.perm_camera_denied, Toast.LENGTH_LONG).show()
     }
 
+    fun requestCapture() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCapture()
+        else rationale = true
+    }
+    LaunchedEffect(captureTrigger) { if (captureTrigger > 0) requestCapture() }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (items.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -162,10 +171,7 @@ fun MediaField(
         }
         if (canAdd) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCapture()
-                    else rationale = true
-                }) {
+                OutlinedButton(onClick = ::requestCapture) {
                     Text(
                         if (referenceOnly) stringResource(R.string.media_capture_ref, field.id)
                         else if (captureLabel != null) captureLabel

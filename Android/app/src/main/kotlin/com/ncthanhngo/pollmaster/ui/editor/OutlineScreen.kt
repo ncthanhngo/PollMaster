@@ -8,6 +8,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.PhotoCamera
+import com.ncthanhngo.pollmaster.core.editor.OutlineStats
+import com.ncthanhngo.pollmaster.core.editor.SectionStats
+import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -88,6 +95,7 @@ fun OutlineScreen(
     val issues = remember(record) { controller.issues(record) }
     val progress = remember(record) { controller.progress(record) }
     val perSection = remember(record) { controller.sectionProgress(record) }
+    val stats = remember(record) { OutlineStats.compute(template, record) }
     val resume = record.lastPosition?.takeIf { it.field != null }?.let { pos ->
         val field = template.header.plus(template.sections.flatMap { s -> s.items.filterIsInstance<Field>() })
             .firstOrNull { it.id == pos.field }?.let { "${pos.field} ${it.label}" }
@@ -182,10 +190,10 @@ fun OutlineScreen(
                 }
             }
             item {
-                OutlineRow(stringResource(R.string.header_section), perSection[HEADER_SECTION_ID], checked) { onOpenSection(HEADER_SECTION_ID, null) }
+                OutlineRow(stringResource(R.string.header_section), perSection[HEADER_SECTION_ID], stats[HEADER_SECTION_ID], checked) { onOpenSection(HEADER_SECTION_ID, null) }
             }
             items(template.sections, key = { it.id }) { s ->
-                OutlineRow(s.title, perSection[s.id], checked) { onOpenSection(s.id, null) }
+                OutlineRow(s.title, perSection[s.id], stats[s.id], checked) { onOpenSection(s.id, null) }
             }
         }
     }
@@ -207,10 +215,22 @@ fun OutlineScreen(
 
 /** Neutral gray "filled/required" until the first review; "✓" green when complete; red count only after reviewing. */
 @Composable
-private fun OutlineRow(title: String, progress: Progress?, checked: Boolean, onClick: () -> Unit) {
+private fun OutlineRow(title: String, progress: Progress?, stats: SectionStats?, checked: Boolean, onClick: () -> Unit) {
     AppCard(Modifier.clickable(onClick = onClick)) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                val summary = stats?.summary().orEmpty()
+                if (summary.isNotEmpty() || stats?.missingPhoto == true) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (stats?.missingPhoto == true) {
+                            Icon(Icons.Filled.PhotoCamera, contentDescription = stringResource(R.string.outline_photo_missing), tint = warnColor(), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             if (progress != null && progress.total > 0) {
                 val missing = progress.total - progress.filled
                 when {

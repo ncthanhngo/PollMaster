@@ -35,6 +35,7 @@ import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.ui.common.BackButton
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
+import com.ncthanhngo.pollmaster.ui.records.rememberRecordCreator
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +48,7 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     val all by container.templates.templates.collectAsState()
     val outdated = template != null && newestVersions(all).none { it.id == template.id && it.version == template.version } && all.any { it.id == template.id }
     var inUse by remember { mutableStateOf<Int?>(null) }
+    val startRecord = rememberRecordCreator(onRecordCreated)
 
     Scaffold(
         topBar = {
@@ -78,7 +80,7 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
             }
             item {
                 Button(
-                    onClick = { scope.launch { onRecordCreated(container.records.create(template).id) } },
+                    onClick = { startRecord(template) },
                     enabled = !outdated,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.template_create_record)) }

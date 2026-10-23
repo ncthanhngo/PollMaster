@@ -2,6 +2,7 @@ package com.ncthanhngo.pollmaster.ui.editor
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,10 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -77,7 +74,17 @@ private fun MiniToggle(text: String, selected: Boolean, onClick: () -> Unit) {
 
 /** "KĐĐ" and "~" toggle chips (only for fields with flags) followed by the ⋯ menu. */
 @Composable
-fun FieldActions(field: Field, fv: FieldValue?, onNote: () -> Unit, update: ((FieldValue) -> FieldValue) -> Unit, chips: Boolean = true) {
+fun FieldActions(
+    field: Field,
+    fv: FieldValue?,
+    onNote: () -> Unit,
+    update: ((FieldValue) -> FieldValue) -> Unit,
+    chips: Boolean = true,
+    menuOpen: Boolean = false,
+    onMenuOpen: (Boolean) -> Unit = {},
+    /** One-hand mode hides the ⋯ button: the menu opens with a long press on the card instead. */
+    showMenuButton: Boolean = true,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (field.flagsEnabled && chips) {
             MiniToggle(KDD, fv?.flag == FieldValue.FLAG_NOT_MEASURABLE) {
@@ -88,36 +95,47 @@ fun FieldActions(field: Field, fv: FieldValue?, onNote: () -> Unit, update: ((Fi
                 update { it.copy(flag = if (it.flag == FieldValue.FLAG_ESTIMATE) null else FieldValue.FLAG_ESTIMATE, reason = null) }
             }
         }
-        FieldMenu(field, fv, onNote, update)
+        FieldMenu(field, fv, onNote, update, menuOpen, onMenuOpen, showMenuButton)
     }
 }
 
 @Composable
-private fun FieldMenu(field: Field, fv: FieldValue?, onNote: () -> Unit, update: ((FieldValue) -> FieldValue) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    IconButton(onClick = { open = true }, modifier = Modifier.size(36.dp)) {
-        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+private fun FieldMenu(
+    field: Field,
+    fv: FieldValue?,
+    onNote: () -> Unit,
+    update: ((FieldValue) -> FieldValue) -> Unit,
+    open: Boolean,
+    onOpen: (Boolean) -> Unit,
+    showButton: Boolean,
+) {
+    Box {
+        if (showButton) {
+            IconButton(onClick = { onOpen(true) }, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+            }
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { onOpen(false) }) {
             if (field.flagsEnabled) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.field_menu_estimate)) },
                     onClick = {
-                        open = false
+                        onOpen(false)
                         update { it.copy(flag = if (it.flag == FieldValue.FLAG_ESTIMATE) null else FieldValue.FLAG_ESTIMATE, reason = null) }
                     },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.field_menu_kdd)) },
                     onClick = {
-                        open = false
+                        onOpen(false)
                         update { it.copy(flag = if (it.flag == FieldValue.FLAG_NOT_MEASURABLE) null else FieldValue.FLAG_NOT_MEASURABLE) }
                     },
                 )
             }
-            DropdownMenuItem(text = { Text(stringResource(R.string.field_menu_note)) }, onClick = { open = false; onNote() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.field_menu_note)) }, onClick = { onOpen(false); onNote() })
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.field_menu_clear)) },
-                onClick = { open = false; update { FieldValue(note = fv?.note, review = fv?.review) } },
+                onClick = { onOpen(false); update { FieldValue(note = fv?.note, review = fv?.review) } },
             )
         }
     }

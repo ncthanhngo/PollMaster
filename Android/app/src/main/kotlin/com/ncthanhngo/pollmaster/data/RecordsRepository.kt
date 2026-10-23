@@ -1,6 +1,7 @@
 package com.ncthanhngo.pollmaster.data
 
 import com.ncthanhngo.pollmaster.core.editor.EditorController
+import com.ncthanhngo.pollmaster.core.editor.RecordCodes
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.model.Record
@@ -100,7 +101,9 @@ class RecordsRepository(
     }
 
     suspend fun create(template: Template): Record = withContext(Dispatchers.IO) {
-        RecordFactory.create(template, settings.surveyorName.value).also { store.save(it) }
+        val existing = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
+        RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing))
+            .also { store.save(it) }
     }
 
     suspend fun duplicate(item: RecordItem): Record? = withContext(Dispatchers.IO) {

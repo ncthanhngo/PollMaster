@@ -100,7 +100,6 @@
     <string name="gps_waiting">Đang lấy vị trí…</string>
     <string name="gps_lat">Vĩ độ</string>
     <string name="gps_lng">Kinh độ</string>
-    <string name="gps_accuracy">Độ chính xác ±%1$s m</string>
     <string name="gps_open_map">Mở bản đồ</string>
     <string name="gps_unavailable">Không lấy được vị trí</string>
     <string name="compass_read">Đọc la bàn</string>
@@ -122,7 +121,6 @@
 
     <!-- Table -->
     <string name="row_default">Dòng</string>
-    <string name="table_add_row">Thêm dòng</string>
     <string name="table_empty">Chưa có dòng nào</string>
     <string name="row_delete">Xóa dòng</string>
     <string name="row_delete_confirm">Xóa dòng này và dữ liệu trong dòng?</string>
@@ -188,8 +186,6 @@
     <string name="section_copy_none">Không có phiếu nào khác cùng mẫu.</string>
     <string name="photo_used_for">Dùng cho: %1$s</string>
     <string name="media_capture_ref">📷 Chụp %1$s</string>
-    <string name="table_empty_add">Chưa có dòng nào — bấm Thêm dòng</string>
-    <string name="table_add_entry">Ghi lượt mới</string>
     <string name="quick_next">Lượt tiếp theo</string>
     <string name="quick_record_video">🎥 Quay video lượt này</string>
     <string name="audio_record">Ghi âm</string>
@@ -245,4 +241,41 @@
     <string name="settings_sites_error">Không đọc được danh sách điểm: %1$s</string>
     <string name="settings_sites_imported">Đã nhập %1$d điểm</string>
     <string name="template_outdated">Phiên bản cũ — chỉ để xem các phiếu đã tạo. Phiếu mới dùng phiên bản mới nhất.</string>
+
+    <!-- Review 3 -->
+    <string name="settings_one_hand">Chế độ một tay / đeo găng</string>
+    <string name="settings_one_hand_hint">Vùng chạm lớn 56, chữ +10%, thanh hành động ở dưới màn hình</string>
+    <string name="chips_other">Khác</string>
+    <string name="lookup_load_csv">Nạp danh sách điểm (CSV)</string>
+    <string name="gps_manual">Nhập tay</string>
+    <string name="cue_open">Mở %1$s</string>
+    <string name="review_missing_count">Còn %1$d mục bắt buộc</string>
+    <string name="review_fill_one_by_one">Điền lần lượt</string>
+    <string name="fill_position">%1$d / %2$d</string>
+    <string name="fill_exit">Thoát</string>
+    <string name="fill_skip">Bỏ qua</string>
+    <string name="fill_next">Tiếp</string>
+    <string name="fill_open">Mở</string>
+    <string name="fill_done">Đã duyệt hết các mục còn thiếu</string>
+    <string name="fill_done_skipped">Đã duyệt hết. Còn %1$d mục bị bỏ qua.</string>
+    <string name="fill_again">Duyệt lại các mục đã bỏ qua</string>
+    <string name="fill_back_to_review">Về màn Kiểm tra</string>
+    <string name="fill_resolved">Đã điền — bấm Tiếp để sang mục kế</string>
+    <string name="surveyor_ask_title">Tên người khảo sát</string>
+    <string name="surveyor_ask_save">Lưu và tạo phiếu</string>
+    <string name="surveyor_ask_skip">Bỏ qua</string>
+    <string name="view_list">Danh sách</string>
+    <string name="view_map">Bản đồ</string>
+    <string name="map_empty">Chưa có phiếu nào có vị trí GPS</string>
+    <string name="map_open_record">Mở phiếu</string>
+    <string name="map_site_planned">Điểm trong danh sách, chưa có phiếu</string>
+    <string name="map_legend_planned">Chưa có phiếu</string>
+    <string name="outline_photo_missing">Còn thiếu ảnh bắt buộc</string>
+    <string name="ocr_read">Đọc chữ từ ảnh %1$s</string>
+    <string name="ocr_reading">Đang đọc chữ…</string>
+    <string name="ocr_title">Chọn dòng chữ</string>
+    <string name="ocr_empty">Không nhận dạng được chữ trên ảnh</string>
+    <string name="ocr_failed">Không đọc được chữ: %1$s</string>
+    <string name="dictation_start">Đọc giọng nói</string>
+    <string name="dictation_none">Không nghe được gì</string>
 </resources>

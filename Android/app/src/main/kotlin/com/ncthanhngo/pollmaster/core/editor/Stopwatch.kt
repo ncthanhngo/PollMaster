@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.core.editor
 
+import com.ncthanhngo.pollmaster.core.model.Cue
 import com.ncthanhngo.pollmaster.core.model.StopwatchDef
 import com.ncthanhngo.pollmaster.core.model.Row
 import com.ncthanhngo.pollmaster.core.model.isEmptyJson
@@ -16,6 +17,9 @@ object Stopwatch {
     /** Last column that holds a mark. */
     fun lastMarked(def: StopwatchDef, row: Row): String? =
         def.columns.lastOrNull { !row.values[it]?.v.isEmptyJson() }
+
+    /** Reminder attached to the mark [column] (schema 8 `cues`), or null. */
+    fun cue(def: StopwatchDef, column: String): Cue? = def.cues[column]
 
     /** Seconds from T0 to [now]; whole seconds. */
     fun secondsSince(start: Instant, now: Instant): Long =

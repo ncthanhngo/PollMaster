@@ -9,11 +9,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.core.editor.FieldLayoutRules
+import com.ncthanhngo.pollmaster.core.editor.RoundEntryRules
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.FieldValue
 import com.ncthanhngo.pollmaster.core.model.Part
@@ -28,7 +31,7 @@ private const val WIDE_SCREEN_DP = 600
 
 /** Input area of a field card, chosen by field type; also samples, parts and attached photos. */
 @Composable
-fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, enabled: Boolean, quick: Boolean = false) {
+fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, enabled: Boolean, quick: Boolean = false, round: RoundContext? = null) {
     val key = scope.key(field.id)
     fun setV(element: JsonElement?) {
         scope.update(field.id) { it.copy(v = element) }
@@ -44,6 +47,18 @@ fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, 
             field.type == "gps" -> GpsInput(field, fv?.v, enabled, env.checker.siteDistance(env.record, field), ::setV)
             field.type == "audio" -> AudioField(field, fv, scope, env, enabled)
             field.isMedia -> MediaField(field, fv, scope, env, enabled, asValue = true)
+            field.samples != null && round != null -> key(round.index) {
+                ScalarInput(
+                    field = field,
+                    value = fv.sample(round.index),
+                    onValue = { e ->
+                        setV(fv.withSample(round.index, field.samples, e))
+                        fillRoundTime(round, field, e, scope)
+                    },
+                    enabled = enabled,
+                    warn = warn(field.warnMin, field.warnMax, field.unit, "#${round.index}"),
+                )
+            }
             field.samples != null -> {
                 val n = field.samples
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -64,7 +79,10 @@ fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, 
             }
             field.lookup != null -> LookupInput(field, fv, scope, env, enabled, ::setV)
             else -> {
-                ScalarInput(field, fv?.v, ::setV, enabled, warn = warn(field.warnMin, field.warnMax, field.unit), quick = quick)
+                ScalarInput(
+                    field, fv?.v, ::setV, enabled, warn = warn(field.warnMin, field.warnMax, field.unit), quick = quick,
+                    chipsMax = field.chipsRange?.let { FieldLayoutRules.chipsMax(it, scope::lookup) },
+                )
                 OtherTexts(field, fv, scope, enabled)
             }
         }
@@ -91,11 +109,10 @@ fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, 
     }
 }
 
-/** Parts in a grid: 2 columns, or 3 when there are at least 3 parts and the screen is >= 600 dp wide. */
+/** Parts in a grid: 2 columns; 3 for three or more short number parts (L × W × H) or on screens >= 600 dp wide. */
 @Composable
 private fun PartsGrid(parts: List<Part>, cell: @Composable (Part) -> Unit) {
-    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
-    val columns = if (parts.size >= 3 && wide) 3 else 2
+    val columns = FieldLayoutRules.partsColumns(parts, LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         parts.chunked(columns).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -104,6 +121,14 @@ private fun PartsGrid(parts: List<Part>, cell: @Composable (Part) -> Unit) {
             }
         }
     }
+}
+
+/** First value typed in a round fills that round's time field with the current time (schema 8 `roundEntry`). */
+private fun fillRoundTime(round: RoundContext, field: Field, edited: JsonElement?, scope: ValueScope) {
+    val timeField = round.entry.timeField ?: return
+    val now = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+    RoundEntryRules.timeFill(round.entry, round.index, field.id, edited, scope.get(timeField), now)
+        ?.let { filled -> scope.update(timeField) { it.copy(v = filled) } }
 }
 
 /** Free-text boxes for selected options that carry `withText`. */

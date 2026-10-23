@@ -19,12 +19,13 @@ const val SURVEYOR_FIELD_ID = "HD-surveyor"
 
 object RecordFactory {
 
-    fun create(template: Template, surveyorName: String?, now: String = nowIso()): Record {
+    fun create(template: Template, surveyorName: String?, now: String = nowIso(), recordCode: String? = null): Record {
         val values = HashMap<String, FieldValue>()
         for (f in template.allFields()) {
             val v: JsonElement? = when {
                 f.type == "sessionTime" -> sessionStart(now)
                 f.id == SURVEYOR_FIELD_ID && !surveyorName.isNullOrBlank() -> JsonPrimitive(surveyorName)
+                f.role == "recordCode" && !recordCode.isNullOrBlank() && f.default == null -> JsonPrimitive(recordCode)
                 else -> defaultOf(f, now)
             }
             if (v != null) FieldValue(v = v).normalized()?.let { values[f.id] = it }

@@ -4,19 +4,25 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /** Display preferences from Settings that cards and inputs react to. */
-data class UiPrefs(val compact: Boolean = true, val highContrast: Boolean = false, val dark: Boolean = false)
+data class UiPrefs(val compact: Boolean = true, val highContrast: Boolean = false, val dark: Boolean = false, val oneHand: Boolean = false)
 
 val LocalUiPrefs = staticCompositionLocalOf { UiPrefs() }
 
 /** Soft problems (warnings) use amber, distinct from the error red. */
+/** Minimum touch size in one-hand / glove mode. */
+val TOUCH_ONE_HAND: Dp = 56.dp
+
 val WarnLight = Color(0xFF8A5A00)
 val WarnDark = Color(0xFFFFC857)
 val OkLight = Color(0xFF1B6B3A)
@@ -93,9 +99,10 @@ fun PollMasterTheme(prefs: UiPrefs = UiPrefs(), content: @Composable () -> Unit)
     val dark = prefs.dark
     val scheme = (if (dark) Dark else Light).let { if (prefs.highContrast) highContrast(it, dark) else it }
     val density = LocalDensity.current
-    // High contrast also enlarges text by 10 %.
-    val scaled = if (prefs.highContrast) Density(density.density, density.fontScale * 1.1f) else density
-    CompositionLocalProvider(LocalUiPrefs provides prefs, LocalDensity provides scaled) {
+    // High contrast and one-hand mode enlarge text by 10 %; one-hand mode also makes every touch target 56 dp.
+    val scaled = if (prefs.highContrast || prefs.oneHand) Density(density.density, density.fontScale * 1.1f) else density
+    val minTouch = if (prefs.oneHand) TOUCH_ONE_HAND else 48.dp
+    CompositionLocalProvider(LocalUiPrefs provides prefs, LocalDensity provides scaled, LocalMinimumInteractiveComponentSize provides minTouch) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
 }

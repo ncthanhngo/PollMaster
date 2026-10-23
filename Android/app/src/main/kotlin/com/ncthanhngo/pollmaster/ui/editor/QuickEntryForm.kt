@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -45,14 +46,14 @@ private class MirrorScope(private val first: ValueScope, private val second: Val
 private fun rowOf(env: EditorEnv, table: TableItem, rowId: String): Row =
     env.record.tables[table.id].orEmpty().firstOrNull { it.id == rowId } ?: Row(rowId)
 
-private fun isShort(f: Field) = f.type == "integer" || f.type == "number" || f.type == "text"
+private fun isShort(f: Field) = (f.type == "integer" && f.chipsRange == null && !f.stepper) || f.type == "number" || f.type == "text"
 
 /**
  * "Ghi lượt": one form for a row of a quick-entry table and, when paired, its partner table. Stopwatch on top,
  * one-tap grids for choices, short numbers side by side, video last, and "Lượt tiếp theo".
  */
 @Composable
-fun QuickEntryForm(table: TableItem, rowId: String, env: EditorEnv, modifier: Modifier, onNextRow: (String, String) -> Unit) {
+fun QuickEntryForm(table: TableItem, rowId: String, env: EditorEnv, modifier: Modifier, onNextRow: (String, String) -> Unit, onOpenField: (String) -> Unit) {
     val controller = env.controller
     val partner = controller.template.pairedTable(table.id)
     val swTable = listOfNotNull(table, partner).firstOrNull { it.stopwatch != null }
@@ -80,12 +81,12 @@ fun QuickEntryForm(table: TableItem, rowId: String, env: EditorEnv, modifier: Mo
     for (s in inputs) if (isShort(s.field)) run += s else { flush(); blocks += listOf(s) }
     flush()
 
-    LazyColumn(modifier, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (swTable != null && !env.reviewMode) {
-            item(key = "stopwatch") {
-                StopwatchBlock(swTable.id, rowOf(env, swTable, rowId), swTable.stopwatch!!, controller)
-            }
-        }
+    val listState = rememberLazyListState()
+    Column(modifier) {
+    if (swTable != null && !env.reviewMode) {
+        PinnedStopwatch(swTable.id, rowOf(env, swTable, rowId), swTable.stopwatch!!, controller, listState.canScrollBackward, onOpenField)
+    }
+    LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item(key = "fields") {
             AppCard {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -120,6 +121,7 @@ fun QuickEntryForm(table: TableItem, rowId: String, env: EditorEnv, modifier: Mo
             }
         }
     }
+    }
 }
 
 @Composable
@@ -129,6 +131,7 @@ private fun QuickField(slot: Slot, env: EditorEnv) {
     val error = env.error(slot.scope.key(field.id))
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FieldTitle(field)
+        field.hint?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         FieldBody(field, fv, slot.scope, env, enabled = !env.reviewMode, quick = true)
         error?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }

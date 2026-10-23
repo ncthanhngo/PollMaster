@@ -3,6 +3,17 @@ package com.ncthanhngo.pollmaster.ui.editor
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
+import com.ncthanhngo.pollmaster.ui.theme.TOUCH_ONE_HAND
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,6 +53,7 @@ fun ReviewScreen(
     onBack: () -> Unit,
     onJumpField: (sectionId: String, fieldId: String) -> Unit,
     onJumpRow: (tableId: String, rowId: String, columnId: String) -> Unit,
+    onFillOneByOne: () -> Unit,
 ) {
     val container = LocalContainer.current
     val context = LocalContext.current
@@ -58,6 +70,13 @@ fun ReviewScreen(
     val notes = remember(record) { reviewNotes(controller.template, record) }
     var confirmReopen by remember { mutableStateOf(false) }
     val template = controller.template
+    val progress = remember(record) { controller.progress(record) }
+    val missing = (progress.total - progress.filled).takeIf { it > 0 } ?: issues.distinctBy { it.targetId }.size
+    val groups = remember(issues) { issues.groupBy { it.sectionId } }
+    // Which section groups are open: null = default (only the first one).
+    var openIds by rememberSaveable { mutableStateOf<String?>(null) }
+    val open = openIds?.split('|')?.toSet() ?: groups.keys.take(1).toSet()
+    fun toggle(id: String) { openIds = (if (id in open) open - id else open + id).joinToString("|") }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.review_title)) }, navigationIcon = { BackButton(onBack) }) },
@@ -76,6 +95,15 @@ fun ReviewScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(R.string.complete)) }
+                    if (issues.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.review_missing_count, missing),
+                            Modifier.fillMaxWidth().padding(top = 6.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         },
@@ -94,15 +122,38 @@ fun ReviewScreen(
             }
             if (issues.isEmpty()) {
                 item { Text(stringResource(R.string.review_ok), style = MaterialTheme.typography.bodyLarge) }
-            }
-            issues.groupBy { it.sectionId }.forEach { (_, list) ->
-                item(key = "h-${list.first().sectionId}") {
-                    Text(list.first().sectionTitle, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            } else {
+                item(key = "summary") {
+                    AppCard(container = MaterialTheme.colorScheme.errorContainer, borderColor = MaterialTheme.colorScheme.error) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                stringResource(R.string.review_missing_count, missing),
+                                style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Button(
+                                onClick = onFillOneByOne,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 52.dp),
+                            ) { Text(stringResource(R.string.review_fill_one_by_one)) }
+                        }
+                    }
                 }
-                items(list, key = { "${it.key}-${it.kind}" }) { issue ->
-                    IssueRow(issue) {
-                        if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
-                        else onJumpField(issue.sectionId, issue.targetId)
+            }
+            groups.forEach { (sectionId, list) ->
+                item(key = "h-$sectionId") {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { toggle(sectionId) }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${list.first().sectionTitle} (${list.size})", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                        Icon(if (sectionId in open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                if (sectionId in open) {
+                    items(list, key = { "${it.key}-${it.kind}" }) { issue ->
+                        IssueRow(issue) {
+                            if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
+                            else onJumpField(issue.sectionId, issue.targetId)
+                        }
                     }
                 }
             }

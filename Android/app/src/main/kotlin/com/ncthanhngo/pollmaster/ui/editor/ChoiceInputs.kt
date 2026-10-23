@@ -38,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
+import com.ncthanhngo.pollmaster.ui.theme.TOUCH_ONE_HAND
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.asBool
 import com.ncthanhngo.pollmaster.core.model.asDouble
@@ -54,7 +56,7 @@ private const val GRID_MAX_LABEL = 4
 /** Selected = solid primary with a check mark, unselected = outline (ux-spec D). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChoiceChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+internal fun ChoiceChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,
@@ -75,14 +77,15 @@ private fun ChoiceChip(label: String, selected: Boolean, enabled: Boolean, onCli
 /** One-tap button used by the grids. */
 @Composable
 private fun GridButton(label: String, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val touch = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 44.dp
     Surface(
         shape = RoundedCornerShape(10.dp),
         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-        modifier = modifier.heightIn(min = 44.dp).clickable(enabled = enabled, onClick = onClick),
+        modifier = modifier.heightIn(min = touch).clickable(enabled = enabled, onClick = onClick),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().heightIn(min = touch)) {
             Text(
                 (if (selected) "✓ " else "") + label,
                 textAlign = TextAlign.Center,

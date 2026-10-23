@@ -4,8 +4,6 @@ import com.ncthanhngo.pollmaster.core.theme.ThemeMode
 import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 import android.text.format.Formatter
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,7 +40,7 @@ import com.ncthanhngo.pollmaster.BuildConfig
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
-import com.ncthanhngo.pollmaster.core.sites.SitesCsvException
+import com.ncthanhngo.pollmaster.ui.common.rememberSitesCsvPicker
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.data.PhotoQuality
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +56,7 @@ fun SettingsScreen() {
     val quality by container.settings.photoQuality.collectAsState()
     val compact by container.settings.compactMode.collectAsState()
     val contrast by container.settings.highContrast.collectAsState()
+    val oneHand by container.settings.oneHand.collectAsState()
     val themeMode by container.settings.themeMode.collectAsState()
     var used by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { container.recordStore.usedBytes() } }
@@ -106,6 +105,7 @@ fun SettingsScreen() {
             HorizontalDivider()
             SwitchRow(stringResource(R.string.settings_compact), stringResource(R.string.settings_compact_hint), compact, container.settings::setCompactMode)
             SwitchRow(stringResource(R.string.settings_contrast), stringResource(R.string.settings_contrast_hint), contrast, container.settings::setHighContrast)
+            SwitchRow(stringResource(R.string.settings_one_hand), stringResource(R.string.settings_one_hand_hint), oneHand, container.settings::setOneHand)
             HorizontalDivider()
             BackupSection()
             HorizontalDivider()
@@ -158,29 +158,21 @@ private fun BackupSection() {
 private fun SitesSection(onMessage: (String) -> Unit) {
     val container = LocalContainer.current
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val sites by container.sites.sites.collectAsState()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val message = withContext(Dispatchers.IO) {
-                try {
-                    val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
-                        ?: throw SitesCsvException("Không mở được tệp")
-                    context.getString(R.string.settings_sites_imported, container.sites.importCsv(text))
-                } catch (e: Exception) {
-                    context.getString(R.string.settings_sites_error, e.message.orEmpty())
-                }
-            }
-            onMessage(message)
-        }
+    val pickCsv = rememberSitesCsvPicker { result ->
+        onMessage(
+            result.fold(
+                { context.getString(R.string.settings_sites_imported, it) },
+                { context.getString(R.string.settings_sites_error, it.message.orEmpty()) },
+            ),
+        )
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.settings_sites), style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.settings_sites_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.settings_sites_count, sites.size), style = MaterialTheme.typography.bodyLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { picker.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream")) }) { Text(stringResource(R.string.settings_sites_import)) }
+            Button(onClick = pickCsv) { Text(stringResource(R.string.settings_sites_import)) }
             OutlinedButton(enabled = sites.isNotEmpty(), onClick = container.sites::clear) { Text(stringResource(R.string.settings_sites_clear)) }
         }
     }

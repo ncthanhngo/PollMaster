@@ -209,13 +209,14 @@ class EditorController(
     fun startStopwatch(tableId: String, rowId: String) =
         updateRow(tableId, rowId) { it.copy(stopwatchStart = clock()) }
 
-    /** Records the elapsed seconds since T0 in the next empty stopwatch column. */
-    fun markStopwatch(tableId: String, rowId: String, seconds: Long) {
-        val table = template.findTable(tableId) ?: return
-        val def = table.stopwatch ?: return
-        val row = _record.value.tables[tableId]?.firstOrNull { it.id == rowId } ?: return
-        val column = Stopwatch.nextColumn(def, row) ?: return
+    /** Records the elapsed seconds since T0 in the next empty stopwatch column; returns that column (null if none). */
+    fun markStopwatch(tableId: String, rowId: String, seconds: Long): String? {
+        val table = template.findTable(tableId) ?: return null
+        val def = table.stopwatch ?: return null
+        val row = _record.value.tables[tableId]?.firstOrNull { it.id == rowId } ?: return null
+        val column = Stopwatch.nextColumn(def, row) ?: return null
         updateRowValue(tableId, rowId, column) { it.copy(v = JsonPrimitive(seconds)) }
+        return column
     }
 
     /** Clears the last mark; with no marks left, clears T0. */

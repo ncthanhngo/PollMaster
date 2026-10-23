@@ -51,6 +51,18 @@ data class Part(
     val warnMax: Double? = null,
 )
 
+/** Integer shown as one-tap chips `min…max`; `max` comes from the numeric value at [maxRef] ("B-06.rows"), else [fallbackMax]. */
+@Serializable
+data class ChipsRange(val min: Int = 1, val maxRef: String? = null, val fallbackMax: Int = 10)
+
+/** Heading option: the `samples` fields after it are entered round by round; [timeField] gets the time of a round's first value. */
+@Serializable
+data class RoundEntry(val samples: Int, val timeField: String? = null)
+
+/** Reminder shown when a stopwatch mark is recorded: [text] plus a shortcut to [field]. */
+@Serializable
+data class Cue(val text: String, val field: String? = null)
+
 /**
  * `lookup` of a field: choose from a list of [source] (only "sites") and copy parts of the choice into [fill] targets.
  * [gps] names the GPS field compared against the chosen site's planned coordinate (never filled from it).
@@ -93,6 +105,9 @@ data class Field(
     val maxAccuracy: Double? = null,
     val lookup: Lookup? = null,
     val carryOver: Boolean = false,
+    val short: Boolean = false,
+    val stepper: Boolean = false,
+    val chipsRange: ChipsRange? = null,
 ) : Item {
     /** Whether the estimate (~) / not-measurable flags are offered for this field. */
     val flagsEnabled: Boolean
@@ -107,10 +122,11 @@ data class HeadingItem(
     val title: String = "",
     val note: String? = null,
     val kind: String? = null,
+    val roundEntry: RoundEntry? = null,
 ) : Item
 
 @Serializable
-data class StopwatchDef(val columns: List<String>)
+data class StopwatchDef(val columns: List<String>, val cues: Map<String, Cue> = emptyMap())
 
 @Serializable
 data class RowDef(val id: String, val fixed: Map<String, JsonElement> = emptyMap())
@@ -129,6 +145,7 @@ data class TableItem(
     val columns: List<Field> = emptyList(),
     val pairedWith: String? = null,
     val quickEntry: Boolean = false,
+    val inline: Boolean = false,
 ) : Item {
     val isFixed: Boolean get() = rows != null
 }

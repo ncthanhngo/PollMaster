@@ -7,11 +7,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,6 +32,7 @@ import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDate
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.format.displayMonth
+import com.ncthanhngo.pollmaster.core.format.displayTime
 import com.ncthanhngo.pollmaster.core.format.toIso
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.asObject
@@ -94,26 +106,42 @@ fun PickerInput(field: Field, value: JsonElement?, onValue: (JsonElement?) -> Un
     ) { Text(shown + (field.unit?.let { " $it" } ?: "")) }
 }
 
+/** One line `18:41 → …` with ✎; the pencil opens a sheet to edit start and end. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionTimeInput(value: JsonElement?, enabled: Boolean, onValue: (JsonElement?) -> Unit) {
     val context = LocalContext.current
     val obj = value.asObject()
     val start = obj?.get("start").asText()
     val end = obj?.get("end").asText()
+    var editing by remember { mutableStateOf(false) }
     fun set(key: String, iso: String) {
         val map = LinkedHashMap<String, JsonElement>(obj ?: emptyMap())
         map[key] = JsonPrimitive(iso)
         if ("end" !in map) map["end"] = JsonNull
         onValue(JsonObject(map))
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${stringResource(R.string.session_start)}: ${start?.let { displayDateTime(it) } ?: "—"}", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            TextButton(enabled = enabled, onClick = { pickDateTime(context, start) { set("start", it) } }) { Text(stringResource(R.string.action_edit)) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            (start?.let { displayTime(it) } ?: "—") + " → " + (end?.let { displayTime(it) } ?: "…"),
+            Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
+        )
+        IconButton(enabled = enabled, onClick = { editing = true }) {
+            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.action_edit))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${stringResource(R.string.session_end)}: ${end?.let { displayDateTime(it) } ?: "—"}", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            TextButton(enabled = enabled, onClick = { pickDateTime(context, end) { set("end", it) } }) { Text(stringResource(R.string.action_edit)) }
+    }
+    if (editing) {
+        ModalBottomSheet(onDismissRequest = { editing = false }) {
+            Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("start" to (R.string.session_start to start), "end" to (R.string.session_end to end)).forEach { (key, spec) ->
+                    val (label, iso) = spec
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${stringResource(label)}: ${iso?.let { displayDateTime(it) } ?: "—"}", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        TextButton(onClick = { pickDateTime(context, iso) { set(key, it) } }) { Text(stringResource(R.string.action_edit)) }
+                    }
+                }
+                TextButton(onClick = { editing = false }, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.action_close)) }
+            }
         }
     }
 }

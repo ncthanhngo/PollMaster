@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.core.editor.FieldLayoutRules
 import com.ncthanhngo.pollmaster.core.format.formatShortest
 import com.ncthanhngo.pollmaster.core.model.Row
 import com.ncthanhngo.pollmaster.core.model.TableItem
@@ -59,9 +60,14 @@ fun TableCard(table: TableItem, env: EditorEnv, onOpenRow: (String) -> Unit) {
             Text(table.title, style = MaterialTheme.typography.titleMedium)
             table.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (rows.isEmpty()) {
-                Text(stringResource(if (table.isFixed) R.string.table_empty else R.string.table_empty_add), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (table.isFixed) stringResource(R.string.table_empty) else FieldLayoutRules.emptyTableMessage(table, quickPaired), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val inlineColumn = if (env.reviewMode) null else FieldLayoutRules.inlineChoiceColumn(table)
             rows.forEachIndexed { index, view ->
+                if (inlineColumn != null) {
+                    InlineRow(table, view, inlineColumn, env)
+                    return@forEachIndexed
+                }
                 RowCard(
                     title = if (table.isFixed) fixedTitle(table, view) else "$rowLabel ${index + 1}",
                     summary = summary(table, view, env),
@@ -76,7 +82,7 @@ fun TableCard(table: TableItem, env: EditorEnv, onOpenRow: (String) -> Unit) {
             if (!table.isFixed && !env.reviewMode) {
                 Button(onClick = { onOpenRow(env.controller.addRow(table.id)) }) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Text(stringResource(if (quickPaired) R.string.table_add_entry else R.string.table_add_row), modifier = Modifier.padding(start = 6.dp))
+                    Text(FieldLayoutRules.addButtonLabel(quickPaired), modifier = Modifier.padding(start = 6.dp))
                 }
             }
             issue?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

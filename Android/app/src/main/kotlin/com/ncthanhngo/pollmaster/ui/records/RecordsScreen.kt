@@ -38,6 +38,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -81,8 +84,11 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(StatusFilter.ALL) }
     var picking by rememberSaveable { mutableStateOf(false) }
+    var showMap by rememberSaveable { mutableStateOf(false) }
+    val sites by container.sites.sites.collectAsState()
     var deleting by remember { mutableStateOf<RecordItem?>(null) }
     var exporting by rememberSaveable { mutableStateOf<String?>(null) }
+    val startRecord = rememberRecordCreator(onOpenRecord)
 
     LaunchedEffect(templates) { container.records.refresh() }
 
@@ -98,13 +104,21 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_records)) }, actions = { ThemeToggleButton() }) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { picking = true }) {
+            FloatingActionButton(onClick = {
+                // A single usable template needs no question.
+                val usable = newestVersions(templates)
+                if (usable.size == 1) startRecord(usable.first()) else picking = true
+            }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.record_new))
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                SegmentedButton(!showMap, { showMap = false }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.view_list)) }
+                SegmentedButton(showMap, { showMap = true }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.view_map)) }
+            }
+            if (!showMap) OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -120,6 +134,10 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
                 FilterChip(filter == StatusFilter.ALL, { filter = StatusFilter.ALL }, { Text(stringResource(R.string.filter_all)) })
                 FilterChip(filter == StatusFilter.DRAFT, { filter = StatusFilter.DRAFT }, { Text(stringResource(R.string.status_draft)) })
                 FilterChip(filter == StatusFilter.COMPLETED, { filter = StatusFilter.COMPLETED }, { Text(stringResource(R.string.status_completed)) })
+            }
+            if (showMap) {
+                RecordsMap(visible, sites, onOpenRecord, Modifier.weight(1f).padding(top = 8.dp))
+                return@Column
             }
             val visibleBroken = if (filter == StatusFilter.ALL) broken.filter { query.isBlank() || it.id.contains(query, ignoreCase = true) } else emptyList()
             if (visible.isEmpty() && visibleBroken.isEmpty()) {
@@ -161,7 +179,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
             onDismiss = { picking = false },
             onPick = { t ->
                 picking = false
-                scope.launch { onOpenRecord(container.records.create(t).id) }
+                startRecord(t)
             },
         )
     }
@@ -246,7 +264,7 @@ private fun Thumb(file: java.io.File?) {
 }
 
 @Composable
-private fun RecordChips(item: RecordItem) {
+internal fun RecordChips(item: RecordItem) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalUiPrefs.current.dark
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
