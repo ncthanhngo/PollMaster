@@ -34,13 +34,19 @@ def token():
 
 
 def call(method, path, body=None):
-    req = urllib.request.Request(API + path, method=method, data=json.dumps(body).encode() if body else None,
-                                 headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req) as r:
-            return json.loads(r.read() or b"{}")
-    except urllib.error.HTTPError as e:
-        sys.exit(f"{method} {path} → {e.code}\n{e.read().decode()}")
+    # A dropped connection otherwise hangs urlopen forever; time out and retry instead.
+    for attempt in range(3):
+        req = urllib.request.Request(API + path, method=method, data=json.dumps(body).encode() if body else None,
+                                     headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            sys.exit(f"{method} {path} → {e.code}\n{e.read().decode()}")
+        except (urllib.error.URLError, TimeoutError) as e:
+            if attempt == 2:
+                sys.exit(f"{method} {path} → network error: {e}")
+            time.sleep(3)
 
 
 def local_distribution_serials():
