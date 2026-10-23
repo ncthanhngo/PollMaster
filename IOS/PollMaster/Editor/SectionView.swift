@@ -34,7 +34,6 @@ struct SectionView: View {
                             ForEach(results) { itemView($0) }
                         }
                     }
-                    if !theme.oneHand { navigation }
                 }
                 .padding()
                 .frame(maxWidth: 760)
@@ -68,7 +67,7 @@ struct SectionView: View {
                 withAnimation { proxy.scrollTo(focus, anchor: .top) }
             }
         }
-        .safeAreaInset(edge: .bottom) { if theme.oneHand { oneHandBar } }
+        .safeAreaInset(edge: .bottom) { bottomBar }
         .modifier(WarnOnLeave(model: model, focused: $focused) { key in
             guard let f = fields.first(where: { $0.id == FocusOrder.baseId(key) }) else { return nil }
             return (f, model.record.values[f.id], f.id)
@@ -127,10 +126,11 @@ struct SectionView: View {
         rounds[h.id] = RoundEntryRules.firstEmptyRound(samples: entry.samples, value: model.record.values[fieldId])
     }
 
-    /// Bottom action bar of one-hand mode: previous / check / next, plus the section's add-row button.
-    private var oneHandBar: some View {
+    /// Pinned bottom bar: previous / check (k/N) / next, so the next section never needs a scroll to the end.
+    /// One-hand mode also moves the section's add-row button here and uses larger controls.
+    private var bottomBar: some View {
         VStack(spacing: 8) {
-            if !model.isLocked, let t = items.compactMap({ item -> TableDef? in if case .table(let t) = item, !t.isFixed { return t } else { return nil } }).first {
+            if theme.oneHand, !model.isLocked, let t = items.compactMap({ item -> TableDef? in if case .table(let t) = item, !t.isFixed { return t } else { return nil } }).first {
                 AddRowButton(model: model, table: t, sectionId: sectionId)
             }
             HStack(spacing: 8) {
@@ -138,25 +138,19 @@ struct SectionView: View {
                 Button {
                     model.showAllErrors = true
                     env.recordsPath.append(.review(record: model.record.id))
-                } label: { Text("Kiểm tra").lineLimit(1).frame(maxWidth: .infinity, minHeight: 36) }
+                } label: {
+                    VStack(spacing: 0) {
+                        Text("Kiểm tra").lineLimit(1)
+                        Text("\(index + 1)/\(model.sectionTitles.count)").font(.caption2).secondaryText()
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                }
                 Button { go(index + 1) } label: { Text("Mục sau ›").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36) }.disabled(index >= model.sectionTitles.count - 1)
             }
-            .buttonStyle(.bordered).controlSize(.large)
+            .buttonStyle(.bordered).controlSize(theme.oneHand ? .large : .regular)
         }
         .padding(.horizontal).padding(.vertical, 8)
         .background(.bar)
-    }
-
-    private var navigation: some View {
-        HStack {
-            Button("‹ Mục trước") { go(index - 1) }.disabled(index == 0)
-            Spacer()
-            Text("\(index + 1)/\(model.sectionTitles.count)").font(.caption).secondaryText()
-            Spacer()
-            Button("Mục sau ›") { go(index + 1) }.disabled(index >= model.sectionTitles.count - 1)
-        }
-        .buttonStyle(.bordered)
-        .padding(.top, 8)
     }
 
     private func go(_ i: Int) {

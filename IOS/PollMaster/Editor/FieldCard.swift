@@ -37,25 +37,19 @@ struct FieldCard: View {
             if compactRow {
                 HStack(alignment: .center, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
-                        // the code badge shares the line of the method hint, leaving the full width to the label
-                        let codeOnHintLine = showCode && field.method != nil
-                        FieldTitle(field: field, fv: fv, showCode: showCode && !codeOnHintLine)
-                        if codeOnHintLine || field.method != nil {
-                            HStack(spacing: 6) {
-                                if codeOnHintLine { CodeBadge(id: field.id) }
-                                if let m = field.method { Text(m).font(.caption).secondaryText().lineLimit(1) }
-                            }
-                        }
+                        // same title row as the full card (code badge first), so codes line up down the section
+                        FieldTitle(field: field, fv: fv, showCode: showCode)
+                        if let m = field.method { Text(m).font(.caption).secondaryText().lineLimit(2) }
                         hintLine
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     input.containerRelativeFrame(.horizontal) { w, _ in min(w * 0.30, 200) }
-                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope, withChips: false)
+                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope)
                 }
             } else {
                 HStack(alignment: .center, spacing: 6) {
                     FieldTitle(field: field, fv: fv, showCode: showCode).frame(maxWidth: .infinity, alignment: .leading)
-                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope, withChips: true)
+                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope)
                 }
                 if let m = field.method { Text(m).font(.caption).secondaryText() }
                 hintLine
@@ -104,9 +98,18 @@ struct FieldCard: View {
         }
     }
 
-    /// Hint under the label, once (never as a placeholder: boxes can be narrow).
+    /// Hint under the label, once (never as a placeholder: boxes can be narrow), then the usual range of a number.
     @ViewBuilder private var hintLine: some View {
         if let h = field.hint, !h.isEmpty { Text(h).font(.caption).secondaryText().fixedSize(horizontal: false, vertical: true) }
+        if let r = usualRange { Text(r).font(.caption).secondaryText() }
+    }
+
+    /// "Thường 1000–2500 mm" from warnMin/warnMax (typical values, falling back to min/max): the expected magnitude at a glance.
+    private var usualRange: String? {
+        guard field.type == .number || field.type == .integer, !field.isComputed,
+              let lo = field.warnMin ?? field.min, let hi = field.warnMax ?? field.max else { return nil }
+        func short(_ d: Double) -> String { d == d.rounded() ? String(Int(d)) : String(d) }
+        return "Thường \(short(lo))–\(short(hi))\(field.unit.map { " \($0)" } ?? "")"
     }
 
     /// Computed field with samples inside a round group shows the value of the selected round only.

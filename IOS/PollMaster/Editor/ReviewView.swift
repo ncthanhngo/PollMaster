@@ -23,20 +23,29 @@ struct ReviewView: View {
         return order.compactMap { map[$0] }
     }
 
-    private var errorGroups: [Group] { grouped(model.issues.map { ($0.sectionId, $0.sectionTitle, $0.fieldId, $0.rowId, $0.label, $0.message) }) }
+    /// Not filled yet (required, photo count, table rows) is shown neutral; only wrong values (range, missing KĐĐ reason) are errors.
+    private func isMissing(_ i: ValidationIssue) -> Bool { [.required, .minCount, .minRows].contains(i.kind) }
+    private var missingGroups: [Group] {
+        grouped(model.issues.filter(isMissing).map { ($0.sectionId, $0.sectionTitle, $0.fieldId, $0.rowId, $0.label, $0.message) })
+    }
+    private var errorGroups: [Group] {
+        grouped(model.issues.filter { !isMissing($0) }.map { ($0.sectionId, $0.sectionTitle, $0.fieldId, $0.rowId, $0.label, $0.message) })
+    }
     private var warningGroups: [Group] { grouped(model.warnings.map { ($0.sectionId, $0.sectionTitle, $0.fieldId, $0.rowId, $0.label, $0.message) }) }
     private var noteGroups: [Group] { grouped(model.reviewNotes.map { ($0.sectionId, $0.sectionTitle, $0.fieldId, $0.rowId, $0.label, $0.message) }) }
 
     var body: some View {
         List {
             if model.isLocked { Section { LockedBanner(model: model) } }
-            Section { ProgressRow(progress: model.progress) }
+            if model.issues.isEmpty || model.isLocked { Section { ProgressRow(progress: model.progress) } }
             if model.issues.isEmpty {
                 Section { Label("Không còn lỗi", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success) }
             } else if !model.isLocked {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Còn \(missingCount) mục bắt buộc").font(.title3.weight(.semibold))
+                        ProgressView(value: model.progress.fraction)
+                        Text("Đã điền \(model.progress.done)/\(model.progress.total)").font(.caption).secondaryText()
                         Button { env.recordsPath.append(.fill(record: model.record.id)) } label: {
                             Label("Điền lần lượt", systemImage: "arrow.right.circle.fill").font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: max(36, theme.minTouch))
@@ -47,6 +56,7 @@ struct ReviewView: View {
                 }
             }
             groupSections("Lỗi", color: theme.alert, icon: "xmark.octagon.fill", errorGroups)
+            groupSections("Còn thiếu", color: theme.secondaryText, icon: "circle.dashed", missingGroups)
             groupSections("Cần xem lại", color: theme.warning, icon: "exclamationmark.triangle.fill", warningGroups)
             groupSections("Ghi chú kiểm tra", color: .orange, icon: "text.bubble.fill", noteGroups)
             if !model.template.signatures.isEmpty {

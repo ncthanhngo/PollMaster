@@ -43,7 +43,7 @@ struct ProjectsView: View {
             .navigationTitle("Dự án")
             .navigationDestination(for: ProjectRoute.self) { ProjectDetailView(projectId: $0.id) }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { AppearanceToggleButton() }
+                ToolbarItem(placement: .topBarLeading) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Dự án mới", systemImage: "folder.badge.plus") { env.showNewProject = true }

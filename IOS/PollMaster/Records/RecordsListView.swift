@@ -73,7 +73,7 @@ struct RecordsListView: View {
             .searchable(text: $search, prompt: "Tìm theo tiêu đề")
             .toolbar {
                 ToolbarItem(placement: .principal) { ProjectTitleButton { env.showProjectSwitcher = true } }
-                ToolbarItem(placement: .topBarTrailing) { AppearanceToggleButton() }
+                ToolbarItem(placement: .topBarLeading) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) { Button("Tạo phiếu", systemImage: "plus") { startNew() } }
             }
             .navigationDestination(for: Route.self) { RouteDestination(route: $0) }

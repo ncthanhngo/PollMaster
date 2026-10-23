@@ -39,11 +39,22 @@ struct ProjectDetailView: View {
                 if let d = p.description { Text(d).font(.subheadline) }
                 if p.archived { Label("Đã lưu trữ", systemImage: "archivebox").foregroundStyle(.orange).font(.subheadline) }
             }
-            Section("Thống kê") {
-                LabeledContent("Nháp", value: "\(stats.draft)")
-                LabeledContent("Hoàn thành", value: "\(stats.completed)")
-                LabeledContent("Cần sửa", value: "\(stats.returned)")
-                LabeledContent("Phiếu gần nhất", value: stats.latest.map { ISODate.format($0, "dd/MM/yyyy HH:mm") } ?? "–")
+            Section {
+                HStack(spacing: 10) {
+                    StatTile(value: "\(stats.draft)", label: "Nháp")
+                    StatTile(value: "\(stats.returned)", label: "Cần sửa")
+                    StatTile(value: "\(stats.completed)", label: "Hoàn thành")
+                }
+                .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                Text("Phiếu gần nhất: \(stats.latest.map { ISODate.format($0, "dd/MM/yyyy HH:mm") } ?? "–")").font(.caption).secondaryText()
+                    .listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 0, trailing: 4))
+            }
+            Section {
+                Button("Mở danh sách phiếu", systemImage: "list.clipboard") { openRecords(p) }
+                Button("Xuất tổng hợp (Excel)", systemImage: "tablecells") { exportingSummary = true }
+                Button("Chia sẻ gói dự án", systemImage: "square.and.arrow.up") {
+                    do { share = ShareItems(urls: [try env.bundleFile(for: p)]) } catch { env.errorMessage = error.localizedDescription }
+                }
             }
             templatesSection(p)
             Section("Danh sách điểm") {
@@ -102,12 +113,8 @@ struct ProjectDetailView: View {
     }
 
     private func actions(_ p: Project) -> some View {
-        Section("Hành động") {
-            Button("Chia sẻ gói dự án", systemImage: "square.and.arrow.up") {
-                do { share = ShareItems(urls: [try env.bundleFile(for: p)]) } catch { env.errorMessage = error.localizedDescription }
-            }
-            Button("Xuất tổng hợp (Excel)", systemImage: "tablecells") { exportingSummary = true }
-            Button("Mở danh sách phiếu", systemImage: "list.clipboard") { openRecords(p) }
+        // Rare, state-changing actions stay at the bottom, away from the everyday ones at the top.
+        Section {
             Button(p.archived ? "Bỏ lưu trữ" : "Lưu trữ", systemImage: p.archived ? "tray.and.arrow.up" : "archivebox") {
                 env.setArchived(p, !p.archived)
             }

@@ -20,18 +20,19 @@ struct RecordsMapView: View {
         Map(position: $camera) {
             ForEach(located) { s in
                 if let c = s.coordinate {
-                    Annotation(s.title, coordinate: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lng), anchor: .bottom) {
-                        pin("mappin.circle.fill", color: color(s), selected: selected == .record(s.id)).onTapGesture { selected = .record(s.id) }
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lng), anchor: .bottom) {
+                        pin(icon(s), color: color(s), label: shortTitle(s), selected: selected == .record(s.id)).onTapGesture { selected = .record(s.id) }
                     }
                 }
             }
             ForEach(unvisited) { site in
-                Annotation(site.code, coordinate: CLLocationCoordinate2D(latitude: site.lat ?? 0, longitude: site.lng ?? 0), anchor: .bottom) {
-                    pin("mappin.circle", color: .gray, selected: selected == .site(site.code)).onTapGesture { selected = .site(site.code) }
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: site.lat ?? 0, longitude: site.lng ?? 0), anchor: .bottom) {
+                    pin("mappin.circle", color: .gray, label: site.code, selected: selected == .site(site.code)).onTapGesture { selected = .site(site.code) }
                 }
             }
         }
         .mapControls { MapCompass(); MapScaleView() }
+        .overlay(alignment: .topLeading) { if !(located.isEmpty && unvisited.isEmpty) { legend.padding(10) } }
         .overlay(alignment: .bottom) { card.padding() }
         .overlay {
             if located.isEmpty && unvisited.isEmpty {
@@ -45,13 +46,43 @@ struct RecordsMapView: View {
 
     private func color(_ s: RecordSummary) -> Color {
         if s.returned && s.status == .draft { return .orange }
-        return s.status == .completed ? .green : .gray
+        return s.status == .completed ? theme.success : .gray
     }
 
-    private func pin(_ icon: String, color: Color, selected: Bool) -> some View {
-        Image(systemName: icon).font(.system(size: selected ? 38 : 30)).foregroundStyle(color)
-            .background(Circle().fill(.white).padding(4))
-            .frame(minWidth: 44, minHeight: 44)
+    /// Shape differs per status too, so the pins read without colour.
+    private func icon(_ s: RecordSummary) -> String {
+        if s.returned && s.status == .draft { return "arrow.uturn.backward.circle.fill" }
+        return s.status == .completed ? "checkmark.circle.fill" : "mappin.circle.fill"
+    }
+
+    /// Record code only ("TDP-007" of "TDP-007 · 12 Lê Lợi"): long titles collide on the map.
+    private func shortTitle(_ s: RecordSummary) -> String { s.title.components(separatedBy: " · ").first ?? s.title }
+
+    /// Pin with an always-visible label (MapKit hides its own titles when they overlap).
+    private func pin(_ icon: String, color: Color, label: String, selected: Bool) -> some View {
+        VStack(spacing: 2) {
+            Text(label).font(.caption2.weight(.semibold)).lineLimit(1)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(.regularMaterial, in: Capsule())
+            Image(systemName: icon).font(.system(size: selected ? 38 : 30)).foregroundStyle(color)
+                .background(Circle().fill(.white).padding(4))
+        }
+        .frame(minWidth: 44, minHeight: 44)
+    }
+
+    private var legend: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            legendRow("mappin.circle.fill", .gray, "Nháp")
+            legendRow("arrow.uturn.backward.circle.fill", .orange, "Cần sửa")
+            legendRow("checkmark.circle.fill", theme.success, "Hoàn thành")
+            if !unvisited.isEmpty { legendRow("mappin.circle", .gray, "Chưa có phiếu") }
+        }
+        .font(.caption2)
+        .padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func legendRow(_ icon: String, _ color: Color, _ text: String) -> some View {
+        Label { Text(text) } icon: { Image(systemName: icon).foregroundStyle(color) }
     }
 
     @ViewBuilder private var card: some View {

@@ -172,11 +172,12 @@ struct ProgressRow: View {
 struct LockedBanner: View {
     let model: RecordEditorModel
     @State private var confirm = false
+    @Environment(\.pmTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Đã hoàn thành lúc \(model.record.completedAt.map { ISODate.format($0, "HH:mm dd/MM/yyyy") } ?? "")",
-                  systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                  systemImage: "checkmark.circle.fill").foregroundStyle(theme.success)
             HStack {
                 Button("Mở lại") { confirm = true }.buttonStyle(.bordered)
                 if !model.reviewMode { Button("Chế độ kiểm tra") { model.reviewMode = true }.buttonStyle(.bordered) }

@@ -85,7 +85,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - Mục lục: mỗi mục hiện **tiến độ trung tính** "đã điền/bắt buộc" màu xám → đủ thì "✓" xanh. **Không dùng màu đỏ trước khi người dùng
   bấm Kiểm tra lần đầu** (lưu cờ này theo phiếu trong phiên). Sau khi kiểm tra: mục còn thiếu hiển thị số đỏ.
 - Đầu mục lục: nút **"Tiếp tục: {fieldId} {label}"** nhảy tới `lastPosition` (cập nhật khi focus/chạm field).
-- Điều hướng cuối mục: "‹ Mục trước · n/N · Mục sau ›" (cả 2 app).
+- Điều hướng mục: thanh **ghim cuối màn** "‹ Mục trước · Kiểm tra n/N · Mục sau ›" (không phải cuộn hết mục).
 - Menu mục (⋯ trên thanh): **"Đánh dấu KĐĐ các trường còn trống"** (nhập 1 lý do chung, áp cho mọi field có `flags` còn trống trong mục,
   có xác nhận số lượng) · **"Lấy dữ liệu mục này từ phiếu khác"** (chọn phiếu cùng mẫu → chép values + tables của mục, không chép media, hỏi ghi đè).
 
@@ -99,7 +99,8 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - **Parts**: lưới 2 cột (3 cột nếu ≥ 3 part và màn ≥ 600 dp), nhãn part = tên (không kèm đơn vị), đơn vị ở đuôi ô.
 - Ô trống trông trống: placeholder là chữ hướng dẫn ("Nhập…", "Chọn tháng", "Chưa lấy vị trí"), **không bao giờ** hiển thị số 0 giả
   hoặc ngày mặc định khi chưa có giá trị (GPS, month, date, time, datetime).
-- Field có `flags`: nút nhỏ **"KĐĐ"** và **"~"** ngay trên hàng tiêu đề (dạng toggle chip nhỏ), ngoài ra vẫn có trong menu ⋯.
+- Field có `flags`: "Ước lượng (~)" và "Không đo được (KĐĐ)" chỉ nằm trong menu ⋯ (vùng chạm ≥ 44); khi bật hiện badge "~ Ước lượng" / "KĐĐ" sau nhãn.
+- Field số có `warnMin/warnMax` (hoặc `min/max`): dòng phụ "Thường a–b đơn vị" dưới nhãn.
 - singleChoice/yesNo: chip **chọn = tô đặc màu chính + ✓**, chưa chọn = viền. singleChoice > 6 lựa chọn mà nhãn ngắn (≤ 4 ký tự) →
   **lưới nút** (5 cột) thay vì dropdown; còn lại > 6 lựa chọn → dropdown/menu.
 - Bàn phím số: số thập phân dùng bàn phím có dấu "." (iOS `.decimalPad`; Android `KeyboardType.Decimal`), cho nhập số âm chỉ khi `min` < 0
@@ -138,7 +139,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 ## J. Quy ước đã chốt khi triển khai bản sửa
 - Tên file sao lưu: `{recordCode đã làm sạch}_{8 ký tự đầu record id}_backup.zip`; không có mã → `{recordId}_backup.zip`.
 - Ghi chú kiểm tra (`review`) chỉ cho field header/mục, không cho ô trong bảng.
-- Chế độ gọn: hàng gọn không có chip ~/KĐĐ (chỉ menu ⋯ + badge khi đang bật); thẻ thường có chip trên hàng tiêu đề.
+- Chế độ gọn: hàng gọn dùng cùng hàng tiêu đề với thẻ thường (badge mã đứng trước nhãn), `method` tối đa 2 dòng.
 - Mẫu nhiều phiên bản: tab Mẫu vẫn liệt kê bản cũ (ghi chú "Bản cũ", tắt "Tạo phiếu mới"); hộp chọn mẫu khi tạo phiếu chỉ có bản mới nhất.
 - "Lấy dữ liệu mục từ phiếu khác": chỉ chép giá trị không rỗng, chép kèm dòng của bảng ghép đôi để giữ id đồng bộ.
 
@@ -146,7 +147,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - **Mặc định: Sáng**, không theo hệ thống. Cài đặt → "Giao diện": **Sáng** (mặc định) · **Tối** · **Theo hệ thống**. Lưu cục bộ,
   áp dụng ngay (không khởi động lại), gồm cả các sheet/dialog.
 - **Chuyển nhanh 1 chạm**: nút biểu tượng ☀ / ☾ (sun.max / moon; Material LightMode / DarkMode) ở thanh trên của 3 màn gốc
-  (Phiếu khảo sát, Mẫu, Cài đặt) — chạm để đảo Sáng ↔ Tối (nếu đang "Theo hệ thống" thì đảo so với giao diện đang hiển thị và lưu thành
+  (Phiếu khảo sát, Mẫu, Cài đặt; iOS đặt bên trái, xa nút +) — chạm để đảo Sáng ↔ Tối (nếu đang "Theo hệ thống" thì đảo so với giao diện đang hiển thị và lưu thành
   Sáng/Tối cụ thể). Trong màn soạn phiếu: mục "Giao diện tối" / "Giao diện sáng" trong menu ⋯.
 - "Tương phản cao" vẫn là công tắc riêng, áp lên cả Sáng và Tối.
 - Android: **tắt dynamic color** (Material You theo hình nền) — dùng bảng màu thương hiệu cố định cho cả Sáng và Tối để 2 app đồng nhất.
@@ -162,7 +163,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 5. **roundEntry** (schema §8) cho G2.
 6. **Bảng `inline`** (schema §8) cho E2.
 7. `stepper`, `chipsRange` (schema §8).
-8. **Kiểm tra & hoàn thành**: đầu màn "Còn N mục bắt buộc" + nút lớn **"Điền lần lượt"**; danh sách lỗi gom theo mục, mỗi mục thu gọn được
+8. **Kiểm tra & hoàn thành**: đầu màn "Còn N mục bắt buộc" + nút lớn **"Điền lần lượt"**; danh sách gom theo mục, mỗi mục thu gọn được; **"Còn thiếu"** (chưa điền / thiếu ảnh / thiếu dòng) màu trung tính, **"Lỗi"** đỏ chỉ cho giá trị sai (ngoài khoảng, thiếu lý do KĐĐ)
    (mặc định mở mục đầu). Dưới nút Hoàn thành khi bị tắt: "Còn N mục bắt buộc". **Chế độ Điền lần lượt**: màn chỉ hiện 1 field thiếu
    (thẻ field đầy đủ, hàng gọn tắt), thanh trên "k / N · tên mục", nút **Tiếp** (lưu, sang field thiếu kế tiếp theo thứ tự mẫu),
    **Bỏ qua**, **KĐĐ** (nhập lý do), **Thoát**. Bảng/media thiếu → nút "Mở" đưa tới đúng chỗ rồi quay lại.

@@ -15,14 +15,13 @@ struct FieldTitle: View {
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
             if field.isComputed { Image(systemName: "function").secondaryText() }
-            if fv.flag == .estimate { badge("~") }
+            if fv.flag == .estimate { badge("~ Ước lượng") }
             if fv.flag == .notMeasurable { badge("KĐĐ") }
         }
     }
 
     private func badge(_ t: String) -> some View {
-        Text(t).font(.caption2.weight(.bold)).foregroundStyle(.white)
-            .padding(.horizontal, 5).padding(.vertical, 1).background(Color.orange.opacity(0.95), in: RoundedRectangle(cornerRadius: 4))
+        StatusPill(text: t, color: theme.warning)
     }
 }
 
@@ -55,49 +54,31 @@ struct FieldMenuItems: View {
     private func flip(_ f: FieldFlag) { fv.flag = fv.flag == f ? nil : f }
 }
 
-/// Toggle chips "~" / "KĐĐ" (header row) and the ⋯ menu; in review mode a button for the checker note.
-/// One-hand mode drops both: the same actions live in the long-press menu of the card.
+/// The ⋯ menu (ước lượng, KĐĐ, note, clear); in review mode a button for the checker note.
+/// One-hand mode drops it: the same actions live in the long-press menu of the card.
 struct FieldMenu: View {
     let field: Field
     @Binding var fv: FieldValue
     @Binding var editingNote: Bool
     @Binding var addingReview: Bool
     let scope: FieldScope
-    let withChips: Bool
     @Environment(\.pmTheme) private var theme
 
     var body: some View {
         if field.isComputed || field.readonly { EmptyView() }
         else if scope.reviewMode {
             if scope.tableId == nil, fv.review == nil {
-                Button { addingReview = true } label: { Image(systemName: "text.bubble").font(.title3) }
+                Button { addingReview = true } label: { Image(systemName: "text.bubble").font(.title3).frame(minWidth: 44, minHeight: 44) }
                     .accessibilityLabel("Thêm ghi chú kiểm tra")
             }
         } else if !scope.locked && !theme.oneHand {
-            HStack(spacing: 6) {
-                if withChips && field.flagsEnabled {
-                    toggle("~", .estimate)
-                    toggle("KĐĐ", .notMeasurable)
-                }
-                Menu { FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote) }
-                label: { Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 28, minHeight: 28) }
+            Menu { FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote) }
+            label: {
+                Image(systemName: "ellipsis.circle").font(.title3)
+                    .frame(minWidth: 36, minHeight: 44).contentShape(Rectangle())
             }
+            .accessibilityLabel("Tùy chọn trường: ước lượng, không đo được, ghi chú")
         }
-    }
-
-    private func flip(_ f: FieldFlag) { fv.flag = fv.flag == f ? nil : f }
-
-    private func toggle(_ title: String, _ f: FieldFlag) -> some View {
-        let on = fv.flag == f
-        return Button { flip(f) } label: {
-            Text(title).font(.caption2.weight(.bold)).padding(.horizontal, 7).padding(.vertical, 4)
-                .background(on ? Color.orange : Color.clear, in: Capsule())
-                .overlay(Capsule().stroke(on ? Color.orange : theme.border, lineWidth: theme.borderWidth))
-                .foregroundStyle(on ? Color.white : theme.secondaryText)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(f == .estimate ? "Ước lượng" : "Không đo được")
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 

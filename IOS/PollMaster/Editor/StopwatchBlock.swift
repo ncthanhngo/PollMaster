@@ -35,7 +35,7 @@ struct StopwatchBlock: View {
                 Button { mark(next) } label: { Text("Ghi \(next)").font(.headline).frame(minWidth: 90, minHeight: 32) }
                     .buttonStyle(.borderedProminent)
             } else {
-                Label("Đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.subheadline)
+                Label("Đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success).font(.subheadline)
             }
             Button { undo() } label: { Image(systemName: "arrow.uturn.backward").frame(minWidth: 32, minHeight: 32) }
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil).accessibilityLabel("Hoàn tác mốc")
@@ -60,7 +60,7 @@ struct StopwatchBlock: View {
                 Button { mark(next) } label: { Text("Ghi mốc \(next)").font(.title3.weight(.semibold)).frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent).controlSize(.large).frame(minHeight: 56)
             } else {
-                Label("Đã ghi đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                Label("Đã ghi đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success)
             }
             Button("Hoàn tác mốc", systemImage: "arrow.uturn.backward") { undo() }
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil)

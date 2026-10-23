@@ -21,12 +21,13 @@ struct ProjectDot: View {
     }
 }
 
-/// "3 Nháp · 5 Hoàn thành" counters of a project.
+/// "2 Nháp · 1 Cần sửa · 5 Hoàn thành" counters of a project, split the same way as the project detail statistics.
 struct ProjectCounts: View {
     let stats: ProjectStats
     var body: some View {
         HStack(spacing: 10) {
-            Label("\(stats.draft + stats.returned) Nháp", systemImage: "pencil")
+            Label("\(stats.draft) Nháp", systemImage: "pencil")
+            if stats.returned > 0 { Label("\(stats.returned) Cần sửa", systemImage: "arrow.uturn.backward") }
             Label("\(stats.completed) Hoàn thành", systemImage: "checkmark.circle")
         }
         .font(.caption).secondaryText().labelStyle(.titleAndIcon)
