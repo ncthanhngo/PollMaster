@@ -32,7 +32,13 @@ import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.formatNumber
 import com.ncthanhngo.pollmaster.core.format.nowIso
+import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.asDouble
+import com.ncthanhngo.pollmaster.core.validation.DEFAULT_MAX_ACCURACY_M
+import com.ncthanhngo.pollmaster.core.validation.SITE_DISTANCE_LIMIT_M
+import com.ncthanhngo.pollmaster.core.validation.siteDistanceMessage
+import com.ncthanhngo.pollmaster.ui.theme.okColor
+import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import com.ncthanhngo.pollmaster.core.model.asObject
 import com.ncthanhngo.pollmaster.platform.LocationHelper
 import com.ncthanhngo.pollmaster.ui.common.PermissionRationale
@@ -42,7 +48,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 @Composable
-fun GpsInput(value: JsonElement?, enabled: Boolean, onValue: (JsonElement?) -> Unit) {
+fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: Double?, onValue: (JsonElement?) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val helper = remember { LocationHelper(context) }
@@ -117,13 +123,30 @@ fun GpsInput(value: JsonElement?, enabled: Boolean, onValue: (JsonElement?) -> U
                 modifier = Modifier.weight(1f),
             )
         }
-        accuracy?.let { Text(stringResource(R.string.gps_accuracy, formatNumber(it, 0)), style = MaterialTheme.typography.bodySmall) }
+        if (obj == null) {
+            Text(stringResource(R.string.gps_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        accuracy?.let {
+            val good = it <= (field.maxAccuracy ?: DEFAULT_MAX_ACCURACY_M)
+            Text(
+                stringResource(R.string.gps_accuracy, formatNumber(it, 0)) + if (good) "" else " — " + stringResource(R.string.gps_poor),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (good) okColor() else warnColor(),
+            )
+        }
+        planDistance?.let {
+            Text(
+                siteDistanceMessage(it),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (it > SITE_DISTANCE_LIMIT_M) warnColor() else okColor(),
+            )
+        }
         if (failed) Text(stringResource(R.string.gps_unavailable), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(
                 enabled = enabled && !busy,
                 onClick = { if (helper.hasPermission()) fetch() else rationale = true },
-            ) { Text(stringResource(if (busy) R.string.gps_waiting else R.string.gps_get)) }
+            ) { Text(stringResource(if (busy) R.string.gps_waiting else if (obj != null) R.string.gps_retry else R.string.gps_get)) }
             val la = lat.toDoubleOrNull()
             val ln = lng.toDoubleOrNull()
             OutlinedButton(

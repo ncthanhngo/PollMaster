@@ -77,6 +77,19 @@ class Validator(private val template: Template) {
         return Progress(required.count { it !in withIssues }, required.size)
     }
 
+    /** Per section id (header included): required items without issues vs. total required (same rule as [requiredProgress]). */
+    fun sectionProgress(record: Record): Map<String, Progress> {
+        val withIssues = validate(record).map { it.targetId }.toSet()
+        fun progress(fields: List<Field>, tables: List<TableItem>): Progress {
+            val ids = fields.filter { it.required && it.type != "computed" }.map { it.id } + tables.filter { it.required }.map { it.id }
+            return Progress(ids.count { it !in withIssues }, ids.size)
+        }
+        return buildMap {
+            put(HEADER_SECTION_ID, progress(template.header, emptyList()))
+            for (s in template.sections) put(s.id, progress(s.items.filterIsInstance<Field>(), s.items.filterIsInstance<TableItem>()))
+        }
+    }
+
     private fun checkFields(
         sectionId: String,
         sectionTitle: String,

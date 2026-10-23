@@ -63,7 +63,14 @@ fun PickerInput(field: Field, value: JsonElement?, onValue: (JsonElement?) -> Un
     val context = LocalContext.current
     val text = value.asText()
     val shown = when {
-        text == null -> stringResource(R.string.pick_value)
+        text == null -> stringResource(
+            when (field.type) {
+                "date" -> R.string.pick_date
+                "time" -> R.string.pick_time
+                "month" -> R.string.pick_month
+                else -> R.string.pick_datetime
+            },
+        )
         field.type == "date" -> displayDate(text)
         field.type == "month" -> displayMonth(text)
         field.type == "datetime" -> displayDateTime(text)

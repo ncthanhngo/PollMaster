@@ -30,6 +30,8 @@ import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.data.DeleteResult
+import androidx.compose.runtime.collectAsState
+import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.ui.common.BackButton
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
@@ -42,6 +44,8 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     val scope = rememberCoroutineScope()
     val template = remember(id, version) { container.templates.find(id, version) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val all by container.templates.templates.collectAsState()
+    val outdated = template != null && newestVersions(all).none { it.id == template.id && it.version == template.version } && all.any { it.id == template.id }
     var inUse by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
@@ -75,8 +79,10 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
             item {
                 Button(
                     onClick = { scope.launch { onRecordCreated(container.records.create(template).id) } },
+                    enabled = !outdated,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.template_create_record)) }
+                if (outdated) Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             template.instructions?.let { text ->
                 item {

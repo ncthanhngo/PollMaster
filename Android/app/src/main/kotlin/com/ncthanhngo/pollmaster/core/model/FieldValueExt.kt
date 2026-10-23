@@ -4,7 +4,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 
 fun FieldValue.isEmpty(): Boolean =
-    v.isEmptyJson() && flag == null && reason.isNullOrBlank() && note.isNullOrBlank() &&
+    v.isEmptyJson() && flag == null && reason.isNullOrBlank() && note.isNullOrBlank() && review.isNullOrBlank() &&
         other.isEmpty() && parts.values.all { it.isEmptyJson() } && media.isEmpty()
 
 /** Drops empty keys so records stay compact; returns null when nothing is left. */
@@ -13,6 +13,7 @@ fun FieldValue.normalized(): FieldValue? {
         v = v.takeUnless { it.isEmptyJson() },
         reason = reason?.takeIf { it.isNotBlank() },
         note = note?.takeIf { it.isNotBlank() },
+        review = review?.takeIf { it.isNotBlank() },
         other = other.filterValues { it.isNotBlank() },
         parts = parts.filterValues { !it.isEmptyJson() },
     )

@@ -13,7 +13,7 @@ object TemplateParser {
     private val fieldTypes = setOf(
         "text", "multiline", "number", "integer", "singleChoice", "multiChoice", "yesNo", "rating", "date", "time",
         "datetime", "sessionTime", "month", "gps", "compass", "photo", "video", "elapsed", "composite", "computed",
-        "signature",
+        "signature", "audio",
     )
 
     /** Decodes and semantically checks a template. Messages include the JSON path of the problem. */
@@ -44,6 +44,9 @@ object TemplateParser {
                     is Field -> checkField(item, path, tableIds) { unique(item.id, path) }
                     is TableItem -> {
                         unique(item.id, path)
+                        item.pairedWith?.let { other ->
+                            if (other !in tableIds || other == item.id) throw TemplateException("Bảng ghép đôi không tồn tại \"$other\" tại $path.pairedWith")
+                        }
                         val cols = HashSet<String>()
                         item.columns.forEachIndexed { ci, c ->
                             if (!cols.add(c.id)) throw TemplateException("Mã cột trùng \"${c.id}\" tại $path.columns[$ci]")

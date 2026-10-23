@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import com.ncthanhngo.pollmaster.core.sites.SitesStore
+import com.ncthanhngo.pollmaster.data.BackupService
 import com.ncthanhngo.pollmaster.data.ExportService
+import com.ncthanhngo.pollmaster.data.SitesRepository
 import com.ncthanhngo.pollmaster.data.RecordsRepository
 import com.ncthanhngo.pollmaster.data.Settings
 import com.ncthanhngo.pollmaster.data.TemplatesRepository
@@ -21,6 +24,11 @@ class AppContainer(context: Context) {
     val templateStore = TemplateStore(context.filesDir)
     val templates = TemplatesRepository(context, templateStore, recordStore, settings)
     val records = RecordsRepository(scope, recordStore, templates, settings)
+    val sites = SitesRepository(SitesStore(context.filesDir))
+    val backup = BackupService(context, scope, recordStore, templates, records, settings)
+    init {
+        records.onBackupTick = backup::requestIfNeeded
+    }
     val export = ExportService(context, recordStore, templates, records)
     val media = MediaProcessor(context, settings)
 }

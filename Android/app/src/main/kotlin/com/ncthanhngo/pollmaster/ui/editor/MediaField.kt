@@ -63,7 +63,18 @@ import java.io.File
  * (media stored in `v`); otherwise the media is the field's attached photos.
  */
 @Composable
-fun MediaField(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, enabled: Boolean, asValue: Boolean) {
+fun MediaField(
+    field: Field,
+    fv: FieldValue?,
+    scope: ValueScope,
+    env: EditorEnv,
+    enabled: Boolean,
+    asValue: Boolean,
+    /** Evidence row of a field with `photoRef`: small thumbnails and one capture button, no library or delete. */
+    referenceOnly: Boolean = false,
+    /** Overrides the capture button text (e.g. "Quay video lượt này"). */
+    captureLabel: String? = null,
+) {
     val context = LocalContext.current
     val container = LocalContainer.current
     val isVideo = asValue && field.type == "video"
@@ -145,7 +156,7 @@ fun MediaField(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv,
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items.forEach { m ->
                     val file = File(mediaDir, m.file.substringAfterLast('/'))
-                    Thumbnail(file, isVideo, { if (isVideo) openVideo(file) else viewing = m }, if (enabled) ({ deleting = m }) else null)
+                    Thumbnail(file, isVideo, { if (isVideo) openVideo(file) else viewing = m }, if (enabled && !referenceOnly) ({ deleting = m }) else null, if (referenceOnly) 48.dp else 84.dp)
                 }
             }
         }
@@ -154,8 +165,14 @@ fun MediaField(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv,
                 OutlinedButton(onClick = {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCapture()
                     else rationale = true
-                }) { Text(stringResource(if (isVideo) R.string.media_record else R.string.media_capture)) }
-                OutlinedButton(onClick = {
+                }) {
+                    Text(
+                        if (referenceOnly) stringResource(R.string.media_capture_ref, field.id)
+                        else if (captureLabel != null) captureLabel
+                        else stringResource(if (isVideo) R.string.media_record else R.string.media_capture),
+                    )
+                }
+                if (!referenceOnly) OutlinedButton(onClick = {
                     pick.launch(PickVisualMediaRequest(if (isVideo) ActivityResultContracts.PickVisualMedia.VideoOnly else ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) { Text(stringResource(R.string.media_library)) }
             }
@@ -199,8 +216,8 @@ fun MediaField(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv,
 }
 
 @Composable
-private fun Thumbnail(file: File, video: Boolean, onOpen: () -> Unit, onDelete: (() -> Unit)?) {
-    Box(Modifier.size(84.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen)) {
+private fun Thumbnail(file: File, video: Boolean, onOpen: () -> Unit, onDelete: (() -> Unit)?, size: androidx.compose.ui.unit.Dp) {
+    Box(Modifier.size(size).clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen)) {
         if (video) {
             Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxSize()) {
                 Box(contentAlignment = Alignment.Center) {

@@ -54,13 +54,14 @@ class ExportBuilder(private val template: Template, private val record: Record) 
     }
 
     fun infoSheet(): SheetData {
-        val headers = listOf("Mục", "Mã", "Thông số", "Giá trị", "Đơn vị", "Cờ", "Lý do", "Ghi chú")
+        val headers = listOf("Mục", "Mã", "Thông số", "Giá trị", "Đơn vị", "Cờ", "Lý do", "Ghi chú", "Kiểm tra")
         val rows = infoRows().map { r ->
             listOf(
                 Cell.Text(r.section), Cell.Text(r.field.id), Cell.Text(r.field.label),
                 r.number?.let { Cell.Num(it) } ?: Cell.Text(r.text),
                 Cell.Text(r.field.unit.orEmpty()), Cell.Text(r.flagText),
                 Cell.Text(r.value?.reason.orEmpty()), Cell.Text(r.value?.note.orEmpty()),
+                Cell.Text(r.value?.review.orEmpty()),
             )
         }
         return SheetData("Thông tin", headers, rows)

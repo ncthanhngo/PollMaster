@@ -10,8 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -34,6 +32,8 @@ import com.ncthanhngo.pollmaster.core.model.TableItem
 import com.ncthanhngo.pollmaster.core.model.asDouble
 import com.ncthanhngo.pollmaster.core.model.asText
 import com.ncthanhngo.pollmaster.core.model.isEmpty
+import com.ncthanhngo.pollmaster.core.model.pairedTable
+import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import kotlinx.serialization.json.JsonElement
 
@@ -53,27 +53,30 @@ fun TableCard(table: TableItem, env: EditorEnv, onOpenRow: (String) -> Unit) {
     val issue = env.error(table.id)
     val rowLabel = table.rowLabel ?: stringResource(R.string.row_default)
 
-    Card(Modifier.fillMaxWidth()) {
+    val quickPaired = table.quickEntry && env.controller.template.pairedTable(table.id) != null
+    AppCard {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(table.title, style = MaterialTheme.typography.titleMedium)
             table.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (rows.isEmpty()) Text(stringResource(R.string.table_empty), style = MaterialTheme.typography.bodyMedium)
+            if (rows.isEmpty()) {
+                Text(stringResource(if (table.isFixed) R.string.table_empty else R.string.table_empty_add), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             rows.forEachIndexed { index, view ->
                 RowCard(
                     title = if (table.isFixed) fixedTitle(table, view) else "$rowLabel ${index + 1}",
                     summary = summary(table, view, env),
                     done = !view.row.isEmpty(),
-                    menu = if (table.isFixed) null else RowMenu(
+                    menu = if (table.isFixed || env.reviewMode) null else RowMenu(
                         onDuplicate = { env.controller.duplicateRow(table.id, view.row.id)?.let(onOpenRow) },
                         onDelete = { deleting = view },
                     ),
                     onClick = { onOpenRow(view.row.id) },
                 )
             }
-            if (!table.isFixed) {
+            if (!table.isFixed && !env.reviewMode) {
                 Button(onClick = { onOpenRow(env.controller.addRow(table.id)) }) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Text(stringResource(R.string.table_add_row), modifier = Modifier.padding(start = 6.dp))
+                    Text(stringResource(if (quickPaired) R.string.table_add_entry else R.string.table_add_row), modifier = Modifier.padding(start = 6.dp))
                 }
             }
             issue?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -95,9 +98,9 @@ private class RowMenu(val onDuplicate: () -> Unit, val onDelete: () -> Unit)
 @Composable
 private fun RowCard(title: String, summary: String, done: Boolean, menu: RowMenu?, onClick: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Card(
-        Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    AppCard(
+        Modifier.clickable(onClick = onClick),
+        container = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

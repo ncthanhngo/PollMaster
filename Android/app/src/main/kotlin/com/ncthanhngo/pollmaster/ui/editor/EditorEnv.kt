@@ -12,7 +12,13 @@ import com.ncthanhngo.pollmaster.core.format.ValueFormatter
 import com.ncthanhngo.pollmaster.core.model.FieldValue
 import com.ncthanhngo.pollmaster.core.model.Record
 import com.ncthanhngo.pollmaster.core.model.Row
+import com.ncthanhngo.pollmaster.LocalContainer
+import com.ncthanhngo.pollmaster.core.model.allFields
+import com.ncthanhngo.pollmaster.core.model.tables
+import com.ncthanhngo.pollmaster.core.sites.Site
 import com.ncthanhngo.pollmaster.core.validation.Issue
+import com.ncthanhngo.pollmaster.core.validation.Warning
+import com.ncthanhngo.pollmaster.core.validation.WarningChecker
 import kotlinx.serialization.json.JsonElement
 
 /** Read/write access to field values for one scope (record level or one table row). */
@@ -62,7 +68,20 @@ class EditorEnv(
     private val issues: Map<String, Issue>,
     private val showErrors: Boolean,
     private val touched: Set<String>,
+    private val warnings: Map<String, Warning> = emptyMap(),
+    val checker: WarningChecker = WarningChecker(controller.template),
+    val sites: List<Site> = emptyList(),
+    val reviewMode: Boolean = false,
 ) {
+    /** Fields that use a photo field as evidence: photo field id -> ids of the referencing fields (template order). */
+    val photoUsers: Map<String, List<String>> by lazy {
+        val fields = controller.template.allFields() +
+            controller.template.tables().flatMap { it.columns }
+        fields.filter { it.photoRef != null }.groupBy({ it.photoRef!! }, { it.id })
+    }
+
+    fun warning(key: String): Warning? = warnings[key]
+
     val engine by lazy { controller.engine(record) }
     val formatter = ValueFormatter { record.values[it] }
     val scope = RecordScope(controller, record)
@@ -87,10 +106,16 @@ fun rememberRecordState(controller: EditorController): State<Record> {
 
 @Composable
 fun rememberEditorEnv(controller: EditorController): EditorEnv {
+    val sites by LocalContainer.current.sites.sites.collectAsState()
     val record by rememberRecordState(controller)
     val showErrors by controller.showErrors.collectAsState()
     val touched by controller.touched.collectAsState()
-    return remember(controller, record, showErrors, touched) {
-        EditorEnv(controller, record, controller.issues(record).groupBy { it.key }.mapValues { it.value.first() }, showErrors, touched)
+    val reviewMode by controller.reviewMode.collectAsState()
+    return remember(controller, record, showErrors, touched, sites, reviewMode) {
+        val checker = WarningChecker(controller.template, sites)
+        EditorEnv(
+            controller, record, controller.issues(record).groupBy { it.key }.mapValues { it.value.first() }, showErrors, touched,
+            checker.check(record).groupBy { it.key }.mapValues { it.value.first() }, checker, sites, reviewMode,
+        )
     }
 }

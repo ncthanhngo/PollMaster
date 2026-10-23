@@ -32,8 +32,9 @@ class FormatTest {
     @Test fun recordTitleUsesPatternAndFallsBack() {
         val t = TestData.template
         val empty = TestData.emptyRecord()
-        assertEquals(t.title, recordTitle(t, empty))
-        val r = empty.copy(values = mapOf("HD-code" to TestData.text("X1"), "A-01" to TestData.text("Trạm 7")))
-        assertEquals("BB-TDP-01 / X1 – Trạm 7", recordTitle(t, r))
+        assertEquals("Phiếu mới · 01/01/2026 08:00", recordTitle(t, empty))
+        val r = empty.copy(values = mapOf("A-03" to TestData.text("12 Lê Lợi"), "A-01" to TestData.text("Trạm 7")))
+        assertEquals("Trạm 7 · 12 Lê Lợi", recordTitle(t, r))
+        assertEquals("Trạm 7", recordTitle(t, empty.copy(values = mapOf("A-01" to TestData.text("Trạm 7")))))
     }
 }

@@ -47,7 +47,16 @@ data class Part(
     val unit: String? = null,
     val options: List<Option> = emptyList(),
     val showWhen: ShowWhen? = null,
+    val warnMin: Double? = null,
+    val warnMax: Double? = null,
 )
+
+/**
+ * `lookup` of a field: choose from a list of [source] (only "sites") and copy parts of the choice into [fill] targets.
+ * [gps] names the GPS field compared against the chosen site's planned coordinate (never filled from it).
+ */
+@Serializable
+data class Lookup(val source: String = "sites", val fill: Map<String, String> = emptyMap(), val gps: String? = null)
 
 @Serializable
 data class Field(
@@ -78,12 +87,18 @@ data class Field(
     val minCount: Int? = null,
     val maxCount: Int? = null,
     val formula: String? = null,
+    val photoRef: String? = null,
+    val warnMin: Double? = null,
+    val warnMax: Double? = null,
+    val maxAccuracy: Double? = null,
+    val lookup: Lookup? = null,
+    val carryOver: Boolean = false,
 ) : Item {
     /** Whether the estimate (~) / not-measurable flags are offered for this field. */
     val flagsEnabled: Boolean
         get() = flags ?: (type == "number" || type == "composite" || type == "text")
 
-    val isMedia: Boolean get() = type == "photo" || type == "video"
+    val isMedia: Boolean get() = type == "photo" || type == "video" || type == "audio"
 }
 
 @Serializable
@@ -112,6 +127,8 @@ data class TableItem(
     val rows: List<RowDef>? = null,
     val stopwatch: StopwatchDef? = null,
     val columns: List<Field> = emptyList(),
+    val pairedWith: String? = null,
+    val quickEntry: Boolean = false,
 ) : Item {
     val isFixed: Boolean get() = rows != null
 }

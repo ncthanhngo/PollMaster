@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -30,6 +30,7 @@ import com.ncthanhngo.pollmaster.core.format.formatElapsed
 import com.ncthanhngo.pollmaster.core.format.parseInstant
 import com.ncthanhngo.pollmaster.core.model.Row
 import com.ncthanhngo.pollmaster.core.model.StopwatchDef
+import com.ncthanhngo.pollmaster.ui.common.AppCard
 import kotlinx.coroutines.delay
 import java.time.Instant
 
@@ -55,7 +56,7 @@ fun StopwatchBlock(tableId: String, row: Row, def: StopwatchDef, controller: Edi
         onDispose { view.keepScreenOn = false }
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    AppCard {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
                 formatElapsed(shown.toDouble()),
@@ -66,7 +67,7 @@ fun StopwatchBlock(tableId: String, row: Row, def: StopwatchDef, controller: Edi
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                     enabled = start == null || next != null,
                     onClick = {
                         if (start == null) {
@@ -84,7 +85,7 @@ fun StopwatchBlock(tableId: String, row: Row, def: StopwatchDef, controller: Edi
                         },
                     )
                 }
-                OutlinedButton(enabled = start != null, onClick = { controller.undoStopwatch(tableId, row.id) }) {
+                OutlinedButton(modifier = Modifier.heightIn(min = 56.dp), enabled = start != null, onClick = { controller.undoStopwatch(tableId, row.id) }) {
                     Text(stringResource(R.string.stopwatch_undo))
                 }
             }

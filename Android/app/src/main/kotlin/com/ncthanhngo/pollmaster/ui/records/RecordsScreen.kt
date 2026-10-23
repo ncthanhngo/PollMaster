@@ -2,7 +2,17 @@ package com.ncthanhngo.pollmaster.ui.records
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,8 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
+import androidx.compose.material3.Surface
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,11 +54,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
-import com.ncthanhngo.pollmaster.core.format.displayDateTime
-import com.ncthanhngo.pollmaster.core.model.Record
+import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
+import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.data.RecordItem
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
+import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
+import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
 import com.ncthanhngo.pollmaster.ui.editor.ExportSheet
 import kotlinx.coroutines.launch
@@ -145,7 +156,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
 
     if (picking) {
         TemplatePickerDialog(
-            templates = templates,
+            templates = newestVersions(templates),
             onDismiss = { picking = false },
             onPick = { t ->
                 picking = false
@@ -190,42 +201,64 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
 @Composable
 private fun RecordCard(item: RecordItem, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(item.title, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        item.template?.title ?: stringResource(R.string.record_template_missing),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+    AppCard(Modifier.clickable(onClick = onOpen)) {
+        Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
+            Thumb(item.thumbnail)
+            Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (item.subtitle.isNotEmpty()) {
+                    Text(item.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                AssistChip(
-                    onClick = onOpen,
-                    label = {
-                        Text(stringResource(if (item.record.status == Record.STATUS_COMPLETED) R.string.status_completed else R.string.status_draft))
-                    },
+                val p = item.progress
+                Text(
+                    stringResource(R.string.updated_at, displayDayMonthTime(item.record.updatedAt)) + if (p.total > 0) " · ${p.filled}/${p.total}" else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.action_duplicate)) }, onClick = { menu = false; onDuplicate() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; onExport() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
-                    }
+                if (p.total > 0) LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.outline, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                RecordChips(item)
+            }
+            IconButton(onClick = { menu = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_duplicate)) }, onClick = { menu = false; onDuplicate() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; onExport() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
                 }
             }
-            Text(
-                stringResource(R.string.updated_at, displayDateTime(item.record.updatedAt)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            val p = item.progress
-            if (p.total > 0) {
-                LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.progress_required, p.filled, p.total), style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+/** 48x48 photo of the record, or the template icon when there is no photo yet. */
+@Composable
+private fun Thumb(file: java.io.File?) {
+    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
+        if (file != null) {
+            AsyncImage(model = file, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+@Composable
+private fun RecordChips(item: RecordItem) {
+    val scheme = MaterialTheme.colorScheme
+    val dark = isSystemInDarkTheme()
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (item.record.isCompleted) {
+            StatusChip(stringResource(R.string.status_completed), if (dark) Color(0xFF1E4D33) else Color(0xFFD7F0DF), if (dark) Color(0xFFBFF0D0) else Color(0xFF0E4A25))
+        } else {
+            StatusChip(stringResource(R.string.status_draft), scheme.surfaceVariant, scheme.onSurfaceVariant)
+        }
+        if (item.record.returned && !item.record.isCompleted) {
+            StatusChip(stringResource(R.string.status_returned), if (dark) Color(0xFF5A3300) else Color(0xFFFFE0B8), if (dark) Color(0xFFFFD9A8) else Color(0xFF6A3A00))
+        }
+        if (item.needsBackup) {
+            StatusChip(stringResource(R.string.status_not_backed_up), if (dark) Color(0xFF4F4400) else Color(0xFFFFF0A8), if (dark) Color(0xFFFFEE9A) else Color(0xFF5A4B00))
         }
     }
 }
@@ -233,16 +266,13 @@ private fun RecordCard(item: RecordItem, onOpen: () -> Unit, onDuplicate: () -> 
 @Composable
 private fun BrokenCard(b: StoredRecord.Broken, onOpen: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+    AppCard(Modifier.clickable(onClick = onOpen)) {
         Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(b.id, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(b.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
             }
-            AssistChip(
-                onClick = onOpen,
-                label = { Text(stringResource(R.string.record_read_error), color = MaterialTheme.colorScheme.error) },
-            )
+            StatusChip(stringResource(R.string.record_read_error), MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

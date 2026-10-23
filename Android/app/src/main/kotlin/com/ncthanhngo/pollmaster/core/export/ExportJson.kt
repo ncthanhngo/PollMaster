@@ -57,6 +57,7 @@ object ExportJson {
         fv?.flag?.let { m["flag"] = str(it) }
         fv?.reason?.let { m["reason"] = str(it) }
         fv?.note?.let { m["note"] = str(it) }
+        fv?.review?.let { m["review"] = str(it) }
         if (fv?.other?.isNotEmpty() == true) m["other"] = JsonObject(fv.other.mapValues { str(it.value) })
         if (fv?.parts?.isNotEmpty() == true) m["parts"] = JsonObject(fv.parts)
         if (fv?.media?.isNotEmpty() == true) m["media"] = JsonArray(fv.media.map { str(it.file.substringAfterLast('/')) })

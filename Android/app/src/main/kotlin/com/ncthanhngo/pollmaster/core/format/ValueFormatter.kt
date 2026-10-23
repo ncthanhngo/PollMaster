@@ -86,7 +86,7 @@ class ValueFormatter(private val lookup: (String) -> FieldValue? = { null }) {
         "gps" -> gps(e)
         "compass" -> e.asDouble()?.let { formatNumber(it, 0) + "°" }.orEmpty()
         "elapsed" -> e.asDouble()?.let(::formatElapsed).orEmpty()
-        "photo", "video" -> fv?.mediaItems().orEmpty().joinToString(", ") { it.file.substringAfterLast('/') }
+        "photo", "video", "audio" -> fv?.mediaItems().orEmpty().joinToString(", ") { it.file.substringAfterLast('/') }
         "signature" -> e.asObject()?.get("file").asText()?.substringAfterLast('/').orEmpty()
         else -> e.asText().orEmpty()
     }

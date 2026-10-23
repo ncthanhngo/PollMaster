@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.core.model
 
+import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_ID
+
 /** Header fields followed by every top-level field in sections (table columns excluded). */
 fun Template.allFields(): List<Field> =
     header + sections.flatMap { s -> s.items.filterIsInstance<Field>() }
@@ -25,3 +27,14 @@ fun Template.recordCode(record: Record): String? {
 
 fun sanitizeFileName(raw: String): String =
     raw.replace(Regex("[/\\\\:*?\"<>|\\s]+"), "-").trim('-')
+
+/** Repeating table paired with [tableId] (either side of `pairedWith`), or null. Fixed-row tables are never paired. */
+fun Template.pairedTable(tableId: String): TableItem? {
+    val table = findTable(tableId) ?: return null
+    val other = table.pairedWith?.let(::findTable) ?: tables().firstOrNull { it.pairedWith == tableId }
+    return other?.takeIf { !it.isFixed && !table.isFixed && it.id != tableId }
+}
+
+/** Fields (header, then section fields) whose id is a section's item list: the header pseudo-section or a real one. */
+fun Template.itemsOf(sectionId: String): List<Item> =
+    if (sectionId == HEADER_SECTION_ID) header else sections.firstOrNull { it.id == sectionId }?.items.orEmpty()

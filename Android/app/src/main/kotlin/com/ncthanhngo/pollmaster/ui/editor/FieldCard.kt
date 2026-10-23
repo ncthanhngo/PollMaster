@@ -4,27 +4,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
@@ -33,46 +24,75 @@ import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.KDD
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.FieldValue
-import com.ncthanhngo.pollmaster.core.model.asDouble
-import com.ncthanhngo.pollmaster.core.model.asText
+import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
+import com.ncthanhngo.pollmaster.ui.theme.warnColor
 
-/** Card for one field: badge + label, input by type, flag/reason, note and validation message. */
+private const val COMPACT_FRACTION = 0.4f
+
+/** Compact mode: short single-line fields put the label and the input on one row (ux-spec D). */
+private fun Field.isCompactable(): Boolean =
+    (type == "number" || type == "integer" || type == "text") &&
+        parts.isEmpty() && samples == null && !attachPhoto && !readonly && lookup == null
+
+/**
+ * Card for one field: badge, label with `*`, KĐĐ / ~ toggles, input by type, then reason, note, validation
+ * error, warning and photo reference.
+ */
 @Composable
-fun FieldCard(field: Field, scope: ValueScope, env: EditorEnv, modifier: Modifier = Modifier, showCode: Boolean = true) {
+fun FieldCard(
+    field: Field,
+    scope: ValueScope,
+    env: EditorEnv,
+    modifier: Modifier = Modifier,
+    showCode: Boolean = true,
+    quick: Boolean = false,
+) {
+    if (env.reviewMode) {
+        ReviewFieldCard(field, scope, env, modifier, showCode)
+        return
+    }
     val fv = scope.get(field.id)
     val key = scope.key(field.id)
     val kdd = fv?.flag == FieldValue.FLAG_NOT_MEASURABLE
     var noteOpen by rememberSaveable(key) { mutableStateOf(!fv?.note.isNullOrBlank()) }
     val editable = !field.readonly && field.type != "computed"
     val error = env.error(key)
+    val warning = if (error == null && !kdd) env.warning(key) else null
+    val compact = LocalUiPrefs.current.compact && field.isCompactable() && !quick
+    val update: ((FieldValue) -> FieldValue) -> Unit = { f -> scope.update(field.id, f); env.controller.touch(key) }
 
-    Card(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                if (showCode) Badge(field.id)
-                when (fv?.flag) {
-                    FieldValue.FLAG_ESTIMATE -> Badge("~", warn = true)
-                    FieldValue.FLAG_NOT_MEASURABLE -> Badge(KDD, warn = true)
-                }
-                Text(
-                    field.label,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                )
-                if (field.required) Text("*", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
-                if (editable) {
-                    FieldMenu(field, fv, onNote = { noteOpen = true }) { f -> scope.update(field.id, f); env.controller.touch(key) }
-                }
+    val input: @Composable () -> Unit = {
+        Box(Modifier.alpha(if (kdd) 0.4f else 1f)) {
+            when {
+                field.type == "computed" -> ComputedBox(field, env)
+                field.readonly -> ReadOnlyBox(field, fv, scope, env)
+                else -> FieldBody(field, fv, scope, env, enabled = !kdd, quick = quick)
             }
-            field.method?.takeIf { it.isNotBlank() }?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Box(Modifier.alpha(if (kdd) 0.4f else 1f)) {
-                when {
-                    field.type == "computed" -> ComputedBox(field, env)
-                    field.readonly -> ReadOnlyBox(field, fv, scope, env)
-                    else -> FieldBody(field, fv, scope, env, enabled = !kdd)
+        }
+    }
+
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    fv?.review?.takeIf { it.isNotBlank() }?.let { note ->
+        ReviewBox(note) { scope.update(field.id) { it.copy(review = null) } }
+    }
+    AppCard {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)) {
+            if (compact) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f - COMPACT_FRACTION - 0.08f)) {
+                        FieldLabel(field, showCode, fv)
+                    }
+                    Box(Modifier.weight(COMPACT_FRACTION)) { input() }
+                    // Compact rows keep ~ and KĐĐ in the ⋯ menu to save height (they show as badges when set).
+                    if (editable) FieldActions(field, fv, onNote = { noteOpen = true }, update = update, chips = false)
                 }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { FieldLabel(field, showCode, fv) }
+                    if (editable) FieldActions(field, fv, onNote = { noteOpen = true }, update = update)
+                }
+                input()
             }
             if (kdd) {
                 OutlinedTextField(
@@ -91,94 +111,47 @@ fun FieldCard(field: Field, scope: ValueScope, env: EditorEnv, modifier: Modifie
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            field.photoRef?.let { PhotoRefRow(it, env) }
+            if (field.isMedia) PhotoUsers(field.id, env)
             error?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            warning?.let { Text("⚠ " + it.message, color = warnColor(), style = MaterialTheme.typography.bodySmall) }
         }
     }
-}
-
-@Composable
-private fun FieldMenu(field: Field, fv: FieldValue?, onNote: () -> Unit, update: ((FieldValue) -> FieldValue) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    IconButton(onClick = { open = true }) {
-        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            if (field.flagsEnabled) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.field_menu_estimate)) },
-                    onClick = {
-                        open = false
-                        update { it.copy(flag = if (it.flag == FieldValue.FLAG_ESTIMATE) null else FieldValue.FLAG_ESTIMATE, reason = null) }
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.field_menu_kdd)) },
-                    onClick = {
-                        open = false
-                        update { it.copy(flag = if (it.flag == FieldValue.FLAG_NOT_MEASURABLE) null else FieldValue.FLAG_NOT_MEASURABLE) }
-                    },
-                )
-            }
-            DropdownMenuItem(text = { Text(stringResource(R.string.field_menu_note)) }, onClick = { open = false; onNote() })
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.field_menu_clear)) },
-                onClick = { open = false; update { FieldValue(note = fv?.note) } },
-            )
-        }
     }
 }
 
+/** Reviewer's note shown at the top of a card, with "Đã xử lý" for the surveyor once the issue is fixed. */
 @Composable
-fun Badge(text: String, warn: Boolean = false) {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = if (warn) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.padding(end = 4.dp),
+fun ReviewBox(text: String, onResolved: (() -> Unit)?) {
+    AppCard(
+        container = MaterialTheme.colorScheme.tertiaryContainer,
+        borderColor = MaterialTheme.colorScheme.tertiary,
     ) {
-        Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-    }
-}
-
-@Composable
-private fun ComputedBox(field: Field, env: EditorEnv) {
-    var showFormula by remember { mutableStateOf(false) }
-    val text = env.formatter.display(field, null, env.engine.computeField(field))
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth(),
-        onClick = { showFormula = true },
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Text("ƒx", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.padding(4.dp))
+        Row(Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text.ifEmpty { "—" } + (field.unit?.takeIf { text.isNotEmpty() }?.let { " $it" } ?: ""),
-                style = MaterialTheme.typography.bodyLarge,
+                stringResource(R.string.review_note_prefix, text),
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
+            if (onResolved != null) TextButton(onClick = onResolved) { Text(stringResource(R.string.review_resolved)) }
         }
-    }
-    if (showFormula) {
-        com.ncthanhngo.pollmaster.ui.common.MessageDialog(
-            title = stringResource(R.string.formula_title),
-            message = field.formula.orEmpty(),
-            onDismiss = { showFormula = false },
-        )
     }
 }
 
 @Composable
-private fun ReadOnlyBox(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv) {
-    val fixed = scope.fixed(field.id)
-    val text = if (fv != null) {
-        env.formatter.display(field, fv)
-    } else {
-        fixed?.asDouble()?.let { com.ncthanhngo.pollmaster.core.format.formatShortest(it) } ?: fixed.asText().orEmpty()
-    }
-    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            listOfNotNull(field.prefix, text, field.unit?.takeIf { text.isNotEmpty() }).joinToString(" ").ifEmpty { "—" },
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodyLarge,
-        )
+private fun FieldLabel(field: Field, showCode: Boolean, fv: FieldValue?) {
+    Column {
+        Row(verticalAlignment = Alignment.Top) {
+            if (showCode) Badge(field.id)
+            when (fv?.flag) {
+                FieldValue.FLAG_ESTIMATE -> Badge("~", warn = true)
+                FieldValue.FLAG_NOT_MEASURABLE -> Badge(KDD, warn = true)
+            }
+            FieldTitle(field, Modifier.weight(1f))
+        }
+        field.method?.takeIf { it.isNotBlank() }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

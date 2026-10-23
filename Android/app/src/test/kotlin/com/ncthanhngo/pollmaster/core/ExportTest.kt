@@ -146,7 +146,7 @@ class ExportTest {
         val bytes = out.toByteArray()
         assertEquals(listOf(0xEF, 0xBB, 0xBF), bytes.take(3).map { it.toInt() and 0xFF })
         val text = bytes.decodeToString(3)
-        assertTrue(text.startsWith("Mục,Mã,Thông số,Giá trị,Đơn vị,Cờ,Lý do,Ghi chú\r\n"))
+        assertTrue(text.startsWith("Mục,Mã,Thông số,Giá trị,Đơn vị,Cờ,Lý do,Ghi chú,Kiểm tra\r\n"))
         assertTrue(text.contains("~Số hàng: 2; Số cột: 3; Vị trí màn hình: trái & phải <x>"))
     }
 

@@ -22,6 +22,31 @@ class Settings(context: Context) {
     )
     val photoQuality: StateFlow<PhotoQuality> = _photoQuality.asStateFlow()
 
+    private val _compactMode = MutableStateFlow(prefs.getBoolean(KEY_COMPACT, true))
+    /** Label and input on one row for short fields (ux-spec D). */
+    val compactMode: StateFlow<Boolean> = _compactMode.asStateFlow()
+
+    private val _highContrast = MutableStateFlow(prefs.getBoolean(KEY_CONTRAST, false))
+    val highContrast: StateFlow<Boolean> = _highContrast.asStateFlow()
+
+    private val _autoBackup = MutableStateFlow(prefs.getBoolean(KEY_BACKUP, true))
+    val autoBackup: StateFlow<Boolean> = _autoBackup.asStateFlow()
+
+    fun setCompactMode(value: Boolean) {
+        _compactMode.value = value
+        prefs.edit().putBoolean(KEY_COMPACT, value).apply()
+    }
+
+    fun setHighContrast(value: Boolean) {
+        _highContrast.value = value
+        prefs.edit().putBoolean(KEY_CONTRAST, value).apply()
+    }
+
+    fun setAutoBackup(value: Boolean) {
+        _autoBackup.value = value
+        prefs.edit().putBoolean(KEY_BACKUP, value).apply()
+    }
+
     fun setSurveyorName(value: String) {
         _surveyorName.value = value
         prefs.edit().putString(KEY_SURVEYOR, value).apply()
@@ -50,5 +75,8 @@ class Settings(context: Context) {
         const val KEY_QUALITY = "photo_quality"
         const val KEY_EXPORT = "export_formats"
         const val KEY_BUNDLED = "bundled_installed"
+        const val KEY_COMPACT = "compact_mode"
+        const val KEY_CONTRAST = "high_contrast"
+        const val KEY_BACKUP = "auto_backup"
     }
 }

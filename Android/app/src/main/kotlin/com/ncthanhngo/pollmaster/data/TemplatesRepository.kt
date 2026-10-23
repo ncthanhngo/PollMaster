@@ -4,6 +4,7 @@ import android.content.Context
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
+import com.ncthanhngo.pollmaster.core.storage.TemplateParser
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,14 +35,16 @@ class TemplatesRepository(
 
     fun find(id: String, version: String): Template? = store.get(id, version)
 
-    /** Installs bundled assets once per file. */
+    /** Installs every bundled template version once (keyed by id@version, so a new version is added next to the old one). */
     suspend fun installBundled() = withContext(Dispatchers.IO) {
         val done = settings.installedBundled.toMutableSet()
         val names = context.assets.list("").orEmpty().filter { it.endsWith(".json") }
         for (name in names) {
-            if (name in done) continue
             val text = context.assets.open(name).use { it.readBytes().decodeToString() }
-            if (store.install(text, overwrite = false) !is InstallResult.Invalid) done += name
+            val template = runCatching { TemplateParser.parse(text) }.getOrNull() ?: continue
+            val key = "${template.id}@${template.version}"
+            if (key in done) continue
+            if (store.install(text, overwrite = false) !is InstallResult.Invalid) done += key
         }
         settings.installedBundled = done
         _templates.value = store.list()

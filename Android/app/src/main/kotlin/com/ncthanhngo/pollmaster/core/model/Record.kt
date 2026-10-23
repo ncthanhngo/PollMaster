@@ -26,6 +26,10 @@ data class Record(
     @EncodeDefault val values: Map<String, FieldValue> = emptyMap(),
     @EncodeDefault val tables: Map<String, List<Row>> = emptyMap(),
     @EncodeDefault val signatures: Map<String, SignatureValue> = emptyMap(),
+    /** Set when a reviewer sent a completed record back for fixing; cleared on the next completion. */
+    val returned: Boolean = false,
+    val lastPosition: Position? = null,
+    val backupAt: String? = null,
 ) {
     val isCompleted: Boolean get() = status == STATUS_COMPLETED
 
@@ -35,12 +39,18 @@ data class Record(
     }
 }
 
+/** Where the surveyor was last editing: a section and a field (or table) in it. */
+@Serializable
+data class Position(val section: String, val field: String? = null)
+
 @Serializable
 data class FieldValue(
     val v: JsonElement? = null,
     val flag: String? = null,
     val reason: String? = null,
     val note: String? = null,
+    /** Reviewer's note (schema 7.4). */
+    val review: String? = null,
     val other: Map<String, String> = emptyMap(),
     val parts: Map<String, JsonElement> = emptyMap(),
     @Serializable(with = TolerantMediaListSerializer::class) val media: List<Media> = emptyList(),

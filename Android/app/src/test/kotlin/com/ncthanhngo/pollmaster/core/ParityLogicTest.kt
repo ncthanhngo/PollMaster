@@ -194,12 +194,12 @@ class ParityLogicTest {
         assertEquals("sig_a.png", display(t, r, "sg"))
     }
 
-    @Test fun recordTitleFallsBackToTemplateTitleAndTrimsBothEnds() {
+    @Test fun recordTitleFallsBackToNewRecordTitleAndTrimsBothEnds() {
         val t = tpl(
             """{"id":"a","label":"a","type":"text"},{"id":"b","label":"b","type":"text"}""",
             extra = """"recordTitle":"{a} – {b}",""",
         )
-        assertEquals("Tiêu đề mẫu", recordTitle(t, rec(t)))
+        assertEquals("Phiếu mới · 01/01/2026 08:00", recordTitle(t, rec(t)))
         assertEquals("B1", recordTitle(t, rec(t, "b" to TestData.text("B1"))))
         assertEquals("A1", recordTitle(t, rec(t, "a" to TestData.text("A1"))))
     }

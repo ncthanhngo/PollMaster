@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
+import com.ncthanhngo.pollmaster.ui.common.AppCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -73,7 +73,7 @@ fun SignatureCard(def: SignatureDef, recordId: String, controller: EditorControl
         controller.setSignature(def.id, SignatureValue("media/${file.name}", name.trim().ifEmpty { null }, nowIso()))
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    AppCard {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(def.label, style = MaterialTheme.typography.titleSmall)
             OutlinedTextField(

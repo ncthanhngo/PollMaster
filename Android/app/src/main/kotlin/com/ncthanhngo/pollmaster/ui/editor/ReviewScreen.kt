@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,7 +29,10 @@ import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.validation.Issue
+import com.ncthanhngo.pollmaster.core.validation.reviewNotes
+import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.BackButton
+import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +54,8 @@ fun ReviewScreen(
     val env = rememberEditorEnv(controller)
     val record = env.record
     val issues = remember(record) { controller.issues(record) }
+    val warnings = remember(record, env.sites) { env.checker.check(record) }
+    val notes = remember(record) { reviewNotes(controller.template, record) }
     var confirmReopen by remember { mutableStateOf(false) }
     val template = controller.template
 
@@ -66,7 +69,10 @@ fun ReviewScreen(
                     Button(
                         enabled = issues.isEmpty(),
                         onClick = {
-                            if (controller.complete()) Toast.makeText(context, R.string.complete_done, Toast.LENGTH_SHORT).show()
+                            if (controller.complete()) {
+                                Toast.makeText(context, R.string.complete_done, Toast.LENGTH_SHORT).show()
+                                container.backup.requestIfNeeded(recordId)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(R.string.complete)) }
@@ -81,8 +87,8 @@ fun ReviewScreen(
         ) {
             if (record.isCompleted) {
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                        Text(stringResource(R.string.completed_banner, record.completedAt?.let { displayDateTime(it) }.orEmpty()), Modifier.padding(12.dp))
+                    AppCard(container = MaterialTheme.colorScheme.primaryContainer, borderColor = MaterialTheme.colorScheme.primary) {
+                        Text(stringResource(R.string.completed_banner, record.completedAt?.let { displayDateTime(it) }.orEmpty()), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
             }
@@ -97,6 +103,26 @@ fun ReviewScreen(
                     IssueRow(issue) {
                         if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
                         else onJumpField(issue.sectionId, issue.targetId)
+                    }
+                }
+            }
+            if (warnings.isNotEmpty()) {
+                item(key = "warn-title") {
+                    Text(stringResource(R.string.review_group_warnings), style = MaterialTheme.typography.titleSmall, color = warnColor(), modifier = Modifier.padding(top = 8.dp))
+                }
+                items(warnings, key = { "w-${it.key}-${it.kind}" }) { w ->
+                    ListRow("${w.targetId} · ${w.label}", w.message, warnColor()) {
+                        if (w.rowId != null) onJumpRow(w.targetId, w.rowId, w.columnId.orEmpty()) else onJumpField(w.sectionId, w.targetId)
+                    }
+                }
+            }
+            if (notes.isNotEmpty()) {
+                item(key = "notes-title") {
+                    Text(stringResource(R.string.review_group_notes), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(top = 8.dp))
+                }
+                items(notes, key = { "n-${it.targetId}" }) { n ->
+                    ListRow("${n.targetId} · ${n.label}", n.text, MaterialTheme.colorScheme.tertiary) {
+                        onJumpField(n.sectionId, n.targetId)
                     }
                 }
             }
@@ -121,14 +147,17 @@ fun ReviewScreen(
 }
 
 @Composable
-private fun IssueRow(issue: Issue, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+private fun IssueRow(issue: Issue, onClick: () -> Unit) = ListRow(
+    (if (issue.rowId == null) "${issue.targetId} · " else "${issue.targetId} › ") + issue.label,
+    issue.message(), MaterialTheme.colorScheme.error, onClick,
+)
+
+@Composable
+private fun ListRow(title: String, message: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    AppCard(Modifier.clickable(onClick = onClick)) {
         Column(Modifier.padding(12.dp)) {
-            Text(
-                (if (issue.rowId == null) "${issue.targetId} · " else "${issue.targetId} › ") + issue.label,
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(issue.message(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(message, style = MaterialTheme.typography.bodySmall, color = color)
         }
     }
 }

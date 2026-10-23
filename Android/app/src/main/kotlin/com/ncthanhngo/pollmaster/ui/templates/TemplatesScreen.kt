@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.fieldCount
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
@@ -111,6 +112,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                 Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(24.dp))
             }
             LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val newest = newestVersions(templates).map { it.id to it.version }.toSet()
                 items(templates, key = { "${it.id}@${it.version}" }) { t ->
                     Card(Modifier.fillMaxWidth().clickable { onOpenTemplate(t) }) {
                         Column(Modifier.padding(16.dp)) {
@@ -120,6 +122,9 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            if ((t.id to t.version) !in newest) {
+                                Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                            }
                         }
                     }
                 }

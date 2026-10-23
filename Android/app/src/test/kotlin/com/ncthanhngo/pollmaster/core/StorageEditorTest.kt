@@ -59,7 +59,7 @@ class StorageEditorTest {
         assertTrue(store.install(TestData.templateText, true) is InstallResult.Installed)
         assertTrue(store.install("{ nope", true) is InstallResult.Invalid)
         assertEquals(1, store.list().size)
-        assertNotNull(store.get("BB-TDP-01", "1.0"))
+        assertNotNull(store.get("BB-TDP-01", "1.1"))
     }
 
     @Test fun duplicateDropsMediaAndResetsStatus() {

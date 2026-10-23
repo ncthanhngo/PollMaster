@@ -60,7 +60,7 @@ fun AppNav() {
             OutlineScreen(
                 recordId = recordId,
                 onBack = { nav.popBackStack() },
-                onOpenSection = { nav.navigate(Routes.section(recordId, it)) },
+                onOpenSection = { section, focus -> nav.navigate(Routes.section(recordId, section, focus)) },
                 onReview = { nav.navigate(Routes.review(recordId)) },
             )
         }
@@ -76,12 +76,16 @@ fun AppNav() {
             )
         }
         composable(Routes.ROW, arguments = listOf(focusArg)) { entry ->
+            val recordId = entry.arguments?.getString("recordId").orEmpty()
             RowFormScreen(
-                recordId = entry.arguments?.getString("recordId").orEmpty(),
+                recordId = recordId,
                 tableId = entry.arguments?.getString("tableId").orEmpty(),
                 rowId = entry.arguments?.getString("rowId").orEmpty(),
                 focus = entry.arguments?.getString("focus"),
                 onBack = { nav.popBackStack() },
+                onNextRow = { table, row ->
+                    nav.navigate(Routes.row(recordId, table, row)) { popUpTo(Routes.ROW) { inclusive = true } }
+                },
             )
         }
         composable(Routes.REVIEW) { entry ->

@@ -9,6 +9,8 @@ import java.time.format.DateTimeFormatter
 
 private val dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private val dateTimeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+private val dayMonthTimeFmt = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 private val monthFmt = DateTimeFormatter.ofPattern("MM/yyyy")
 private val fileStampFmt = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")
 private val isoFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -34,3 +36,11 @@ fun fileStamp(instant: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefa
 
 fun parseInstant(iso: String?): Instant? =
     iso?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
+
+/** `dd/MM HH:mm` (list rows). */
+fun displayDayMonthTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
+    runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dayMonthTimeFmt) }.getOrDefault(iso)
+
+/** `HH:mm` ("Đã lưu 14:05"). */
+fun displayTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
+    runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(timeFmt) }.getOrDefault(iso)
