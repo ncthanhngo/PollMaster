@@ -8,9 +8,10 @@ extension AppEnvironment {
     /// Simulator verification aids (launch arguments, DEBUG builds only):
     /// `-pmCreate <templateId>` new record and open it; `-pmFill 1` fill its required fields; `-pmSection <n>` push a section;
     /// `-pmRow 1` add a row to the first quick-entry table and open it; `-pmReview 1` complete it and open the checker mode review screen;
-    /// `-pmSeed 1` add a few varied records for the list; `-pmTab records|templates|settings`.
+    /// `-pmSeed 1` add a few varied records for the list; `-pmTab records|templates|settings`; `-pmAppearance light|dark|system` sets the stored appearance.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
+        if let a = d.string(forKey: "pmAppearance").flatMap(AppearanceMode.init) { settings.appearance = a }
         if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings][tab] ?? .records }
         if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reload() }
         guard let tid = d.string(forKey: "pmCreate"), let t = newestTemplates.first(where: { $0.id == tid }) else { return }

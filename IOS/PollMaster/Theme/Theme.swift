@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import PollMasterCore
 
 /// Colours that depend on light/dark and the "Tương phản cao" setting.
 struct PMTheme: Equatable {
@@ -52,6 +53,41 @@ struct ThemeHost<Content: View>: View {
     }
 }
 
+extension AppearanceMode {
+    var title: String { self == .light ? "Sáng" : (self == .dark ? "Tối" : "Theo hệ thống") }
+}
+
+/// Applies the appearance to SwiftUI (`preferredColorScheme`) and to every window, so sheets, alerts and share sheets follow too.
+private struct AppearanceModifier: ViewModifier {
+    let mode: AppearanceMode
+    private var style: UIUserInterfaceStyle { mode == .light ? .light : (mode == .dark ? .dark : .unspecified) }
+
+    func body(content: Content) -> some View {
+        content
+            .preferredColorScheme(mode == .light ? .light : (mode == .dark ? .dark : nil))
+            .onAppear(perform: apply)
+            .onChange(of: mode) { apply() }
+    }
+
+    private func apply() {
+        for scene in UIApplication.shared.connectedScenes {
+            (scene as? UIWindowScene)?.windows.forEach { $0.overrideUserInterfaceStyle = style }
+        }
+    }
+}
+
+/// One-tap sun/moon button for the tab roots: flips the displayed scheme and saves the concrete choice.
+struct AppearanceToggleButton: View {
+    @Environment(AppEnvironment.self) private var env
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        Button(scheme == .dark ? "Giao diện sáng" : "Giao diện tối", systemImage: scheme == .dark ? "sun.max" : "moon") {
+            env.settings.appearance = AppearanceMode.toggled(displayingDark: scheme == .dark)
+        }
+    }
+}
+
 private struct SecondaryText: ViewModifier {
     @Environment(\.pmTheme) private var theme
     func body(content: Content) -> some View { content.foregroundStyle(theme.secondaryText) }
@@ -81,6 +117,7 @@ private struct CardBox: ViewModifier {
 }
 
 extension View {
+    func appearance(_ mode: AppearanceMode) -> some View { modifier(AppearanceModifier(mode: mode)) }
     func secondaryText() -> some View { modifier(SecondaryText()) }
     /// Replaces `.roundedBorder`: visible fill + border on cards in light, dark and high contrast.
     func inputBox() -> some View { modifier(InputBox()) }

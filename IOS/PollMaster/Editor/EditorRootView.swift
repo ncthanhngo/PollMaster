@@ -32,6 +32,7 @@ struct RouteDestination: View {
 struct EditorRootView: View {
     let model: RecordEditorModel
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.pmTheme) private var theme
     @State private var exporting = false
     @State private var showInstructions = false
@@ -100,6 +101,9 @@ struct EditorRootView: View {
                         Button(model.reviewMode ? "Thoát chế độ kiểm tra" : "Chế độ kiểm tra", systemImage: "text.badge.checkmark") {
                             model.reviewMode.toggle()
                         }
+                    }
+                    Button(scheme == .dark ? "Giao diện sáng" : "Giao diện tối", systemImage: scheme == .dark ? "sun.max" : "moon") {
+                        env.settings.appearance = AppearanceMode.toggled(displayingDark: scheme == .dark)
                     }
                     Button("Sao lưu ngay", systemImage: "externaldrive") { Task { await model.backup(force: true) } }
                 } label: { Image(systemName: "ellipsis.circle") }

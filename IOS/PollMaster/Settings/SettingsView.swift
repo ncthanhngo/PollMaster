@@ -15,6 +15,9 @@ struct SettingsView: View {
                     TextField("Tên người khảo sát mặc định", text: $settings.surveyorName)
                 } header: { Text("Người khảo sát") } footer: { Text("Tự điền vào trường HD-surveyor khi tạo phiếu mới.") }
                 Section {
+                    Picker("Giao diện", selection: $settings.appearance) {
+                        ForEach(AppearanceMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
                     Toggle("Chế độ gọn", isOn: $settings.compactMode)
                     Toggle("Tương phản cao", isOn: $settings.highContrast)
                 } header: { Text("Hiển thị") } footer: {
@@ -46,6 +49,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Cài đặt")
+            .toolbar { ToolbarItem(placement: .primaryAction) { AppearanceToggleButton() } }
             .task { used = env.usedStorage() }
         }
     }

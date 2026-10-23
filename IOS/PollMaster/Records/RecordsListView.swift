@@ -60,6 +60,7 @@ struct RecordsListView: View {
                         ForEach(StatusFilter.allCases) { Text($0.rawValue).tag($0) }
                     }.pickerStyle(.menu)
                 }
+                ToolbarItem(placement: .topBarTrailing) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Tạo phiếu", systemImage: "plus") { choosingTemplate = true }
                 }

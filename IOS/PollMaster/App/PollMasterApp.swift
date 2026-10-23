@@ -8,6 +8,7 @@ struct PollMasterApp: App {
     var body: some Scene {
         WindowGroup {
             ThemeHost(highContrast: env.settings.highContrast) { RootView() }
+                .appearance(env.settings.appearance)
                 .environment(env)
                 .task { env.applyDebugLaunchArguments() }
                 .alert("Lỗi", isPresented: Binding(get: { env.errorMessage != nil }, set: { if !$0 { env.errorMessage = nil } })) {

@@ -33,6 +33,7 @@ struct TemplatesView: View {
                 if let t = env.templates.first(where: { $0.key == key }) { TemplateDetailView(template: t) }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Nhập từ tệp", systemImage: "doc") { pickingFile = true }
