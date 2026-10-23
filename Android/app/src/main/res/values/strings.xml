@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">PollMaster</string>
+
+    <!-- Tabs -->
+    <string name="tab_records">Phiếu khảo sát</string>
+    <string name="tab_templates">Mẫu</string>
+    <string name="tab_settings">Cài đặt</string>
+
+    <!-- Common -->
+    <string name="action_back">Quay lại</string>
+    <string name="action_cancel">Hủy</string>
+    <string name="action_close">Đóng</string>
+    <string name="action_delete">Xóa</string>
+    <string name="action_duplicate">Nhân bản</string>
+    <string name="action_edit">Sửa</string>
+    <string name="action_export">Xuất</string>
+    <string name="action_more">Thêm tùy chọn</string>
+    <string name="action_ok">OK</string>
+    <string name="action_overwrite">Ghi đè</string>
+    <string name="action_review">Kiểm tra</string>
+    <string name="choose">Chọn</string>
+    <string name="yes">Có</string>
+    <string name="no">Không</string>
+    <string name="unknown">KĐĐ</string>
+    <string name="pick_value">Chọn…</string>
+
+    <!-- Records -->
+    <string name="records_search">Tìm theo tiêu đề</string>
+    <string name="records_empty">Chưa có phiếu khảo sát nào</string>
+    <string name="filter_all">Tất cả</string>
+    <string name="status_draft">Nháp</string>
+    <string name="status_completed">Hoàn thành</string>
+    <string name="progress_required">%1$d/%2$d bắt buộc</string>
+    <string name="updated_at">Cập nhật %1$s</string>
+    <string name="record_new">Tạo phiếu mới</string>
+    <string name="pick_template">Chọn mẫu</string>
+    <string name="record_read_error">Lỗi đọc</string>
+    <string name="delete_record_title">Xóa phiếu?</string>
+    <string name="delete_record_message">Phiếu \"%1$s\" cùng toàn bộ ảnh và tệp đính kèm sẽ bị xóa.</string>
+    <string name="record_template_missing">Không tìm thấy mẫu của phiếu này</string>
+
+    <!-- Templates -->
+    <string name="templates_empty">Chưa có mẫu nào</string>
+    <string name="template_meta">%1$s · v%2$s · %3$d trường</string>
+    <string name="template_import">Nhập mẫu</string>
+    <string name="import_file">Nhập từ tệp</string>
+    <string name="import_url">Nhập từ URL</string>
+    <string name="import_url_title">Nhập mẫu từ URL</string>
+    <string name="import_action">Nhập</string>
+    <string name="url_hint">https://…/mau.json</string>
+    <string name="import_error">Mẫu không hợp lệ</string>
+    <string name="import_ok">Đã nhập mẫu \"%1$s\"</string>
+    <string name="overwrite_title">Ghi đè mẫu?</string>
+    <string name="overwrite_message">Mẫu %1$s phiên bản %2$s đã tồn tại. Ghi đè?</string>
+    <string name="template_instructions">Hướng dẫn</string>
+    <string name="template_sections">Các mục</string>
+    <string name="template_create_record">Tạo phiếu mới</string>
+    <string name="template_delete">Xóa mẫu</string>
+    <string name="template_delete_message">Xóa mẫu \"%1$s\"?</string>
+    <string name="template_in_use" tools:ignore="PluralsCandidate">Không thể xóa: còn %1$d phiếu đang dùng mẫu này.</string>
+    <string name="template_not_found">Không tìm thấy mẫu</string>
+    <string name="section_item_count">%1$d trường</string>
+
+    <!-- Editor -->
+    <string name="header_section">Thông tin đầu biên bản</string>
+    <string name="menu_instructions">Hướng dẫn mẫu</string>
+    <string name="section_missing">Thiếu %1$d</string>
+    <string name="section_prev">Mục trước</string>
+    <string name="section_next">Mục sau</string>
+    <string name="save_error">Không lưu được: %1$s</string>
+    <string name="field_menu_estimate">Ước lượng (~)</string>
+    <string name="field_menu_kdd">Không đo được (KĐĐ)</string>
+    <string name="field_menu_note">Thêm ghi chú</string>
+    <string name="field_menu_clear">Xóa giá trị</string>
+    <string name="field_reason">Lý do không đo được (bắt buộc)</string>
+    <string name="field_note">Ghi chú</string>
+    <string name="sample_n">Lần %1$d</string>
+    <string name="other_text">Nhập nội dung</string>
+    <string name="formula_title">Công thức</string>
+    <string name="session_start">Bắt đầu</string>
+    <string name="session_end">Kết thúc</string>
+
+    <!-- GPS / compass -->
+    <string name="gps_get">Lấy vị trí hiện tại</string>
+    <string name="gps_waiting">Đang lấy vị trí…</string>
+    <string name="gps_lat">Vĩ độ</string>
+    <string name="gps_lng">Kinh độ</string>
+    <string name="gps_accuracy">Độ chính xác ±%1$s m</string>
+    <string name="gps_open_map">Mở bản đồ</string>
+    <string name="gps_unavailable">Không lấy được vị trí</string>
+    <string name="compass_read">Đọc la bàn</string>
+    <string name="compass_unavailable">Không có la bàn</string>
+
+    <!-- Media -->
+    <string name="media_capture">Chụp</string>
+    <string name="media_record">Quay</string>
+    <string name="media_library">Thư viện</string>
+    <string name="media_delete_title">Xóa tệp này?</string>
+    <string name="media_error">Không xử lý được tệp: %1$s</string>
+
+    <!-- Permissions -->
+    <string name="perm_title">Cần cấp quyền</string>
+    <string name="perm_allow">Cho phép</string>
+    <string name="perm_camera_message">PollMaster cần dùng Camera để chụp ảnh và quay video khảo sát.</string>
+    <string name="perm_camera_denied">Chưa được cấp quyền Camera.</string>
+    <string name="perm_location_message">PollMaster cần Vị trí khi dùng ứng dụng để ghi tọa độ GPS của điểm khảo sát.</string>
+
+    <!-- Table -->
+    <string name="row_default">Dòng</string>
+    <string name="table_add_row">Thêm dòng</string>
+    <string name="table_empty">Chưa có dòng nào</string>
+    <string name="row_delete">Xóa dòng</string>
+    <string name="row_delete_confirm">Xóa dòng này và dữ liệu trong dòng?</string>
+    <string name="stopwatch_start">Bắt đầu (T0)</string>
+    <string name="stopwatch_mark">Ghi mốc %1$s</string>
+    <string name="stopwatch_undo">Hoàn tác mốc</string>
+    <string name="stopwatch_done">Đã ghi đủ mốc</string>
+
+    <!-- Review -->
+    <string name="review_title">Kiểm tra &amp; hoàn thành</string>
+    <string name="review_ok">Không còn lỗi. Có thể hoàn thành phiếu.</string>
+    <string name="signatures_title">Chữ ký</string>
+    <string name="signer_name">Tên người ký</string>
+    <string name="signature_hint">Ký vào khung này</string>
+    <string name="signature_clear">Xóa</string>
+    <string name="complete">Hoàn thành</string>
+    <string name="complete_done">Đã hoàn thành phiếu</string>
+    <string name="completed_banner">Đã hoàn thành lúc %1$s</string>
+    <string name="reopen">Mở lại</string>
+    <string name="reopen_title">Mở lại phiếu?</string>
+    <string name="reopen_message">Phiếu sẽ chuyển về trạng thái nháp để chỉnh sửa.</string>
+
+    <!-- Export -->
+    <string name="export_title">Xuất phiếu</string>
+    <string name="fmt_zip">JSON + media (.zip)</string>
+    <string name="fmt_xlsx">Excel (.xlsx)</string>
+    <string name="fmt_csv">CSV</string>
+    <string name="fmt_pdf">PDF</string>
+    <string name="fmt_docx">Word (.docx)</string>
+    <string name="exporting">Đang xuất…</string>
+    <string name="export_error">Không xuất được: %1$s</string>
+    <string name="share_title">Chia sẻ phiếu</string>
+
+    <!-- Settings -->
+    <string name="settings_surveyor">Tên người khảo sát mặc định</string>
+    <string name="settings_surveyor_hint">Tự điền vào trường Người khảo sát khi tạo phiếu mới</string>
+    <string name="settings_quality">Chất lượng ảnh</string>
+    <string name="quality_high">Cao</string>
+    <string name="quality_medium">Trung bình</string>
+    <string name="settings_storage">Dung lượng đã dùng</string>
+    <string name="settings_version">Phiên bản ứng dụng</string>
+</resources>
