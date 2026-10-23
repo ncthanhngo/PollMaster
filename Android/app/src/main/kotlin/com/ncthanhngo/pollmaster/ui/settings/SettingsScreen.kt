@@ -1,5 +1,16 @@
 package com.ncthanhngo.pollmaster.ui.settings
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PanTool
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.ncthanhngo.pollmaster.ui.common.IconBadge
 import com.ncthanhngo.pollmaster.core.theme.ThemeMode
 import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 import android.text.format.Formatter
@@ -73,7 +84,7 @@ fun SettingsScreen() {
                 modifier = Modifier.fillMaxWidth(),
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.settings_quality), style = MaterialTheme.typography.titleSmall)
+                SettingTitle(Icons.Filled.PhotoCamera, Color(0xFF8E44AD), stringResource(R.string.settings_quality))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = quality == PhotoQuality.HIGH,
@@ -88,7 +99,7 @@ fun SettingsScreen() {
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.titleSmall)
+                SettingTitle(Icons.Filled.Contrast, Color(0xFF5856D6), stringResource(R.string.settings_theme))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(ThemeMode.LIGHT to R.string.theme_light, ThemeMode.DARK to R.string.theme_dark, ThemeMode.SYSTEM to R.string.theme_system)
                         .forEach { (mode, label) ->
@@ -101,21 +112,22 @@ fun SettingsScreen() {
                 }
             }
             HorizontalDivider()
-            SwitchRow(stringResource(R.string.settings_compact), stringResource(R.string.settings_compact_hint), compact, container.settings::setCompactMode)
-            SwitchRow(stringResource(R.string.settings_contrast), stringResource(R.string.settings_contrast_hint), contrast, container.settings::setHighContrast)
-            SwitchRow(stringResource(R.string.settings_one_hand), stringResource(R.string.settings_one_hand_hint), oneHand, container.settings::setOneHand)
+            SwitchRow(Icons.Filled.UnfoldLess, Color(0xFF0E9AA7), stringResource(R.string.settings_compact), stringResource(R.string.settings_compact_hint), compact, container.settings::setCompactMode)
+            SwitchRow(Icons.Filled.Contrast, Color(0xFFE07B00), stringResource(R.string.settings_contrast), stringResource(R.string.settings_contrast_hint), contrast, container.settings::setHighContrast)
+            SwitchRow(Icons.Filled.PanTool, Color(0xFFD81B60), stringResource(R.string.settings_one_hand), stringResource(R.string.settings_one_hand_hint), oneHand, container.settings::setOneHand)
             HorizontalDivider()
             BackupSection()
             HorizontalDivider()
-            InfoRow(stringResource(R.string.settings_storage), Formatter.formatShortFileSize(context, used))
-            InfoRow(stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
+            InfoRow(Icons.Filled.Storage, stringResource(R.string.settings_storage), Formatter.formatShortFileSize(context, used))
+            InfoRow(Icons.Filled.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
         }
     }
 }
 
 @Composable
-private fun SwitchRow(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+private fun SwitchRow(icon: ImageVector, tint: Color, title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        IconBadge(icon, tint = tint, size = 32.dp)
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -133,7 +145,7 @@ private fun BackupSection() {
     val status by container.backup.status.collectAsState()
     var busy by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SwitchRow(stringResource(R.string.settings_backup), stringResource(R.string.settings_backup_folder, Backup.FOLDER), auto, container.settings::setAutoBackup)
+        SwitchRow(Icons.Filled.Sync, Color(0xFF2E7D32), stringResource(R.string.settings_backup), stringResource(R.string.settings_backup_folder, Backup.FOLDER), auto, container.settings::setAutoBackup)
         status.lastOkAt?.let { Text(stringResource(R.string.settings_backup_last, displayDateTime(it)), style = MaterialTheme.typography.bodySmall) }
         status.error?.let { Text(stringResource(R.string.settings_backup_error, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         OutlinedButton(
@@ -151,9 +163,18 @@ private fun BackupSection() {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+private fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        IconBadge(icon, tint = Color.Gray, size = 32.dp)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun SettingTitle(icon: ImageVector, tint: Color, title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        IconBadge(icon, tint = tint, size = 32.dp)
+        Text(title, style = MaterialTheme.typography.titleSmall)
     }
 }

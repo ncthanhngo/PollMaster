@@ -63,6 +63,17 @@
     <string name="errors_prefix">Mẫu JSON bị app PollMaster từ chối với các lỗi sau, hãy sửa và trả lại toàn bộ JSON:</string>
     <string name="ai_card_title">Tạo mẫu bằng AI</string>
     <string name="ai_card_text">Gửi file hướng dẫn cho Claude/ChatGPT kèm mô tả khảo sát, rồi dán kết quả JSON vào đây</string>
+    <string name="ai_card_subtitle">Claude, ChatGPT…</string>
+    <string name="ai_card_step1">Gửi file hướng dẫn cho AI kèm mô tả khảo sát</string>
+    <string name="ai_card_step2">Dán kết quả JSON vào app</string>
+    <string name="templates_local_header">Mẫu trên máy (%1$d)</string>
+    <string name="template_fields_pill">%1$d trường</string>
+    <string name="template_old_pill">Bản cũ</string>
+    <string name="template_stat_sections">Mục</string>
+    <string name="template_stat_fields">Trường</string>
+    <string name="template_stat_tables">Bảng</string>
+    <string name="template_section_tables">%1$d trường · %2$d bảng</string>
+    <string name="template_used_projects">Dùng trong dự án</string>
     <string name="ai_share_guide">Chia sẻ file hướng dẫn</string>
     <string name="ai_save_guide">Lưu vào Tải xuống</string>
     <string name="ai_guide_saved">Đã lưu huong-dan-tao-mau-bang-ai.md vào Tải xuống</string>

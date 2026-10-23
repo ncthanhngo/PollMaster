@@ -36,6 +36,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.automirrored.filled.Undo
+import com.ncthanhngo.pollmaster.ui.common.IconBadge
+import com.ncthanhngo.pollmaster.ui.theme.okColor
+import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -303,7 +308,7 @@ private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Uni
     var menu by remember { mutableStateOf(false) }
     AppCard(Modifier.clickable(onClick = onOpen)) {
         Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
-            Thumb(item.thumbnail)
+            Thumb(item)
             Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (item.subtitle.isNotEmpty()) {
@@ -315,7 +320,7 @@ private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Uni
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (p.total > 0) LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.outline, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                if (p.total > 0) LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth(), color = if (item.record.isCompleted) okColor() else MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
                 RecordChips(item, projectCode)
             }
             IconButton(onClick = { menu = true }) {
@@ -331,17 +336,21 @@ private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Uni
     }
 }
 
-/** 48x48 photo of the record, or the template icon when there is no photo yet. */
+/** 48x48 photo of the record, or a status icon (draft, returned, completed) when there is no photo yet. */
 @Composable
-private fun Thumb(file: java.io.File?) {
-    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
-        if (file != null) {
+private fun Thumb(item: RecordItem) {
+    val file = item.thumbnail
+    if (file != null) {
+        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
             AsyncImage(model = file, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        } else {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
+        return
+    }
+    val r = item.record
+    when {
+        r.isCompleted -> IconBadge(Icons.Filled.Verified, tint = okColor(), size = 48.dp)
+        r.returned -> IconBadge(Icons.AutoMirrored.Filled.Undo, tint = warnColor(), size = 48.dp)
+        else -> IconBadge(Icons.Filled.Description, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 48.dp)
     }
 }
 

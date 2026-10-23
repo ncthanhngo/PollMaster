@@ -3,17 +3,14 @@ package com.ncthanhngo.pollmaster.ui.templates
 import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,7 +39,6 @@ import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.model.Template
-import com.ncthanhngo.pollmaster.core.model.fieldCount
 import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
@@ -121,26 +117,18 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                     item(key = "empty") { Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(8.dp)) }
                 }
                 val newest = newestVersions(templates).map { it.id to it.version }.toSet()
-                items(templates, key = { "${it.id}@${it.version}" }) { t ->
-                    Card(Modifier.fillMaxWidth().clickable { onOpenTemplate(t) }) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(t.title, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                stringResource(R.string.template_meta, t.id, t.version, t.fieldCount()),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            val users = projects.filter { p -> p.templates.any { it.id == t.id && it.version == t.version } }
-                            Text(
-                                if (users.isEmpty()) stringResource(R.string.template_unused) else stringResource(R.string.template_used_in, users.joinToString { it.code }),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            if ((t.id to t.version) !in newest) {
-                                Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
-                            }
-                        }
+                if (templates.isNotEmpty()) {
+                    item(key = "header") {
+                        Text(
+                            stringResource(R.string.templates_local_header, templates.size),
+                            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+                        )
                     }
+                }
+                items(templates, key = { "${it.id}@${it.version}" }) { t ->
+                    val users = projects.filter { p -> p.templates.any { it.id == t.id && it.version == t.version } }
+                    TemplateCard(t, outdated = (t.id to t.version) !in newest, users = users) { onOpenTemplate(t) }
                 }
             }
         }

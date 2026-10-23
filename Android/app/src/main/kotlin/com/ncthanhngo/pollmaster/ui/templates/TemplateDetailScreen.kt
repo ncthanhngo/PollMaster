@@ -1,15 +1,31 @@
 package com.ncthanhngo.pollmaster.ui.templates
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import com.ncthanhngo.pollmaster.core.model.TableItem
+import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_TITLE
+import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.projects.ProjectDot
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,7 +89,7 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(template?.title ?: id) },
+                title = { Text(id) },
                 navigationIcon = { BackButton(onBack) },
                 actions = {
                     if (template != null) {
@@ -84,47 +100,75 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
                 },
             )
         },
+        bottomBar = {
+            if (template != null) {
+                Surface(tonalElevation = 3.dp) {
+                    Button(
+                        onClick = { createRecord(template) },
+                        enabled = !outdated,
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
+                        Text(stringResource(R.string.template_create_record), Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
     ) { padding ->
         if (template == null) {
             Text(stringResource(R.string.template_not_found), Modifier.padding(padding).padding(24.dp))
             return@Scaffold
         }
+        val users = projects.filter { p -> !p.archived && p.templates.any { it.id == template.id && it.version == template.version } }
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                Text("${template.id} · v${template.version}", style = MaterialTheme.typography.labelLarge)
-                template.subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            }
-            item {
-                Button(
-                    onClick = { createRecord(template) },
-                    enabled = !outdated,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.template_create_record)) }
-                if (outdated) Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item { TemplateSummary(template) }
+            if (outdated) {
+                item { Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary) }
             }
             template.instructions?.let { text ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    var open by rememberSaveable { mutableStateOf(false) }
+                    AppCard(Modifier.clickable { open = !open }) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(stringResource(R.string.template_instructions), style = MaterialTheme.typography.titleSmall)
-                            Text(text, style = MaterialTheme.typography.bodyMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.template_instructions), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null)
+                            }
+                            if (open) Text(text, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             }
-            item { Text(stringResource(R.string.template_sections), style = MaterialTheme.typography.titleSmall) }
-            items(template.sections, key = { it.id }) { s ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(s.title, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(R.string.section_item_count, s.items.count { it is Field }),
-                            style = MaterialTheme.typography.bodySmall,
+            item { SectionTitle(stringResource(R.string.template_sections)) }
+            item {
+                AppCard {
+                    SectionRow(Icons.Filled.Badge, HEADER_SECTION_TITLE, stringResource(R.string.section_item_count, template.header.size))
+                    template.sections.forEach { s ->
+                        val tables = s.items.count { it is TableItem }
+                        val fields = s.items.count { it is Field }
+                        HorizontalDivider(Modifier.padding(start = 60.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        SectionRow(
+                            if (tables > 0) Icons.Filled.TableChart else Icons.AutoMirrored.Filled.ListAlt, s.title,
+                            if (tables > 0) stringResource(R.string.template_section_tables, fields, tables) else stringResource(R.string.section_item_count, fields),
                         )
+                    }
+                }
+            }
+            if (users.isNotEmpty()) {
+                item { SectionTitle(stringResource(R.string.template_used_projects)) }
+                item {
+                    AppCard {
+                        users.forEach { p ->
+                            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                ProjectDot(p.color)
+                                Text(p.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                                Text(p.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             }
@@ -163,3 +207,4 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
         MessageDialog(stringResource(R.string.template_delete), stringResource(R.string.template_in_use, count)) { inUse = null }
     }
 }
+
