@@ -9,14 +9,23 @@ struct TemplatesView: View {
     @State private var urlText = ""
     @State private var overwrite: (Template, Data)?
     @State private var message: String?
+    @State private var sheet: ImportSheet?
     @State private var deleting: Template?
     @State private var loadingURL = false
 
+    private enum ImportSheet: Identifiable {
+        case paste, errors([String])
+        var id: String { if case .errors = self { return "errors" } else { return "paste" } }
+    }
+
     var body: some View {
         NavigationStack {
-            List(env.templates) { t in
-                NavigationLink(value: t.key) { templateRow(t) }
-                    .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
+            List {
+                AITemplateCard { sheet = .paste }
+                ForEach(env.templates) { t in
+                    NavigationLink(value: t.key) { templateRow(t) }
+                        .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
+                }
             }
             .overlay { loadingOverlay }
             .navigationTitle("Mẫu")
@@ -28,6 +37,7 @@ struct TemplatesView: View {
                     Menu {
                         Button("Nhập từ tệp", systemImage: "doc") { pickingFile = true }
                         Button("Nhập từ URL", systemImage: "link") { urlText = ""; askingURL = true }
+                        Button("Dán JSON", systemImage: "doc.on.clipboard") { sheet = .paste }
                     } label: { Image(systemName: "plus") }
                 }
             }
@@ -36,8 +46,14 @@ struct TemplatesView: View {
                 case .success(let url):
                     let scoped = url.startAccessingSecurityScopedResource()
                     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                    do { try handle(Data(contentsOf: url)) } catch { message = error.localizedDescription }
-                case .failure(let e): message = e.localizedDescription
+                    do { try handle(Data(contentsOf: url)) } catch { fail(error) }
+                case .failure(let e): fail(e)
+                }
+            }
+            .sheet(item: $sheet) { s in
+                switch s {
+                case .paste: PasteTemplateSheet { importPasted($0) }
+                case .errors(let lines): ImportErrorsSheet(lines: lines)
                 }
             }
             .alert("Nhập từ URL", isPresented: $askingURL) {
@@ -80,15 +96,22 @@ struct TemplatesView: View {
         }
     }
 
+    private func fail(_ error: Error) { sheet = .errors(TemplateText.errorLines(error)) }
+
+    private func importPasted(_ text: String) {
+        let json = TemplateText.extractJSON(text) ?? text
+        do { sheet = nil; try handle(Data(json.utf8)) } catch { fail(error) }
+    }
+
     private func confirmOverwrite() {
         guard let (_, data) = overwrite else { return }
         overwrite = nil
-        do { try env.overwriteTemplate(data); message = "Đã ghi đè mẫu." } catch { message = error.localizedDescription }
+        do { try env.overwriteTemplate(data); message = "Đã ghi đè mẫu." } catch { fail(error) }
     }
 
     private func fetch() {
         guard let url = URL(string: urlText.trimmingCharacters(in: .whitespacesAndNewlines)), ["http", "https"].contains(url.scheme?.lowercased()) else {
-            message = "URL không hợp lệ (cần http hoặc https)."; return
+            sheet = .errors(["URL không hợp lệ (cần http hoặc https)."]); return
         }
         loadingURL = true
         Task {
@@ -97,11 +120,11 @@ struct TemplatesView: View {
                 var req = URLRequest(url: url); req.timeoutInterval = 20
                 let (data, resp) = try await URLSession.shared.data(for: req)
                 if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    message = "Máy chủ trả về lỗi HTTP \(http.statusCode)."; return
+                    sheet = .errors(["Máy chủ trả về lỗi HTTP \(http.statusCode)."]); return
                 }
-                guard data.count < 5_000_000 else { message = "Tệp quá lớn."; return }
+                guard data.count < 5_000_000 else { sheet = .errors(["Tệp quá lớn."]); return }
                 try handle(data)
-            } catch { message = error.localizedDescription }
+            } catch { fail(error) }
         }
     }
 }

@@ -27,6 +27,9 @@ targets:
       - path: ../shared/templates
         type: folder
         buildPhase: resources
+      # AI template-authoring guide, also shared with Android.
+      - path: ../shared/huong-dan-tao-mau-bang-ai.md
+        buildPhase: resources
     dependencies:
       - package: PollMasterCore
     info:
