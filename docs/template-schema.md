@@ -378,7 +378,7 @@ Mỗi phiếu thuộc **đúng 1 dự án**. Mẫu nằm trong **thư viện chu
 - Xóa mẫu khỏi dự án: được, phiếu cũ vẫn mở được (mẫu vẫn còn trong thư viện). Xóa mẫu khỏi thư viện: chặn khi còn phiếu hoặc dự án dùng.
 
 ### 9.2 Di chuyển dữ liệu cũ (lần đầu chạy bản có dự án)
-Tạo dự án `{"code":"CHUNG","name":"Chung"}` chứa mọi mẫu đã cài (bản mới nhất mỗi id) + `sites.json` toàn cục cũ; gán mọi phiếu chưa có
+Tạo dự án `{"id":"chung","code":"CHUNG","name":"Chung"}` (id **cố định** `chung` trên mọi máy để gói dự án Chung khớp nhau) chứa mọi mẫu đã cài (bản mới nhất mỗi id) + `sites.json` toàn cục cũ; gán mọi phiếu chưa có
 `projectId` vào dự án này. Idempotent.
 
 ### 9.3 Gói dự án `.pmproject` (zip)
@@ -396,7 +396,7 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
 - Tên tệp xuất/sao lưu: `{projectCode}_{recordCode|recordId}_{yyyyMMdd-HHmm}`; thư mục sao lưu `…/PollMaster Backup/{projectCode}/` (Android `Download/PollMaster/{projectCode}/`).
 - `export.json` thêm `"project": { "id", "code", "name" }`; PDF/DOCX ghi "Dự án: {name} ({code})" dưới tiêu đề; sheet `Thông tin` thêm dòng đầu `Dự án`.
 - **Xuất tổng hợp dự án** (`{projectCode}_tong-hop_{yyyyMMdd-HHmm}.xlsx`): mỗi mẫu 1 sheet (tên = id mẫu), **mỗi phiếu 1 hàng**:
-  cột cố định `Mã phiếu, Tiêu đề, Trạng thái, Tạo lúc, Cập nhật lúc, Hoàn thành lúc` rồi mỗi field header/mục (theo thứ tự mẫu, giá trị
+  cột cố định (hàng 1 = khóa `recordCode, title, status, createdAt, updatedAt, completedAt`; hàng 2 = `Mã phiếu, Tiêu đề, Trạng thái, Tạo lúc, Cập nhật lúc, Hoàn thành lúc`); phiếu sắp theo `createdAt` tăng dần rồi mỗi field header/mục (theo thứ tự mẫu, giá trị
   hiển thị §6.5, computed gồm cả) một cột; hàng 1 = mã trường, hàng 2 = nhãn. Mỗi bảng của mẫu thêm sheet `{templateId}-{tableId}`
   (cột `Mã phiếu` + các cột bảng, mỗi dòng bảng 1 hàng). Tùy chọn kèm: zip "JSON + media" của mọi phiếu (`{projectCode}_phieu_{…}.zip`).
   Lọc: tất cả / chỉ Hoàn thành.
