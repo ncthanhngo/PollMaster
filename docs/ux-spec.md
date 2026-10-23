@@ -141,3 +141,12 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - Chế độ gọn: hàng gọn không có chip ~/KĐĐ (chỉ menu ⋯ + badge khi đang bật); thẻ thường có chip trên hàng tiêu đề.
 - Mẫu nhiều phiên bản: tab Mẫu vẫn liệt kê bản cũ (ghi chú "Bản cũ", tắt "Tạo phiếu mới"); hộp chọn mẫu khi tạo phiếu chỉ có bản mới nhất.
 - "Lấy dữ liệu mục từ phiếu khác": chỉ chép giá trị không rỗng, chép kèm dòng của bảng ghép đôi để giữ id đồng bộ.
+
+## K. Giao diện Sáng / Tối
+- **Mặc định: Sáng**, không theo hệ thống. Cài đặt → "Giao diện": **Sáng** (mặc định) · **Tối** · **Theo hệ thống**. Lưu cục bộ,
+  áp dụng ngay (không khởi động lại), gồm cả các sheet/dialog.
+- **Chuyển nhanh 1 chạm**: nút biểu tượng ☀ / ☾ (sun.max / moon; Material LightMode / DarkMode) ở thanh trên của 3 màn gốc
+  (Phiếu khảo sát, Mẫu, Cài đặt) — chạm để đảo Sáng ↔ Tối (nếu đang "Theo hệ thống" thì đảo so với giao diện đang hiển thị và lưu thành
+  Sáng/Tối cụ thể). Trong màn soạn phiếu: mục "Giao diện tối" / "Giao diện sáng" trong menu ⋯.
+- "Tương phản cao" vẫn là công tắc riêng, áp lên cả Sáng và Tối.
+- Android: **tắt dynamic color** (Material You theo hình nền) — dùng bảng màu thương hiệu cố định cho cả Sáng và Tối để 2 app đồng nhất.
