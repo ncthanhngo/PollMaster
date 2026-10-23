@@ -1,0 +1,510 @@
+{
+  "description": "Shared formula test vectors. Rows may carry 'fixed' (normally from the template) for test convenience. Compare numbers with tolerance 1e-6.",
+  "values": {
+    "A": {
+      "v": 4
+    },
+    "B": {
+      "v": 2.5
+    },
+    "Z": {
+      "flag": "notMeasurable",
+      "reason": "x"
+    },
+    "S": {
+      "v": "abc"
+    },
+    "Y": {
+      "v": true
+    },
+    "P": {
+      "parts": {
+        "w": 10,
+        "h": 4
+      }
+    },
+    "T": {
+      "v": [
+        30,
+        25,
+        null
+      ]
+    },
+    "RH": {
+      "v": [
+        60,
+        80,
+        50
+      ]
+    },
+    "L": {
+      "v": [
+        20,
+        null,
+        18
+      ]
+    },
+    "N": {
+      "v": 0.12
+    },
+    "U": {
+      "v": "unknown"
+    }
+  },
+  "tables": {
+    "E1": [
+      {
+        "id": "r1",
+        "values": {
+          "mode": {
+            "v": "O"
+          },
+          "hand": {
+            "v": "2T"
+          },
+          "result": {
+            "v": "OK"
+          },
+          "attempts": {
+            "v": 1
+          }
+        }
+      },
+      {
+        "id": "r2",
+        "values": {
+          "mode": {
+            "v": "O"
+          },
+          "hand": {
+            "v": "1T-P"
+          },
+          "result": {
+            "v": "DL"
+          },
+          "attempts": {
+            "v": 2
+          }
+        }
+      },
+      {
+        "id": "r3",
+        "values": {
+          "mode": {
+            "v": "O"
+          },
+          "hand": {
+            "v": "2T"
+          },
+          "result": {
+            "v": "OK"
+          },
+          "attempts": {
+            "v": 1
+          }
+        }
+      },
+      {
+        "id": "r4",
+        "values": {
+          "mode": {
+            "v": "O"
+          },
+          "hand": {
+            "v": "1T-T"
+          },
+          "result": {
+            "v": "OK"
+          },
+          "attempts": {
+            "v": 3
+          }
+        }
+      },
+      {
+        "id": "r5",
+        "values": {
+          "mode": {
+            "v": "T"
+          },
+          "hand": {
+            "v": "2T"
+          },
+          "result": {
+            "v": "DL"
+          }
+        }
+      },
+      {
+        "id": "r6",
+        "values": {}
+      }
+    ],
+    "E2": [
+      {
+        "id": "S04-5",
+        "fixed": {
+          "kb": "S04",
+          "levelValue": 5
+        },
+        "values": {
+          "entered": {
+            "v": true
+          }
+        }
+      },
+      {
+        "id": "S04-10",
+        "fixed": {
+          "kb": "S04",
+          "levelValue": 10
+        },
+        "values": {
+          "entered": {
+            "v": false
+          }
+        }
+      },
+      {
+        "id": "S06-5",
+        "fixed": {
+          "kb": "S06",
+          "levelValue": 5
+        },
+        "values": {
+          "entered": {
+            "v": true
+          }
+        }
+      },
+      {
+        "id": "S06-10",
+        "fixed": {
+          "kb": "S06",
+          "levelValue": 10
+        },
+        "values": {
+          "entered": {
+            "v": true
+          }
+        }
+      },
+      {
+        "id": "S06-15",
+        "fixed": {
+          "kb": "S06",
+          "levelValue": 15
+        },
+        "values": {}
+      }
+    ],
+    "F1": [
+      {
+        "id": "a",
+        "values": {
+          "T2": {
+            "v": 10
+          },
+          "T4": {
+            "v": 40
+          },
+          "T5": {
+            "v": 55
+          },
+          "T6": {
+            "v": 70
+          },
+          "T8": {
+            "v": 130
+          }
+        }
+      },
+      {
+        "id": "b",
+        "values": {
+          "T2": {
+            "v": 20
+          },
+          "T4": {
+            "v": 50
+          },
+          "T5": {
+            "v": 60
+          },
+          "T6": {
+            "v": 100
+          },
+          "T8": {
+            "v": 170
+          }
+        }
+      },
+      {
+        "id": "c",
+        "values": {
+          "T2": {
+            "v": 5
+          }
+        }
+      }
+    ],
+    "YN": [
+      {
+        "id": "a",
+        "values": {
+          "y": {
+            "v": true
+          }
+        }
+      },
+      {
+        "id": "b",
+        "values": {
+          "y": {
+            "v": "unknown"
+          }
+        }
+      },
+      {
+        "id": "c",
+        "values": {
+          "y": {
+            "v": false
+          }
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "precedence",
+      "formula": "1 + 2 * 3 - 4 / 2",
+      "expected": 5
+    },
+    {
+      "name": "parens & unary",
+      "formula": "-(1 + 2) * 2",
+      "expected": -6
+    },
+    {
+      "name": "field ref",
+      "formula": "{A} * {B}",
+      "expected": 10
+    },
+    {
+      "name": "part ref",
+      "formula": "{P.w} - {P.h}",
+      "expected": 6
+    },
+    {
+      "name": "missing field is null",
+      "formula": "{NOPE} + 1",
+      "expected": null
+    },
+    {
+      "name": "KDD flag is null",
+      "formula": "{Z} + 1",
+      "expected": null
+    },
+    {
+      "name": "div by zero",
+      "formula": "{A} / 0",
+      "expected": null
+    },
+    {
+      "name": "string equality",
+      "formula": "{S} == \"abc\"",
+      "expected": true
+    },
+    {
+      "name": "string inequality",
+      "formula": "{S} != \"abc\"",
+      "expected": false
+    },
+    {
+      "name": "bool compare",
+      "formula": "{Y} == true",
+      "expected": true
+    },
+    {
+      "name": "null == null",
+      "formula": "{NOPE} == null",
+      "expected": true
+    },
+    {
+      "name": "null order compare is null",
+      "formula": "{NOPE} > 1",
+      "expected": null
+    },
+    {
+      "name": "logic null false",
+      "formula": "!{NOPE} && true",
+      "expected": true
+    },
+    {
+      "name": "or",
+      "formula": "{A} > 5 || {B} < 3",
+      "expected": true
+    },
+    {
+      "name": "if",
+      "formula": "if({A} >= 4, 1, 2)",
+      "expected": 1
+    },
+    {
+      "name": "round half away",
+      "formula": "round(2.345, 2)",
+      "expected": 2.35
+    },
+    {
+      "name": "round negative",
+      "formula": "round(-2.5, 0)",
+      "expected": -3
+    },
+    {
+      "name": "abs",
+      "formula": "abs(-3.5)",
+      "expected": 3.5
+    },
+    {
+      "name": "dewpoint",
+      "formula": "dewpoint(30, 60)",
+      "expected": 21.385418967118323
+    },
+    {
+      "name": "dewpoint rh<=0",
+      "formula": "dewpoint(30, 0)",
+      "expected": null
+    },
+    {
+      "name": "max with filter (E-01)",
+      "formula": "max(E2, {@levelValue}, {@kb} == \"S04\" && {@entered} == true)",
+      "expected": 5
+    },
+    {
+      "name": "max pitch (E-02)",
+      "formula": "max(E2, {@levelValue}, {@kb} == \"S06\" && {@entered} == true)",
+      "expected": 10
+    },
+    {
+      "name": "pct two hands (E-03)",
+      "formula": "pct(E1, {@hand} == \"2T\", {@mode} == \"O\")",
+      "expected": 50
+    },
+    {
+      "name": "pct redo (E-04)",
+      "formula": "pct(E1, {@result} == \"DL\" || {@attempts} > 1, {@mode} == \"O\")",
+      "expected": 50
+    },
+    {
+      "name": "pct empty denominator",
+      "formula": "pct(E1, true, {@mode} == \"X\")",
+      "expected": null
+    },
+    {
+      "name": "count non-empty rows",
+      "formula": "count(E1)",
+      "expected": 5
+    },
+    {
+      "name": "count filter",
+      "formula": "count(E1, {@mode} == \"O\")",
+      "expected": 4
+    },
+    {
+      "name": "avg skips null (F-01)",
+      "formula": "avg(F1, {@T6} - {@T2})",
+      "expected": 70
+    },
+    {
+      "name": "avg (F-03)",
+      "formula": "avg(F1, {@T5} - {@T4})",
+      "expected": 12.5
+    },
+    {
+      "name": "sum",
+      "formula": "sum(F1, {@T2})",
+      "expected": 35
+    },
+    {
+      "name": "min",
+      "formula": "min(F1, {@T2})",
+      "expected": 5
+    },
+    {
+      "name": "aggregate no values",
+      "formula": "avg(F1, {@T7})",
+      "expected": null
+    },
+    {
+      "name": "samples dewpoint (G-24)",
+      "formula": "dewpoint({T}, {RH})",
+      "expected": [
+        21.385418967118323,
+        21.306887199560098,
+        null
+      ],
+      "samples": 3
+    },
+    {
+      "name": "samples nested computed-like",
+      "formula": "{L} - dewpoint({T}, {RH})",
+      "expected": [
+        -1.3854189671183228,
+        null,
+        null
+      ],
+      "samples": 3
+    },
+    {
+      "name": "samples with scalar ref",
+      "formula": "{T} + {A}",
+      "expected": [
+        34,
+        29,
+        null
+      ],
+      "samples": 3
+    },
+    {
+      "name": "truthy: number is not true",
+      "formula": "if({N}, 1, 2)",
+      "expected": 2
+    },
+    {
+      "name": "truthy: string is not true",
+      "formula": "if(\"x\", 1, 2)",
+      "expected": 2
+    },
+    {
+      "name": "truthy: not number",
+      "formula": "!{A}",
+      "expected": true
+    },
+    {
+      "name": "truthy: unknown in or",
+      "formula": "{U} || false",
+      "expected": false
+    },
+    {
+      "name": "truthy: pct unknown not yes",
+      "formula": "pct(YN, {@y})",
+      "expected": 33.333333333333336
+    },
+    {
+      "name": "aggregate skips empty rows with fixed",
+      "formula": "avg(E2, {@levelValue})",
+      "expected": 7.5
+    },
+    {
+      "name": "aggregate fixed-only rows ignored",
+      "formula": "count(E2)",
+      "expected": 4
+    },
+    {
+      "name": "round exact decimal",
+      "formula": "round(1 / 3, 2) == 0.33",
+      "expected": true
+    }
+  ]
+}

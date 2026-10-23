@@ -1,0 +1,2540 @@
+{
+  "schemaVersion": 1,
+  "id": "BB-TDP-01",
+  "version": "1.0",
+  "title": "Biên bản khảo sát thông số kỹ thuật",
+  "subtitle": "Tủ đổi pin xe máy điện VinFast (V-Green) – dùng cho 01 điểm khảo sát / 01 tủ",
+  "instructions": "• Mỗi dòng có Mã trường (A-01, C-07...) dùng làm tên trường; giữ nguyên mã khi xuất dữ liệu.\n• Ảnh ghi tên file theo quy tắc KS-TDP-01 Mục 7.3. Thang 1–5: 1 = rất kém/rất khó, 5 = rất tốt/rất dễ.\n• Trường đánh dấu * là bắt buộc. Không đo được → chọn \"KĐĐ\" và ghi lý do; giá trị ước lượng qua ảnh → đánh dấu \"~\".\n• An toàn: không đưa thước kim loại/thước cặp vào trong khoang tủ; kích thước trong khoang đo qua ảnh có thước tham chiếu hoặc camera nội soi.",
+  "recordTitle": "BB-TDP-01 / {HD-code} – {A-01}",
+  "mediaNamePattern": "{recordCode}_{fieldId}_{seq}",
+  "header": [
+    {
+      "id": "HD-code",
+      "label": "Mã biên bản",
+      "type": "text",
+      "required": true,
+      "prefix": "BB-TDP-01 / ",
+      "role": "recordCode",
+      "flags": false
+    },
+    {
+      "id": "HD-plan",
+      "label": "Kèm kế hoạch",
+      "type": "text",
+      "default": "KS-TDP-01",
+      "readonly": true,
+      "flags": false
+    },
+    {
+      "id": "HD-date",
+      "label": "Ngày khảo sát",
+      "type": "date",
+      "required": true,
+      "default": "$today"
+    },
+    {
+      "id": "HD-surveyor",
+      "label": "Người khảo sát",
+      "type": "text",
+      "required": true,
+      "flags": false
+    },
+    {
+      "id": "HD-checker",
+      "label": "Người kiểm tra",
+      "type": "text",
+      "flags": false
+    }
+  ],
+  "sections": [
+    {
+      "id": "A",
+      "title": "A. Thông tin chung",
+      "items": [
+        {
+          "id": "A-01",
+          "label": "Mã điểm khảo sát",
+          "type": "text",
+          "required": true,
+          "method": "Theo danh sách điểm",
+          "flags": false
+        },
+        {
+          "id": "A-02",
+          "label": "Ngày, giờ bắt đầu – kết thúc",
+          "type": "sessionTime",
+          "required": true,
+          "method": "App tự ghi"
+        },
+        {
+          "id": "A-03",
+          "label": "Địa chỉ",
+          "type": "text",
+          "required": true,
+          "flags": false
+        },
+        {
+          "id": "A-04",
+          "label": "Tọa độ GPS",
+          "type": "gps",
+          "required": true,
+          "unit": "Lat, Long",
+          "method": "App / GPS logger"
+        },
+        {
+          "id": "A-05",
+          "label": "Loại địa điểm",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "gas_station",
+              "label": "Cây xăng"
+            },
+            {
+              "value": "electronics",
+              "label": "Siêu thị điện máy"
+            },
+            {
+              "value": "phone_store",
+              "label": "Cửa hàng ĐT"
+            },
+            {
+              "value": "post_office",
+              "label": "Bưu cục"
+            },
+            {
+              "value": "residential",
+              "label": "Khu dân cư"
+            },
+            {
+              "value": "other",
+              "label": "Khác",
+              "withText": true
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "A-06",
+          "label": "Số tủ tại điểm",
+          "type": "integer",
+          "required": true,
+          "method": "Đếm",
+          "min": 0
+        },
+        {
+          "id": "A-07",
+          "label": "Số thứ tự tủ được khảo sát / serial",
+          "type": "text",
+          "required": true,
+          "method": "Nhãn tủ (ảnh P08)"
+        },
+        {
+          "id": "A-08",
+          "label": "Thời tiết lúc khảo sát",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "sunny",
+              "label": "Nắng"
+            },
+            {
+              "value": "overcast",
+              "label": "Râm"
+            },
+            {
+              "value": "rain",
+              "label": "Mưa"
+            },
+            {
+              "value": "after_rain",
+              "label": "Sau mưa"
+            },
+            {
+              "value": "humid",
+              "label": "Nồm/sương"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "A-09",
+          "label": "Lưu lượng người đổi pin",
+          "type": "number",
+          "unit": "lượt/giờ",
+          "method": "Đếm trong 30 phút × 2",
+          "min": 0
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "title": "B. Tủ đổi pin – cấu hình tổng thể",
+      "items": [
+        {
+          "id": "B-01",
+          "label": "Model / thế hệ tủ (theo nhãn)",
+          "type": "text",
+          "required": true,
+          "method": "Ảnh P08"
+        },
+        {
+          "id": "B-02",
+          "label": "Chiều cao tổng H (kể cả chân đế)",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn",
+          "min": 0
+        },
+        {
+          "id": "B-03",
+          "label": "Chiều rộng W",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn",
+          "min": 0
+        },
+        {
+          "id": "B-04",
+          "label": "Chiều sâu D",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn",
+          "min": 0
+        },
+        {
+          "id": "B-05",
+          "label": "Tổng số khoang pin",
+          "type": "integer",
+          "required": true,
+          "method": "Đếm",
+          "min": 0
+        },
+        {
+          "id": "B-06",
+          "label": "Bố trí khoang (số hàng × số cột), vị trí màn hình",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "rows",
+              "label": "Số hàng",
+              "type": "integer"
+            },
+            {
+              "id": "cols",
+              "label": "Số cột",
+              "type": "integer"
+            },
+            {
+              "id": "screen",
+              "label": "Vị trí màn hình",
+              "type": "text"
+            }
+          ],
+          "method": "Vẽ sơ đồ mặt trước",
+          "attachPhoto": true
+        },
+        {
+          "id": "B-07",
+          "label": "Số khoang: có pin / trống / báo lỗi-khóa",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "full",
+              "label": "Có pin",
+              "type": "integer"
+            },
+            {
+              "id": "empty",
+              "label": "Trống",
+              "type": "integer"
+            },
+            {
+              "id": "error",
+              "label": "Báo lỗi/khóa",
+              "type": "integer"
+            }
+          ],
+          "method": "Đèn trạng thái, màn hình"
+        },
+        {
+          "id": "B-08",
+          "label": "Chiều cao tâm khoang hàng thấp nhất so với nền",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn",
+          "min": 0
+        },
+        {
+          "id": "B-09",
+          "label": "Chiều cao tâm khoang hàng cao nhất so với nền",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn",
+          "min": 0
+        },
+        {
+          "id": "B-10",
+          "label": "Bước khoang (khoảng cách tâm–tâm) ngang / dọc",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "h",
+              "label": "Ngang",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "v",
+              "label": "Dọc",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "B-11",
+          "label": "Chiều cao tâm màn hình so với nền; đường chéo màn hình",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "height",
+              "label": "Chiều cao tâm",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "diag",
+              "label": "Đường chéo",
+              "type": "number",
+              "unit": "inch"
+            }
+          ],
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "B-12",
+          "label": "Phương thức xác thực",
+          "type": "multiChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "qr_app",
+              "label": "Quét QR bằng app"
+            },
+            {
+              "value": "touch",
+              "label": "Màn hình cảm ứng"
+            },
+            {
+              "value": "nfc",
+              "label": "NFC/thẻ"
+            },
+            {
+              "value": "auto_detect",
+              "label": "Tự nhận pin"
+            },
+            {
+              "value": "other",
+              "label": "Khác",
+              "withText": true
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "B-13",
+          "label": "Vật liệu và hoàn thiện vỏ; màu chủ đạo",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "painted_steel",
+              "label": "Thép sơn tĩnh điện"
+            },
+            {
+              "value": "stainless",
+              "label": "Inox"
+            },
+            {
+              "value": "aluminium",
+              "label": "Nhôm"
+            },
+            {
+              "value": "plastic",
+              "label": "Nhựa/composite"
+            }
+          ],
+          "method": "Quan sát, nam châm thử (thép/inox)",
+          "parts": [
+            {
+              "id": "color",
+              "label": "Màu chủ đạo",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "id": "B-14",
+          "label": "Kiểu lắp đặt",
+          "type": "singleChoice",
+          "options": [
+            {
+              "value": "freestanding",
+              "label": "Đặt sàn tự do"
+            },
+            {
+              "value": "floor_bolted",
+              "label": "Bắt bu-lông sàn"
+            },
+            {
+              "value": "wall",
+              "label": "Áp/bắt tường"
+            },
+            {
+              "value": "cluster",
+              "label": "Cụm nhiều tủ ghép"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "B-15",
+          "label": "Chiều cao chân đế / khe hở đáy tủ tới nền",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn (ảnh P09)",
+          "min": 0
+        },
+        {
+          "id": "B-16",
+          "label": "Mái che riêng của tủ",
+          "type": "yesNo",
+          "required": true,
+          "method": "Đo độ vươn so với mặt trước",
+          "flags": true,
+          "parts": [
+            {
+              "id": "overhang",
+              "label": "Độ vươn",
+              "type": "number",
+              "unit": "mm",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "B-17",
+          "label": "Thông gió: kiểu, vị trí hút – xả",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "natural",
+              "label": "Tự nhiên"
+            },
+            {
+              "value": "fan",
+              "label": "Quạt"
+            },
+            {
+              "value": "ac_tec",
+              "label": "Điều hòa/TEC"
+            }
+          ],
+          "method": "Quan sát, cảm nhận luồng gió, nghe quạt",
+          "parts": [
+            {
+              "id": "intake",
+              "label": "Hút",
+              "type": "text"
+            },
+            {
+              "id": "exhaust",
+              "label": "Xả",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "id": "B-18",
+          "label": "Lưới lọc bụi ở cửa gió",
+          "type": "yesNo",
+          "method": "Quan sát"
+        },
+        {
+          "id": "B-19",
+          "label": "Chiếu sáng khu vực thao tác / đèn trạng thái khoang",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "spot",
+              "label": "Đèn chiếu"
+            },
+            {
+              "value": "rim",
+              "label": "Đèn viền khoang"
+            },
+            {
+              "value": "slot_number",
+              "label": "Đèn số khoang"
+            },
+            {
+              "value": "none",
+              "label": "Không"
+            }
+          ],
+          "method": "Quan sát (cả ban đêm nếu có)"
+        },
+        {
+          "id": "B-20",
+          "label": "Thông số điện trên nhãn (V, A, kW, số pha)",
+          "type": "text",
+          "method": "Ảnh P08"
+        },
+        {
+          "id": "B-21",
+          "label": "Cấp IP / IK ghi trên nhãn",
+          "type": "text",
+          "method": "Ảnh P08"
+        },
+        {
+          "id": "B-22",
+          "label": "Camera giám sát, loa, nút khẩn cấp, bình chữa cháy",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "camera",
+              "label": "Camera"
+            },
+            {
+              "value": "speaker",
+              "label": "Loa"
+            },
+            {
+              "value": "emergency",
+              "label": "Nút khẩn"
+            },
+            {
+              "value": "extinguisher",
+              "label": "Bình CC"
+            },
+            {
+              "value": "warning_sign",
+              "label": "Biển cảnh báo"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "B-23",
+          "label": "Tiếp địa, cáp nguồn, tủ điện phụ nhìn thấy",
+          "type": "multiline",
+          "method": "Quan sát, không chạm",
+          "attachPhoto": true
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "title": "C. Khoang pin trên tủ & định vị connector",
+      "note": "Đo trên khoang trống khi cửa đang mở (bước B6). Kích thước trong khoang: chụp chính diện với thước tham chiếu áp sát mép khoang, ống kính vuông góc; số liệu đo lại trên ảnh đánh dấu \"~\".",
+      "items": [
+        {
+          "kind": "heading",
+          "id": "C1",
+          "title": "C1. Hình học khoang"
+        },
+        {
+          "id": "C-01",
+          "label": "Hướng đút pin",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "horizontal",
+              "label": "Ngang"
+            },
+            {
+              "value": "vertical",
+              "label": "Thẳng đứng"
+            },
+            {
+              "value": "inclined",
+              "label": "Nghiêng"
+            }
+          ],
+          "method": "Thước góc / app inclinometer đặt lên mặt pin khi đã vào khoang",
+          "parts": [
+            {
+              "id": "angle",
+              "label": "Góc nghiêng",
+              "type": "number",
+              "unit": "°",
+              "showWhen": {
+                "field": "$self",
+                "equals": "inclined"
+              }
+            }
+          ]
+        },
+        {
+          "id": "C-02",
+          "label": "Kích thước miệng khoang (rộng × cao)",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "w",
+              "label": "Rộng",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "h",
+              "label": "Cao",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Ảnh + thước tham chiếu"
+        },
+        {
+          "id": "C-03",
+          "label": "Chiều sâu khoang (miệng → mặt connector)",
+          "type": "number",
+          "unit": "mm",
+          "method": "Ước lượng: chiều dài pin + phần nhô ra / nội soi"
+        },
+        {
+          "id": "C-04",
+          "label": "Khe hở pin – thành khoang: trái / phải",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "left",
+              "label": "Trái",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "right",
+              "label": "Phải",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Ảnh chính diện khi pin đã vào"
+        },
+        {
+          "id": "C-05",
+          "label": "Khe hở pin – thành khoang: trên / dưới",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "top",
+              "label": "Trên",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "bottom",
+              "label": "Dưới",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Như C-04"
+        },
+        {
+          "id": "C-06",
+          "label": "Vát dẫn hướng (lead-in/chamfer) ở miệng khoang",
+          "type": "yesNo",
+          "required": true,
+          "method": "Ảnh 45° (P11)",
+          "flags": true,
+          "parts": [
+            {
+              "id": "width",
+              "label": "Rộng",
+              "type": "number",
+              "unit": "mm",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            },
+            {
+              "id": "angle",
+              "label": "Góc",
+              "type": "number",
+              "unit": "°",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "C-07",
+          "label": "Ray / gân dẫn hướng: số lượng, vị trí, vật liệu",
+          "type": "multiline",
+          "required": true,
+          "method": "Nội soi (P12)",
+          "attachPhoto": true
+        },
+        {
+          "id": "C-08",
+          "label": "Cơ cấu chống đút ngược (keying)",
+          "type": "multiChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "asymmetric",
+              "label": "Tiết diện bất đối xứng"
+            },
+            {
+              "value": "ridge",
+              "label": "Gờ/rãnh"
+            },
+            {
+              "value": "chamfer",
+              "label": "Vát góc"
+            },
+            {
+              "value": "none",
+              "label": "Không thấy"
+            }
+          ],
+          "method": "Quan sát tiết diện khoang & pin"
+        },
+        {
+          "id": "C-09",
+          "label": "Khoảng cách từ miệng khoang tới điểm dừng khi đút ngược (S09)",
+          "type": "number",
+          "unit": "mm",
+          "method": "Đánh dấu trên pin bằng băng dính, đo ngoài"
+        },
+        {
+          "kind": "heading",
+          "id": "C2",
+          "title": "C2. Connector & khóa"
+        },
+        {
+          "id": "C-10",
+          "label": "Vị trí connector trong khoang",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "end",
+              "label": "Mặt đáy (cuối khoang)"
+            },
+            {
+              "value": "bottom",
+              "label": "Mặt dưới"
+            },
+            {
+              "value": "side",
+              "label": "Mặt bên"
+            },
+            {
+              "value": "top",
+              "label": "Mặt trên"
+            }
+          ],
+          "method": "Nội soi"
+        },
+        {
+          "id": "C-11",
+          "label": "Kiểu connector, số chân/tiếp điểm quan sát được",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "blade",
+              "label": "Lưỡi (blade)"
+            },
+            {
+              "value": "pogo",
+              "label": "Chân lò xo (pogo)"
+            },
+            {
+              "value": "pin_socket",
+              "label": "Ổ – chốt (pin & socket)"
+            },
+            {
+              "value": "other",
+              "label": "Khác",
+              "withText": true
+            }
+          ],
+          "method": "Nội soi, so với connector trên pin",
+          "parts": [
+            {
+              "id": "pins",
+              "label": "Số chân",
+              "type": "integer"
+            }
+          ]
+        },
+        {
+          "id": "C-12",
+          "label": "Connector có cơ cấu nổi (floating) / lò xo bù sai lệch?",
+          "type": "yesNo",
+          "required": true,
+          "method": "Quan sát khe hở quanh đế connector",
+          "allowUnknown": true
+        },
+        {
+          "id": "C-13",
+          "label": "Chốt định vị (guide pin) gần connector",
+          "type": "yesNo",
+          "method": "Nội soi",
+          "parts": [
+            {
+              "id": "count",
+              "label": "Số chốt",
+              "type": "integer",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "C-14",
+          "label": "Cơ cấu khóa giữ pin",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "mechanical",
+              "label": "Chốt cơ khí"
+            },
+            {
+              "value": "solenoid",
+              "label": "Chốt điện từ"
+            },
+            {
+              "value": "friction",
+              "label": "Ma sát/lò xo"
+            },
+            {
+              "value": "door",
+              "label": "Cửa khóa giữ"
+            },
+            {
+              "value": "unknown",
+              "label": "Không rõ"
+            }
+          ],
+          "method": "Quan sát, cảm nhận khi rút"
+        },
+        {
+          "id": "C-15",
+          "label": "Cơ cấu đẩy pin ra (pop-out) – phần pin nhô ra khi nhả",
+          "type": "yesNo",
+          "method": "Thước cuộn",
+          "flags": true,
+          "parts": [
+            {
+              "id": "protrusion",
+              "label": "Phần nhô ra",
+              "type": "number",
+              "unit": "mm",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "C-16",
+          "label": "Hành trình từ lúc pin chạm ray đến khi khóa",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Đánh dấu trên pin"
+        },
+        {
+          "id": "C-17",
+          "label": "Lực đút / lực rút",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "insert",
+              "label": "Lực đút",
+              "type": "number",
+              "unit": "N hoặc 1–5"
+            },
+            {
+              "id": "pull",
+              "label": "Lực rút",
+              "type": "number",
+              "unit": "N hoặc 1–5"
+            }
+          ],
+          "method": "Lực kế đẩy – kéo (nếu được phép) hoặc cảm nhận"
+        },
+        {
+          "kind": "heading",
+          "id": "C3",
+          "title": "C3. Cửa khoang & phản hồi"
+        },
+        {
+          "id": "C-18",
+          "label": "Kiểu cửa khoang",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "flip_up",
+              "label": "Bản lề lật lên"
+            },
+            {
+              "value": "flip_down",
+              "label": "Lật xuống"
+            },
+            {
+              "value": "side_hinge",
+              "label": "Mở ngang"
+            },
+            {
+              "value": "sliding",
+              "label": "Trượt"
+            },
+            {
+              "value": "none",
+              "label": "Không có cửa"
+            }
+          ],
+          "method": "Quan sát (video P13)"
+        },
+        {
+          "id": "C-19",
+          "label": "Đóng/mở: tự động hay bằng tay",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "auto_open_manual_close",
+              "label": "Tự mở – tay đóng"
+            },
+            {
+              "value": "auto_both",
+              "label": "Tự mở – tự đóng"
+            },
+            {
+              "value": "manual",
+              "label": "Tay hoàn toàn"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "C-20",
+          "label": "Góc mở cửa",
+          "type": "number",
+          "unit": "°",
+          "method": "Thước góc"
+        },
+        {
+          "id": "C-21",
+          "label": "Thời gian chờ cửa tự đóng/hủy nếu không đút pin (timeout)",
+          "type": "number",
+          "required": true,
+          "unit": "s",
+          "method": "Bấm giờ",
+          "min": 0
+        },
+        {
+          "id": "C-22",
+          "label": "Gioăng cửa / gioăng miệng khoang",
+          "type": "singleChoice",
+          "options": [
+            {
+              "value": "none",
+              "label": "Không"
+            },
+            {
+              "value": "rubber",
+              "label": "Gioăng cao su"
+            },
+            {
+              "value": "brush",
+              "label": "Chổi chắn bụi"
+            },
+            {
+              "value": "other",
+              "label": "Khác",
+              "withText": true
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "C-23",
+          "label": "Rãnh thoát nước / đáy khoang có độ dốc",
+          "type": "yesNo",
+          "method": "Quan sát, thước góc"
+        },
+        {
+          "id": "C-24",
+          "label": "Chỉ dẫn hướng đút (hình vẽ, mũi tên, đèn)",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "sticker",
+              "label": "Tem hình"
+            },
+            {
+              "value": "arrow",
+              "label": "Mũi tên"
+            },
+            {
+              "value": "rim_light",
+              "label": "Đèn viền"
+            },
+            {
+              "value": "screen",
+              "label": "Hướng dẫn trên màn hình"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "C-25",
+          "label": "Phản hồi khi đút đúng",
+          "type": "multiChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "click",
+              "label": "Tiếng click"
+            },
+            {
+              "value": "beep",
+              "label": "Âm báo"
+            },
+            {
+              "value": "light",
+              "label": "Đèn đổi màu"
+            },
+            {
+              "value": "screen",
+              "label": "Màn hình xác nhận"
+            }
+          ],
+          "method": "Quan sát/nghe"
+        },
+        {
+          "id": "C-26",
+          "label": "Phản hồi khi đút sai / chưa đủ hành trình",
+          "type": "multiChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "none",
+              "label": "Không có"
+            },
+            {
+              "value": "beep",
+              "label": "Âm báo"
+            },
+            {
+              "value": "screen_error",
+              "label": "Màn hình báo lỗi (ghi mã lỗi)",
+              "withText": true
+            },
+            {
+              "value": "door_not_close",
+              "label": "Cửa không đóng"
+            }
+          ],
+          "method": "Kịch bản S09, S11"
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "title": "D. Viên pin & khoang pin trên xe",
+      "note": "Ưu tiên đo tại xưởng trước ngày đi (KS-TDP-01 Mục 4.4); tại hiện trường chỉ kiểm tra lại các trường *.",
+      "items": [
+        {
+          "id": "D-01",
+          "label": "Mã/nhãn pin; điện áp danh định; dung lượng",
+          "type": "text",
+          "required": true,
+          "method": "Ảnh nhãn (P14)"
+        },
+        {
+          "id": "D-02",
+          "label": "Kích thước bao L × W × H (không kể tay cầm)",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "l",
+              "label": "L",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "w",
+              "label": "W",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "h",
+              "label": "H",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Thước cặp / thước cuộn"
+        },
+        {
+          "id": "D-03",
+          "label": "Chiều cao kể cả tay cầm (dựng / gập)",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "up",
+              "label": "Dựng",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "folded",
+              "label": "Gập",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Thước cặp"
+        },
+        {
+          "id": "D-04",
+          "label": "Khối lượng",
+          "type": "number",
+          "required": true,
+          "unit": "kg",
+          "method": "Cân treo",
+          "min": 0
+        },
+        {
+          "id": "D-05",
+          "label": "Tiết diện ngang (vẽ phác, ghi các vát/gờ/rãnh định vị)",
+          "type": "multiline",
+          "method": "Thước cặp",
+          "attachPhoto": true
+        },
+        {
+          "id": "D-06",
+          "label": "Tay cầm: kiểu, vị trí, kích thước tay nắm",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "folding",
+              "label": "Quai gập"
+            },
+            {
+              "value": "fixed",
+              "label": "Quai cố định"
+            },
+            {
+              "value": "recess",
+              "label": "Hốc âm"
+            },
+            {
+              "value": "none",
+              "label": "Không có"
+            }
+          ],
+          "method": "Thước cặp",
+          "parts": [
+            {
+              "id": "gw",
+              "label": "Tay nắm rộng",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "gh",
+              "label": "Tay nắm cao",
+              "type": "number",
+              "unit": "mm"
+            }
+          ]
+        },
+        {
+          "id": "D-07",
+          "label": "Vị trí và kiểu connector trên pin; số chân; nắp che",
+          "type": "multiline",
+          "required": true,
+          "method": "Ảnh cận (P14)",
+          "attachPhoto": true,
+          "parts": [
+            {
+              "id": "pins",
+              "label": "Số chân",
+              "type": "integer"
+            },
+            {
+              "id": "cover",
+              "label": "Có nắp che",
+              "type": "yesNo"
+            }
+          ]
+        },
+        {
+          "id": "D-08",
+          "label": "Kích thước mặt connector, vị trí tâm so với mép pin",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "w",
+              "label": "Rộng",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "h",
+              "label": "Cao",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "offset",
+              "label": "Tâm cách mép",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Thước cặp"
+        },
+        {
+          "id": "D-09",
+          "label": "Cấp IP, tiêu chuẩn ghi trên nhãn",
+          "type": "text",
+          "method": "Ảnh nhãn"
+        },
+        {
+          "id": "D-10",
+          "label": "Hiển thị mức pin (SOC) trên viên pin",
+          "type": "yesNo",
+          "method": "Quan sát"
+        },
+        {
+          "id": "D-11",
+          "label": "Vật liệu vỏ; độ bám tay khi khô / ướt",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "material",
+              "label": "Vật liệu vỏ",
+              "type": "text"
+            },
+            {
+              "id": "dry",
+              "label": "Bám tay khi khô (1–5)",
+              "type": "rating"
+            },
+            {
+              "id": "wet",
+              "label": "Bám tay khi ướt (1–5)",
+              "type": "rating"
+            }
+          ],
+          "method": "Cảm nhận"
+        },
+        {
+          "id": "D-12",
+          "label": "Khoang trên xe: hướng đặt pin, cơ cấu dẫn hướng, khóa, quai giữ",
+          "type": "multiline",
+          "method": "Ảnh P15",
+          "attachPhoto": true
+        },
+        {
+          "id": "D-13",
+          "label": "Thời gian tháo 1 pin khỏi xe / lắp vào xe",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "remove",
+              "label": "Tháo khỏi xe",
+              "type": "number",
+              "unit": "s"
+            },
+            {
+              "id": "install",
+              "label": "Lắp vào xe",
+              "type": "number",
+              "unit": "s"
+            }
+          ],
+          "method": "Bấm giờ (T1→rút xong; T6→T7)"
+        }
+      ]
+    },
+    {
+      "id": "E",
+      "title": "E. Thao tác đổi pin theo kịch bản",
+      "items": [
+        {
+          "kind": "table",
+          "id": "E1",
+          "title": "E1. Nhật ký từng lượt đổi pin",
+          "rowLabel": "Lượt",
+          "note": "O = quan sát người dùng; T = nhóm tự thử. Mã kịch bản S01–S15 theo KS-TDP-01 Mục 6.2.",
+          "columns": [
+            {
+              "id": "kb",
+              "label": "Mã KB",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "S01",
+                  "label": "S01"
+                },
+                {
+                  "value": "S02",
+                  "label": "S02"
+                },
+                {
+                  "value": "S03",
+                  "label": "S03"
+                },
+                {
+                  "value": "S04",
+                  "label": "S04"
+                },
+                {
+                  "value": "S05",
+                  "label": "S05"
+                },
+                {
+                  "value": "S06",
+                  "label": "S06"
+                },
+                {
+                  "value": "S07",
+                  "label": "S07"
+                },
+                {
+                  "value": "S08",
+                  "label": "S08"
+                },
+                {
+                  "value": "S09",
+                  "label": "S09"
+                },
+                {
+                  "value": "S10",
+                  "label": "S10"
+                },
+                {
+                  "value": "S11",
+                  "label": "S11"
+                },
+                {
+                  "value": "S12",
+                  "label": "S12"
+                },
+                {
+                  "value": "S13",
+                  "label": "S13"
+                },
+                {
+                  "value": "S14",
+                  "label": "S14"
+                },
+                {
+                  "value": "S15",
+                  "label": "S15"
+                }
+              ]
+            },
+            {
+              "id": "mode",
+              "label": "O/T",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "O",
+                  "label": "O – quan sát"
+                },
+                {
+                  "value": "T",
+                  "label": "T – tự thử"
+                }
+              ]
+            },
+            {
+              "id": "gender",
+              "label": "Giới tính",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "M",
+                  "label": "Nam"
+                },
+                {
+                  "value": "F",
+                  "label": "Nữ"
+                }
+              ]
+            },
+            {
+              "id": "height",
+              "label": "Chiều cao ước lượng",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "short",
+                  "label": "Thấp <155"
+                },
+                {
+                  "value": "mid",
+                  "label": "TB"
+                },
+                {
+                  "value": "tall",
+                  "label": "Cao >175"
+                }
+              ]
+            },
+            {
+              "id": "group",
+              "label": "Nhóm",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "DV",
+                  "label": "DV – dịch vụ"
+                },
+                {
+                  "value": "CN",
+                  "label": "CN – cá nhân"
+                }
+              ]
+            },
+            {
+              "id": "hand",
+              "label": "Tay đút / rút",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "1T-P",
+                  "label": "1T-P (1 tay phải)"
+                },
+                {
+                  "value": "1T-T",
+                  "label": "1T-T (1 tay trái)"
+                },
+                {
+                  "value": "2T",
+                  "label": "2T"
+                }
+              ]
+            },
+            {
+              "id": "slotRow",
+              "label": "Hàng khoang",
+              "type": "text",
+              "flags": false
+            },
+            {
+              "id": "attempts",
+              "label": "Số lần đút",
+              "type": "integer",
+              "min": 0
+            },
+            {
+              "id": "result",
+              "label": "Kết quả",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "OK",
+                  "label": "OK"
+                },
+                {
+                  "value": "DL",
+                  "label": "ĐL (phải đút lại)"
+                },
+                {
+                  "value": "ERR",
+                  "label": "LỖI (tủ báo lỗi)"
+                },
+                {
+                  "value": "JAM",
+                  "label": "KẸT"
+                }
+              ]
+            },
+            {
+              "id": "remark",
+              "label": "Tư thế, va chạm, lỗi",
+              "type": "multiline"
+            },
+            {
+              "id": "video",
+              "label": "Video",
+              "type": "video"
+            }
+          ]
+        },
+        {
+          "kind": "table",
+          "id": "E2",
+          "title": "E2. Giới hạn sai lệch khi đút (nhóm tự thử)",
+          "rows": [
+            {
+              "id": "S04-5",
+              "fixed": {
+                "kb": "S04",
+                "deviation": "Lệch ngang trái / phải",
+                "level": "5 mm",
+                "levelValue": 5
+              }
+            },
+            {
+              "id": "S04-10",
+              "fixed": {
+                "kb": "S04",
+                "deviation": "Lệch ngang trái / phải",
+                "level": "10 mm",
+                "levelValue": 10
+              }
+            },
+            {
+              "id": "S05-5",
+              "fixed": {
+                "kb": "S05",
+                "deviation": "Lệch dọc lên / xuống",
+                "level": "5 mm",
+                "levelValue": 5
+              }
+            },
+            {
+              "id": "S05-10",
+              "fixed": {
+                "kb": "S05",
+                "deviation": "Lệch dọc lên / xuống",
+                "level": "10 mm",
+                "levelValue": 10
+              }
+            },
+            {
+              "id": "S06-5",
+              "fixed": {
+                "kb": "S06",
+                "deviation": "Nghiêng pitch",
+                "level": "5°",
+                "levelValue": 5
+              }
+            },
+            {
+              "id": "S06-10",
+              "fixed": {
+                "kb": "S06",
+                "deviation": "Nghiêng pitch",
+                "level": "10°",
+                "levelValue": 10
+              }
+            },
+            {
+              "id": "S06-15",
+              "fixed": {
+                "kb": "S06",
+                "deviation": "Nghiêng pitch",
+                "level": "15°",
+                "levelValue": 15
+              }
+            },
+            {
+              "id": "S07",
+              "fixed": {
+                "kb": "S07",
+                "deviation": "Nghiêng yaw",
+                "level": "5° / 10°"
+              }
+            },
+            {
+              "id": "S08",
+              "fixed": {
+                "kb": "S08",
+                "deviation": "Xoay roll",
+                "level": "5° / 10°"
+              }
+            },
+            {
+              "id": "S09",
+              "fixed": {
+                "kb": "S09",
+                "deviation": "Đút ngược 180° / lật mặt ⚠",
+                "level": "—"
+              }
+            },
+            {
+              "id": "S11",
+              "fixed": {
+                "kb": "S11",
+                "deviation": "Đút chưa hết hành trình",
+                "level": "~70–80 %"
+              }
+            },
+            {
+              "id": "S12",
+              "fixed": {
+                "kb": "S12",
+                "deviation": "Rút ra trước khi tủ xác nhận",
+                "level": "—"
+              }
+            }
+          ],
+          "columns": [
+            {
+              "id": "kb",
+              "label": "Mã KB",
+              "type": "text",
+              "readonly": true,
+              "flags": false
+            },
+            {
+              "id": "deviation",
+              "label": "Kiểu sai lệch",
+              "type": "text",
+              "readonly": true,
+              "flags": false
+            },
+            {
+              "id": "level",
+              "label": "Mức thử",
+              "type": "text",
+              "readonly": true,
+              "flags": false
+            },
+            {
+              "id": "entered",
+              "label": "Vào được / tủ nhận?",
+              "type": "yesNo",
+              "hint": "S09: Có = vào được, Không = bị chặn"
+            },
+            {
+              "id": "phenomenon",
+              "label": "Hiện tượng",
+              "type": "multiline",
+              "hint": "Tự trượt vào / cấn / kẹt / tủ báo lỗi; S09: điểm dừng (C-09); S12: phản ứng của tủ"
+            }
+          ]
+        },
+        {
+          "id": "E-01",
+          "label": "Sai lệch ngang lớn nhất vẫn vào được",
+          "type": "computed",
+          "unit": "mm",
+          "formula": "max(E2, {@levelValue}, {@kb} == \"S04\" && {@entered} == true)"
+        },
+        {
+          "id": "E-02",
+          "label": "Góc pitch lớn nhất vẫn vào được",
+          "type": "computed",
+          "unit": "°",
+          "formula": "max(E2, {@levelValue}, {@kb} == \"S06\" && {@entered} == true)"
+        },
+        {
+          "id": "E-03",
+          "label": "Tỷ lệ thao tác 2 tay (O)",
+          "type": "computed",
+          "unit": "%",
+          "formula": "pct(E1, {@hand} == \"2T\", {@mode} == \"O\")",
+          "decimals": 0
+        },
+        {
+          "id": "E-04",
+          "label": "Tỷ lệ phải đút lại (O)",
+          "type": "computed",
+          "unit": "%",
+          "formula": "pct(E1, {@result} == \"DL\" || {@attempts} > 1, {@mode} == \"O\")",
+          "decimals": 0
+        }
+      ]
+    },
+    {
+      "id": "F",
+      "title": "F. Thời gian chu trình đổi pin",
+      "items": [
+        {
+          "kind": "table",
+          "id": "F1",
+          "title": "F1. Bảng thời gian theo lượt",
+          "rowLabel": "Lượt",
+          "note": "Ghi thời điểm (mm:ss tính từ T0). T0 dừng xe; T1 mở yên; T2 bắt đầu xác thực; T3 khoang trống mở; T4 đút pin cũ xong; T5 khoang pin đầy mở; T6 rút pin đầy; T7 lắp xong vào xe; T8 rời tủ.",
+          "stopwatch": {
+            "columns": [
+              "T1",
+              "T2",
+              "T3",
+              "T4",
+              "T5",
+              "T6",
+              "T7",
+              "T8"
+            ]
+          },
+          "columns": [
+            {
+              "id": "mode",
+              "label": "O/T",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "O",
+                  "label": "O – quan sát"
+                },
+                {
+                  "value": "T",
+                  "label": "T – tự thử"
+                }
+              ]
+            },
+            {
+              "id": "batteries",
+              "label": "Số pin",
+              "type": "integer",
+              "min": 0
+            },
+            {
+              "id": "T1",
+              "label": "T1 mở yên",
+              "type": "elapsed"
+            },
+            {
+              "id": "T2",
+              "label": "T2 bắt đầu xác thực",
+              "type": "elapsed"
+            },
+            {
+              "id": "T3",
+              "label": "T3 khoang trống mở",
+              "type": "elapsed"
+            },
+            {
+              "id": "T4",
+              "label": "T4 đút pin cũ xong",
+              "type": "elapsed"
+            },
+            {
+              "id": "T5",
+              "label": "T5 khoang pin đầy mở",
+              "type": "elapsed"
+            },
+            {
+              "id": "T6",
+              "label": "T6 rút pin đầy",
+              "type": "elapsed"
+            },
+            {
+              "id": "T7",
+              "label": "T7 lắp xong vào xe",
+              "type": "elapsed"
+            },
+            {
+              "id": "T8",
+              "label": "T8 rời tủ",
+              "type": "elapsed"
+            },
+            {
+              "id": "note",
+              "label": "Ghi chú",
+              "type": "text",
+              "flags": false
+            }
+          ]
+        },
+        {
+          "id": "F-01",
+          "label": "Thời gian tại tủ trung bình (T2→T6)",
+          "type": "computed",
+          "unit": "s",
+          "formula": "avg(F1, {@T6} - {@T2})",
+          "decimals": 0
+        },
+        {
+          "id": "F-02",
+          "label": "Tổng trung bình (T0→T8)",
+          "type": "computed",
+          "unit": "s",
+          "formula": "avg(F1, {@T8})",
+          "decimals": 0
+        },
+        {
+          "id": "F-03",
+          "label": "Thời gian tủ xử lý (T4→T5)",
+          "type": "computed",
+          "unit": "s",
+          "formula": "avg(F1, {@T5} - {@T4})",
+          "decimals": 0
+        }
+      ]
+    },
+    {
+      "id": "G",
+      "title": "G. Điều kiện vận hành & môi trường",
+      "items": [
+        {
+          "kind": "heading",
+          "id": "G1",
+          "title": "G1. Đặc điểm vị trí lắp đặt"
+        },
+        {
+          "id": "G-01",
+          "label": "Kiểu che chắn",
+          "type": "singleChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "outdoor",
+              "label": "Ngoài trời, không che"
+            },
+            {
+              "value": "shared_roof",
+              "label": "Có mái chung (cây xăng, hiên)"
+            },
+            {
+              "value": "indoor",
+              "label": "Trong nhà"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "G-02",
+          "label": "Hướng mặt trước tủ",
+          "type": "compass",
+          "required": true,
+          "unit": "° (0 = Bắc)",
+          "method": "La bàn"
+        },
+        {
+          "id": "G-03",
+          "label": "Khung giờ mặt trước/nóc tủ bị nắng trực tiếp",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "from",
+              "label": "Từ",
+              "type": "time"
+            },
+            {
+              "id": "to",
+              "label": "Đến",
+              "type": "time"
+            }
+          ],
+          "method": "Ước lượng theo hướng + vật che, hỏi chủ điểm"
+        },
+        {
+          "id": "G-04",
+          "label": "Độ vươn mái che (chung) so với mặt tủ; chiều cao mái",
+          "type": "composite",
+          "required": true,
+          "parts": [
+            {
+              "id": "overhang",
+              "label": "Độ vươn",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "height",
+              "label": "Chiều cao mái",
+              "type": "number",
+              "unit": "mm"
+            }
+          ],
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "G-05",
+          "label": "Chênh cao mặt nền đặt tủ so với lòng đường",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "G-06",
+          "label": "Đáy khoang thấp nhất so với nền (= B-08 trừ ½ chiều cao khoang)",
+          "type": "number",
+          "required": true,
+          "unit": "mm",
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "G-07",
+          "label": "Dấu vết ngập (vệt nước, bùn, rỉ) – cao độ so với nền",
+          "type": "yesNo",
+          "required": true,
+          "method": "Quan sát, hỏi chủ điểm",
+          "flags": true,
+          "attachPhoto": true,
+          "parts": [
+            {
+              "id": "height",
+              "label": "Cao độ",
+              "type": "number",
+              "unit": "mm",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "G-08",
+          "label": "Mực ngập lớn nhất theo lời kể (so với nền đặt tủ)",
+          "type": "number",
+          "unit": "mm",
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "G-09",
+          "label": "Thoát nước quanh tủ",
+          "type": "rating",
+          "max": 5,
+          "minLabel": "Rất kém/rất khó",
+          "maxLabel": "Rất tốt/rất dễ",
+          "method": "Quan sát độ dốc, rãnh, nước đọng"
+        },
+        {
+          "id": "G-10",
+          "label": "Khả năng mưa hắt vào mặt tủ / khoang khi mở cửa",
+          "type": "rating",
+          "max": 5,
+          "minLabel": "Rất kém/rất khó",
+          "maxLabel": "Rất tốt/rất dễ",
+          "method": "Hướng gió, mái che, vị trí khoang"
+        },
+        {
+          "id": "G-11",
+          "label": "Nguồn bụi xung quanh",
+          "type": "multiChoice",
+          "required": true,
+          "options": [
+            {
+              "value": "main_road",
+              "label": "Đường lớn"
+            },
+            {
+              "value": "construction",
+              "label": "Công trình"
+            },
+            {
+              "value": "dirt_road",
+              "label": "Đường đất"
+            },
+            {
+              "value": "market",
+              "label": "Chợ"
+            },
+            {
+              "value": "low",
+              "label": "Ít bụi"
+            }
+          ],
+          "method": "Quan sát"
+        },
+        {
+          "id": "G-12",
+          "label": "Mức bụi tích trên lưới gió / trong miệng khoang",
+          "type": "rating",
+          "max": 5,
+          "minLabel": "Rất kém/rất khó",
+          "maxLabel": "Rất tốt/rất dễ",
+          "method": "Ảnh cận"
+        },
+        {
+          "id": "G-13",
+          "label": "Khoảng cách tủ tới lối xe chạy; có cột/gờ chắn va",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "distance",
+              "label": "Khoảng cách",
+              "type": "number",
+              "unit": "mm"
+            },
+            {
+              "id": "barrier",
+              "label": "Có cột/gờ chắn",
+              "type": "yesNo"
+            }
+          ],
+          "method": "Thước cuộn"
+        },
+        {
+          "id": "G-14",
+          "label": "Dấu hiệu xuống cấp: rỉ sét, phai màu, nứt nhựa, bong tem, trầy xước",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "rust",
+              "label": "Rỉ"
+            },
+            {
+              "value": "fade",
+              "label": "Phai"
+            },
+            {
+              "value": "crack",
+              "label": "Nứt"
+            },
+            {
+              "value": "peel",
+              "label": "Bong tem"
+            },
+            {
+              "value": "dent",
+              "label": "Móp/trầy"
+            }
+          ],
+          "method": "Quan sát",
+          "attachPhoto": true
+        },
+        {
+          "id": "G-15",
+          "label": "Độ ồn tại 1 m trước tủ (quạt chạy / không chạy)",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "on",
+              "label": "Quạt chạy",
+              "type": "number",
+              "unit": "dB(A)"
+            },
+            {
+              "id": "off",
+              "label": "Không chạy",
+              "type": "number",
+              "unit": "dB(A)"
+            }
+          ],
+          "method": "App đo ồn"
+        },
+        {
+          "id": "G-16",
+          "label": "Độ dễ đọc màn hình dưới điều kiện hiện tại",
+          "type": "rating",
+          "max": 5,
+          "minLabel": "Rất kém/rất khó",
+          "maxLabel": "Rất tốt/rất dễ",
+          "method": "Đánh giá"
+        },
+        {
+          "id": "G-17",
+          "label": "Ngưng tụ / đọng sương trên màn hình, cửa khoang, vỏ",
+          "type": "yesNo",
+          "method": "Quan sát",
+          "parts": [
+            {
+              "id": "location",
+              "label": "Vị trí",
+              "type": "text",
+              "showWhen": {
+                "field": "$self",
+                "equals": true
+              }
+            }
+          ]
+        },
+        {
+          "kind": "heading",
+          "id": "G2",
+          "title": "G2. Đo nhiệt – ẩm",
+          "note": "Camera nhiệt đặt ε = 0,95; chỉ đọc trên bề mặt sơn/nhựa nhám; đối chiếu thermocouple tại ít nhất 1 điểm. T_dp tính theo Magnus (KS-TDP-01 Mục 8.2). ΔT_min = T bề mặt thấp nhất − T_dp."
+        },
+        {
+          "id": "G-20",
+          "label": "Giờ đo",
+          "type": "time",
+          "required": true,
+          "samples": 3
+        },
+        {
+          "id": "G-21",
+          "label": "Nắng trực tiếp lên tủ (C/K)",
+          "type": "yesNo",
+          "required": true,
+          "samples": 3
+        },
+        {
+          "id": "G-22",
+          "label": "Nhiệt độ môi trường T_amb (bóng râm, cách 1 m)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-23",
+          "label": "Độ ẩm tương đối RH",
+          "type": "number",
+          "required": true,
+          "unit": "%",
+          "samples": 3,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "id": "G-24",
+          "label": "Điểm sương T_dp (tính)",
+          "type": "computed",
+          "unit": "°C",
+          "formula": "dewpoint({G-22}, {G-23})",
+          "samples": 3,
+          "decimals": 1
+        },
+        {
+          "id": "G-25",
+          "label": "T nóc tủ",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-26",
+          "label": "T mặt trước (vùng sơn, nóng nhất)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-27",
+          "label": "T mặt bên / mặt sau",
+          "type": "number",
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-28",
+          "label": "T màn hình (khung viền nhựa, không đọc trên kính)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-29",
+          "label": "T cửa khoang (hàng nóng nhất)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-30",
+          "label": "T không khí tại cửa xả gió",
+          "type": "number",
+          "unit": "°C",
+          "samples": 3,
+          "hint": "Đo bằng thermocouple"
+        },
+        {
+          "id": "G-31",
+          "label": "T đối chiếu bằng thermocouple",
+          "type": "number",
+          "unit": "°C",
+          "samples": 3,
+          "parts": [
+            {
+              "id": "location",
+              "label": "Vị trí",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "id": "G-32",
+          "label": "T bề mặt pin đầy vừa lấy ra (ngay sau T6)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-33",
+          "label": "T bề mặt pin cũ vừa tháo khỏi xe (ngay sau T1)",
+          "type": "number",
+          "required": true,
+          "unit": "°C",
+          "samples": 3
+        },
+        {
+          "id": "G-34",
+          "label": "T bề mặt thấp nhất trên tủ",
+          "type": "number",
+          "unit": "°C",
+          "samples": 3,
+          "parts": [
+            {
+              "id": "location",
+              "label": "Vị trí",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "id": "G-35",
+          "label": "ΔT_min = G-34 − G-24 (nguy cơ ngưng tụ nếu < 3 K)",
+          "type": "computed",
+          "unit": "K",
+          "formula": "{G-34} - {G-24}",
+          "samples": 3,
+          "decimals": 1
+        },
+        {
+          "id": "G-36",
+          "label": "Quạt tủ đang chạy (C/K)",
+          "type": "yesNo",
+          "samples": 3,
+          "parts": [
+            {
+              "id": "swaps",
+              "label": "Số lượt đổi trong 15 phút trước khi đo",
+              "type": "integer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H",
+      "title": "H. Ý kiến người dùng",
+      "items": [
+        {
+          "kind": "table",
+          "id": "H1",
+          "title": "H1. Phỏng vấn người dùng",
+          "rowLabel": "Người",
+          "note": "Thứ tự câu hỏi theo KS-TDP-01 Mục 9.1. Đồng thuận: Đ = đồng ý quay, GA = chỉ ghi âm, K = không.",
+          "columns": [
+            {
+              "id": "group",
+              "label": "Nhóm DV/CN",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "DV",
+                  "label": "DV – dịch vụ"
+                },
+                {
+                  "value": "CN",
+                  "label": "CN – cá nhân"
+                }
+              ]
+            },
+            {
+              "id": "frequency",
+              "label": "Lượt/tuần; số pin",
+              "type": "text",
+              "flags": false
+            },
+            {
+              "id": "hardestStep",
+              "label": "Bước khó nhất",
+              "type": "text",
+              "flags": false
+            },
+            {
+              "id": "retry",
+              "label": "Từng đút lại / lỗi?",
+              "type": "text",
+              "flags": false
+            },
+            {
+              "id": "weather",
+              "label": "Khó khăn thời tiết",
+              "type": "multiline"
+            },
+            {
+              "id": "satisfaction",
+              "label": "Hài lòng 1–5",
+              "type": "rating",
+              "max": 5,
+              "minLabel": "Rất kém/rất khó",
+              "maxLabel": "Rất tốt/rất dễ"
+            },
+            {
+              "id": "suggestion",
+              "label": "Đề xuất / trích dẫn",
+              "type": "multiline"
+            },
+            {
+              "id": "consent",
+              "label": "Đồng thuận",
+              "type": "singleChoice",
+              "options": [
+                {
+                  "value": "D",
+                  "label": "Đ – đồng ý quay"
+                },
+                {
+                  "value": "GA",
+                  "label": "GA – chỉ ghi âm"
+                },
+                {
+                  "value": "K",
+                  "label": "K – không"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "heading",
+          "id": "H2",
+          "title": "H2. Thông tin từ chủ điểm / nhân viên"
+        },
+        {
+          "id": "H-01",
+          "label": "Thời điểm lắp tủ",
+          "type": "month",
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "H-02",
+          "label": "Số lượt đổi trung bình/ngày; giờ cao điểm",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "perDay",
+              "label": "Lượt/ngày",
+              "type": "number"
+            },
+            {
+              "id": "peak",
+              "label": "Giờ cao điểm",
+              "type": "text"
+            }
+          ],
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "H-03",
+          "label": "Tần suất tủ báo lỗi / ngừng hoạt động; loại lỗi",
+          "type": "composite",
+          "parts": [
+            {
+              "id": "perMonth",
+              "label": "Lần/tháng",
+              "type": "number"
+            },
+            {
+              "id": "types",
+              "label": "Loại lỗi",
+              "type": "text"
+            }
+          ],
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "H-04",
+          "label": "Tủ ngừng hoạt động khi nắng nóng / mưa / ngập / mất điện?",
+          "type": "multiChoice",
+          "options": [
+            {
+              "value": "heat",
+              "label": "Nóng"
+            },
+            {
+              "value": "rain",
+              "label": "Mưa"
+            },
+            {
+              "value": "flood",
+              "label": "Ngập"
+            },
+            {
+              "value": "power",
+              "label": "Mất điện"
+            },
+            {
+              "value": "never",
+              "label": "Chưa từng"
+            }
+          ],
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "H-05",
+          "label": "Bảo trì: đơn vị, tần suất, nội dung (vệ sinh lưới lọc, khoang...)",
+          "type": "multiline",
+          "method": "Phỏng vấn"
+        },
+        {
+          "id": "H-06",
+          "label": "Phản ánh thường gặp của khách",
+          "type": "multiline",
+          "method": "Phỏng vấn"
+        }
+      ]
+    },
+    {
+      "id": "I",
+      "title": "I. Danh mục ảnh / video đã thu",
+      "items": [
+        {
+          "id": "P01-04",
+          "label": "Toàn cảnh 4 hướng",
+          "type": "photo",
+          "minCount": 4
+        },
+        {
+          "id": "P05",
+          "label": "Mặt trước chính diện kèm thước đứng",
+          "type": "photo"
+        },
+        {
+          "id": "P06-07",
+          "label": "Mặt bên, mặt sau, nóc, lưới gió",
+          "type": "photo"
+        },
+        {
+          "id": "P08",
+          "label": "Nhãn tủ",
+          "type": "photo"
+        },
+        {
+          "id": "P09",
+          "label": "Chân đế – nền – khe đáy",
+          "type": "photo"
+        },
+        {
+          "id": "P10",
+          "label": "Màn hình: hướng dẫn, thông báo lỗi",
+          "type": "photo"
+        },
+        {
+          "id": "P11",
+          "label": "Miệng khoang trống: chính diện, 45° trái/phải, từ trên",
+          "type": "photo"
+        },
+        {
+          "id": "P12",
+          "label": "Nội soi trong khoang, connector",
+          "type": "photo"
+        },
+        {
+          "id": "P13",
+          "label": "Cửa khoang, gioăng, khóa (ảnh)",
+          "type": "photo"
+        },
+        {
+          "id": "P13-V",
+          "label": "Cửa khoang, gioăng, khóa (video)",
+          "type": "video"
+        },
+        {
+          "id": "P14-15",
+          "label": "Viên pin 6 mặt; khoang pin trên xe",
+          "type": "photo"
+        },
+        {
+          "id": "V01",
+          "label": "Chu trình chuẩn S01 – 2 góc + POV (≥ 3 lượt)",
+          "type": "video",
+          "minCount": 3
+        },
+        {
+          "id": "V02",
+          "label": "Kịch bản S02–S15",
+          "type": "video"
+        },
+        {
+          "id": "V03",
+          "label": "Người dùng thật (đã đồng thuận)",
+          "type": "video"
+        },
+        {
+          "id": "TH01",
+          "label": "Ảnh nhiệt toàn tủ + các điểm G-25 → G-34",
+          "type": "photo"
+        }
+      ]
+    },
+    {
+      "id": "J",
+      "title": "J. Nhận xét kỹ thuật của người khảo sát",
+      "note": "Nhận xét / bài học cho thiết kế tủ KIMSEN",
+      "items": [
+        {
+          "id": "J-01",
+          "label": "Định vị pin – connector (dung sai, dẫn hướng, keying)",
+          "type": "multiline"
+        },
+        {
+          "id": "J-02",
+          "label": "Công thái học (chiều cao khoang, 1 tay/2 tay, khối lượng pin)",
+          "type": "multiline"
+        },
+        {
+          "id": "J-03",
+          "label": "Phản hồi người dùng & xử lý lỗi",
+          "type": "multiline"
+        },
+        {
+          "id": "J-04",
+          "label": "Chống nước, ngập, bụi",
+          "type": "multiline"
+        },
+        {
+          "id": "J-05",
+          "label": "Nhiệt & ngưng tụ",
+          "type": "multiline"
+        },
+        {
+          "id": "J-06",
+          "label": "Điểm khác thường / cần khảo sát lại",
+          "type": "multiline"
+        }
+      ]
+    }
+  ],
+  "signatures": [
+    {
+      "id": "surveyor",
+      "label": "Người khảo sát"
+    },
+    {
+      "id": "checker",
+      "label": "Người kiểm tra"
+    }
+  ]
+}
