@@ -13,6 +13,7 @@ import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.isEmptyJson
 import com.ncthanhngo.pollmaster.core.model.mediaItems
 import com.ncthanhngo.pollmaster.core.model.tables
+import com.ncthanhngo.pollmaster.core.project.ProjectRef
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -22,7 +23,7 @@ import kotlinx.serialization.json.JsonPrimitive
 /** Builds `export.json` (schema section 5.1). */
 object ExportJson {
 
-    fun build(template: Template, record: Record): JsonObject {
+    fun build(template: Template, record: Record, project: ProjectRef? = null): JsonObject {
         val engine = FormulaEngine(RecordSource(template, record))
         val fields = LinkedHashMap<String, JsonElement>()
         val computed = LinkedHashMap<String, JsonElement>()
@@ -35,8 +36,9 @@ object ExportJson {
         }
         val tables = LinkedHashMap<String, JsonElement>()
         for (t in template.tables()) tables[t.id] = JsonArray(tableRows(t, record))
+        val head = project?.let { mapOf("project" to obj("id" to str(it.id), "code" to str(it.code), "name" to str(it.name))) }.orEmpty()
         return JsonObject(
-            mapOf(
+            head + mapOf(
                 "template" to obj("id" to str(template.id), "version" to str(template.version), "title" to str(template.title)),
                 "record" to obj(
                     "id" to str(record.id), "status" to str(record.status), "createdAt" to str(record.createdAt),
@@ -93,5 +95,6 @@ object ExportJson {
     private fun str(s: String) = JsonPrimitive(s)
     private fun obj(vararg pairs: Pair<String, JsonElement>) = JsonObject(pairs.toMap())
 
-    fun encode(template: Template, record: Record): String = PollJson.encodeToString(JsonObject.serializer(), build(template, record))
+    fun encode(template: Template, record: Record, project: ProjectRef? = null): String =
+        PollJson.encodeToString(JsonObject.serializer(), build(template, record, project))
 }

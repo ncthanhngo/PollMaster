@@ -6,7 +6,8 @@ sealed interface Cell {
     data class Num(val value: Double) : Cell
 }
 
-data class SheetData(val name: String, val headers: List<String>, val rows: List<List<Cell>>)
+/** [headerRows] = number of leading rows (the headers, plus that many minus 1 of [rows]) shown bold and frozen. */
+data class SheetData(val name: String, val headers: List<String>, val rows: List<List<Cell>>, val headerRows: Int = 1)
 
 data class DocImage(val path: String, val caption: String)
 

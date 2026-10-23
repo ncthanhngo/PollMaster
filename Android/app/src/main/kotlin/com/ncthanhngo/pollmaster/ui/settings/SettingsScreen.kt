@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -40,7 +39,6 @@ import com.ncthanhngo.pollmaster.BuildConfig
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
-import com.ncthanhngo.pollmaster.ui.common.rememberSitesCsvPicker
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.data.PhotoQuality
 import kotlinx.coroutines.Dispatchers
@@ -109,8 +107,6 @@ fun SettingsScreen() {
             HorizontalDivider()
             BackupSection()
             HorizontalDivider()
-            SitesSection(onMessage = { Toast.makeText(context, it, Toast.LENGTH_LONG).show() })
-            HorizontalDivider()
             InfoRow(stringResource(R.string.settings_storage), Formatter.formatShortFileSize(context, used))
             InfoRow(stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
         }
@@ -151,30 +147,6 @@ private fun BackupSection() {
                 }
             },
         ) { Text(stringResource(R.string.settings_backup_now)) }
-    }
-}
-
-@Composable
-private fun SitesSection(onMessage: (String) -> Unit) {
-    val container = LocalContainer.current
-    val context = LocalContext.current
-    val sites by container.sites.sites.collectAsState()
-    val pickCsv = rememberSitesCsvPicker { result ->
-        onMessage(
-            result.fold(
-                { context.getString(R.string.settings_sites_imported, it) },
-                { context.getString(R.string.settings_sites_error, it.message.orEmpty()) },
-            ),
-        )
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.settings_sites), style = MaterialTheme.typography.titleSmall)
-        Text(stringResource(R.string.settings_sites_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.settings_sites_count, sites.size), style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = pickCsv) { Text(stringResource(R.string.settings_sites_import)) }
-            OutlinedButton(enabled = sites.isNotEmpty(), onClick = container.sites::clear) { Text(stringResource(R.string.settings_sites_clear)) }
-        }
     }
 }
 

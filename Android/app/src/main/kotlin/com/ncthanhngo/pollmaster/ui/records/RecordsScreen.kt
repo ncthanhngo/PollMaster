@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -59,21 +60,36 @@ import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
-import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.data.RecordItem
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
 import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
+import com.ncthanhngo.pollmaster.core.project.ProjectRules
+import com.ncthanhngo.pollmaster.core.project.ProjectStats
 import com.ncthanhngo.pollmaster.ui.editor.ExportSheet
+import com.ncthanhngo.pollmaster.ui.projects.ProjectChoiceDialog
+import com.ncthanhngo.pollmaster.ui.projects.ProjectDot
+import com.ncthanhngo.pollmaster.ui.projects.ProjectSwitcherSheet
+import com.ncthanhngo.pollmaster.ui.projects.rememberBundlePicker
 import kotlinx.coroutines.launch
+
+/** Title of the records tab: dot + name of the current project (or "Tất cả dự án") and a drop-down arrow. */
+@Composable
+private fun ProjectTitle(project: com.ncthanhngo.pollmaster.core.project.Project?, onClick: () -> Unit) {
+    Row(Modifier.clickable(onClick = onClick).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (project != null) ProjectDot(project.color)
+        Text(project?.name ?: stringResource(R.string.project_all), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.project_switch))
+    }
+}
 
 private enum class StatusFilter { ALL, DRAFT, COMPLETED }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordsScreen(onOpenRecord: (String) -> Unit) {
+fun RecordsScreen(onOpenRecord: (String) -> Unit, onNewProject: () -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
     val items by container.records.items.collectAsState()
@@ -83,9 +99,19 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     val templates by container.templates.templates.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(StatusFilter.ALL) }
-    var picking by rememberSaveable { mutableStateOf(false) }
     var showMap by rememberSaveable { mutableStateOf(false) }
-    val sites by container.sites.sites.collectAsState()
+    val allSites by container.sites.all.collectAsState()
+    val projects by container.projects.projects.collectAsState()
+    val currentId by container.projects.currentId.collectAsState()
+    val project = projects.firstOrNull { it.id == currentId }
+    // Planned sites of the current project, or of every project when none is selected.
+    val sites = if (currentId == null) allSites.values.flatten() else allSites[currentId].orEmpty()
+    var switcher by remember { mutableStateOf(false) }
+    var pickingProject by remember { mutableStateOf(false) }
+    var pickingFor by remember { mutableStateOf<com.ncthanhngo.pollmaster.core.project.Project?>(null) }
+    var noTemplates by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf<RecordItem?>(null) }
+    val pickBundle = rememberBundlePicker()
     var deleting by remember { mutableStateOf<RecordItem?>(null) }
     var exporting by rememberSaveable { mutableStateOf<String?>(null) }
     val startRecord = rememberRecordCreator(onOpenRecord)
@@ -93,7 +119,8 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     LaunchedEffect(templates) { container.records.refresh() }
 
     val visible = items.filter { item ->
-        (query.isBlank() || item.title.contains(query, ignoreCase = true)) &&
+        (currentId == null || item.projectId == currentId) &&
+            (query.isBlank() || item.title.contains(query, ignoreCase = true)) &&
             when (filter) {
                 StatusFilter.ALL -> true
                 StatusFilter.DRAFT -> !item.record.isCompleted
@@ -101,14 +128,22 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
             }
     }
 
+    /** Starts a record in [p]: its only template is used at once, several are offered. */
+    fun beginIn(p: com.ncthanhngo.pollmaster.core.project.Project) {
+        val usable = p.templates.mapNotNull { ref -> templates.firstOrNull { it.id == ref.id && it.version == ref.version } }
+        when {
+            usable.isEmpty() -> noTemplates = true
+            usable.size == 1 -> startRecord(usable.first(), p.id)
+            else -> pickingFor = p
+        }
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_records)) }, actions = { ThemeToggleButton() }) },
+        topBar = {
+            TopAppBar(title = { ProjectTitle(project) { switcher = true } }, actions = { ThemeToggleButton() })
+        },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                // A single usable template needs no question.
-                val usable = newestVersions(templates)
-                if (usable.size == 1) startRecord(usable.first()) else picking = true
-            }) {
+            FloatingActionButton(onClick = { if (project != null) beginIn(project) else pickingProject = true }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.record_new))
             }
         },
@@ -158,6 +193,8 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
                 items(visible, key = { it.record.id }) { item ->
                     RecordCard(
                         item = item,
+                        projectCode = if (currentId == null) projects.firstOrNull { it.id == item.projectId }?.code else null,
+                        onMove = { moving = item },
                         onOpen = { onOpenRecord(item.record.id) },
                         onDuplicate = {
                             scope.launch {
@@ -173,15 +210,59 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
         }
     }
 
-    if (picking) {
+    pickingFor?.let { p ->
         TemplatePickerDialog(
-            templates = newestVersions(templates),
-            onDismiss = { picking = false },
+            templates = p.templates.mapNotNull { ref -> templates.firstOrNull { it.id == ref.id && it.version == ref.version } },
+            onDismiss = { pickingFor = null },
             onPick = { t ->
-                picking = false
-                startRecord(t)
+                pickingFor = null
+                startRecord(t, p.id)
             },
         )
+    }
+    if (pickingProject) {
+        val active = projects.filter { !it.archived }
+        if (active.isEmpty()) {
+            MessageDialog(stringResource(R.string.pick_project), stringResource(R.string.no_active_projects)) { pickingProject = false }
+        } else {
+            ProjectChoiceDialog(
+                title = stringResource(R.string.pick_project), projects = active, multi = false,
+                onDismiss = { pickingProject = false }, onConfirm = { pickingProject = false; beginIn(it.first()) },
+            )
+        }
+    }
+    if (noTemplates) MessageDialog(stringResource(R.string.pick_template), stringResource(R.string.project_no_templates)) { noTemplates = false }
+    if (switcher) {
+        val records = items.map { it.record }
+        ProjectSwitcherSheet(
+            projects = projects, currentId = currentId,
+            statsOf = { ProjectStats.of(it.id, records, container.projects.chungId()) },
+            onSelect = { container.projects.select(it); switcher = false },
+            onNew = { switcher = false; onNewProject() },
+            onImport = { switcher = false; pickBundle() },
+            onDismiss = { switcher = false },
+        )
+    }
+    moving?.let { item ->
+        val targets = ProjectRules.moveTargets(item.record, projects, item.projectId)
+        if (targets.isEmpty()) {
+            MessageDialog(stringResource(R.string.record_move), stringResource(R.string.record_move_none, item.record.templateId)) { moving = null }
+        } else {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            ProjectChoiceDialog(
+                title = stringResource(R.string.record_move_title), projects = targets, multi = false,
+                onDismiss = { moving = null },
+                onConfirm = { chosen ->
+                    moving = null
+                    scope.launch {
+                        container.backup.deleteBackup(item.record.id)
+                        container.records.move(item.record.id, chosen.first().id)
+                        container.records.refresh()
+                        android.widget.Toast.makeText(context, context.getString(R.string.record_moved, chosen.first().name), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+            )
+        }
     }
     deleting?.let { item ->
         ConfirmDialog(
@@ -218,7 +299,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
 }
 
 @Composable
-private fun RecordCard(item: RecordItem, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     AppCard(Modifier.clickable(onClick = onOpen)) {
         Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
@@ -235,12 +316,13 @@ private fun RecordCard(item: RecordItem, onOpen: () -> Unit, onDuplicate: () -> 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (p.total > 0) LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.outline, trackColor = MaterialTheme.colorScheme.surfaceVariant)
-                RecordChips(item)
+                RecordChips(item, projectCode)
             }
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_duplicate)) }, onClick = { menu = false; onDuplicate() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.record_move)) }, onClick = { menu = false; onMove() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; onExport() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
                 }
@@ -264,10 +346,11 @@ private fun Thumb(file: java.io.File?) {
 }
 
 @Composable
-internal fun RecordChips(item: RecordItem) {
+internal fun RecordChips(item: RecordItem, projectCode: String? = null) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalUiPrefs.current.dark
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        projectCode?.let { StatusChip(it, scheme.secondaryContainer, scheme.onSecondaryContainer) }
         if (item.record.isCompleted) {
             StatusChip(stringResource(R.string.status_completed), if (dark) Color(0xFF1E4D33) else Color(0xFFD7F0DF), if (dark) Color(0xFFBFF0D0) else Color(0xFF0E4A25))
         } else {

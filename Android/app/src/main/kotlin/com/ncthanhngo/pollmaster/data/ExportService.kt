@@ -8,6 +8,9 @@ import com.ncthanhngo.pollmaster.core.export.XlsxWriter
 import com.ncthanhngo.pollmaster.core.export.ZipExporter
 import com.ncthanhngo.pollmaster.core.format.fileStamp
 import com.ncthanhngo.pollmaster.core.model.recordCode
+import com.ncthanhngo.pollmaster.core.project.ProjectNames
+import com.ncthanhngo.pollmaster.core.project.ProjectRules
+import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.export.PdfExporter
 import com.ncthanhngo.pollmaster.export.RecordImageLoader
@@ -28,6 +31,7 @@ class ExportService(
     private val store: RecordStore,
     private val templates: TemplatesRepository,
     private val records: RecordsRepository,
+    private val projects: ProjectsRepository,
 ) {
     /** Creates the requested files in the cache export folder and returns them. */
     suspend fun export(recordId: String, formats: Set<ExportFormat>): List<File> = withContext(Dispatchers.IO) {
@@ -35,14 +39,15 @@ class ExportService(
         val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
         val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
         val dir = File(context.cacheDir, "exports").also { it.deleteRecursively(); it.mkdirs() }
-        val base = "${template.recordCode(record) ?: record.id}_${fileStamp()}"
+        val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
+        val base = ProjectNames.recordBase(project?.code, template.recordCode(record), record.id, fileStamp())
         val recordDir = store.dir(recordId)
-        val builder = ExportBuilder(template, record)
+        val builder = ExportBuilder(template, record, project?.ref())
         formats.sortedBy { it.ordinal }.map { format ->
             File(dir, "$base.${format.extension}").also { file ->
                 file.outputStream().buffered().use { out ->
                     when (format) {
-                        ExportFormat.ZIP -> ZipExporter.write(template, record, recordDir, out)
+                        ExportFormat.ZIP -> ZipExporter.write(template, record, recordDir, out, project?.ref())
                         ExportFormat.XLSX -> XlsxWriter.write(builder.allSheets(), out)
                         ExportFormat.CSV -> CsvWriter.write(builder.infoSheet(), out)
                         ExportFormat.PDF -> PdfExporter(recordDir).write(builder.document(), out)

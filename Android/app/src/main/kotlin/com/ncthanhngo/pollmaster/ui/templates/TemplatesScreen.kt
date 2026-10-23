@@ -43,7 +43,10 @@ import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.fieldCount
+import com.ncthanhngo.pollmaster.core.project.Project
+import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
+import com.ncthanhngo.pollmaster.ui.projects.ProjectChoiceDialog
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import kotlinx.coroutines.launch
 
@@ -63,6 +66,8 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     var askUrl by rememberSaveable { mutableStateOf(false) }
     var askPaste by rememberSaveable { mutableStateOf(false) }
     var state by remember { mutableStateOf<ImportState?>(null) }
+    val projects by container.projects.projects.collectAsState()
+    var offerAdd by remember { mutableStateOf<Template?>(null) }
 
     LaunchedEffect(Unit) { container.templates.refresh() }
 
@@ -125,6 +130,12 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            val users = projects.filter { p -> p.templates.any { it.id == t.id && it.version == t.version } }
+                            Text(
+                                if (users.isEmpty()) stringResource(R.string.template_unused) else stringResource(R.string.template_used_in, users.joinToString { it.code }),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                             if ((t.id to t.version) !in newest) {
                                 Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                             }
@@ -134,6 +145,8 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
             }
         }
     }
+
+    offerAdd?.let { AddToProjectsDialog(it, projects) { offerAdd = null } }
 
     if (askUrl) UrlDialog(onDismiss = { askUrl = false }, onSubmit = { url -> guarded { container.templates.download(url) } })
 
@@ -161,10 +174,31 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
             LaunchedEffect(s) {
                 android.widget.Toast.makeText(context, context.getString(R.string.import_ok, s.template.title), android.widget.Toast.LENGTH_SHORT).show()
                 state = null
+                // Ask which projects should use the new template (only those that do not list this version yet).
+                if (projects.any { p -> !p.archived && p.templates.none { it.id == s.template.id && it.version == s.template.version } }) offerAdd = s.template
             }
         }
         null -> Unit
     }
+}
+
+@Composable
+private fun AddToProjectsDialog(template: Template, projects: List<Project>, onDismiss: () -> Unit) {
+    val container = LocalContainer.current
+    val scope = rememberCoroutineScope()
+    val ref = TemplateRef(template.id, template.version)
+    ProjectChoiceDialog(
+        title = stringResource(R.string.add_to_projects_title),
+        message = stringResource(R.string.add_to_projects_message, template.title, template.version),
+        projects = projects.filter { p -> !p.archived && ref !in p.templates },
+        multi = true,
+        dismissLabel = stringResource(R.string.action_skip),
+        onDismiss = onDismiss,
+        onConfirm = { chosen ->
+            onDismiss()
+            scope.launch { container.projects.addTemplate(ref, chosen.map { it.id }) }
+        },
+    )
 }
 
 @Composable

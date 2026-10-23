@@ -19,19 +19,19 @@ import com.ncthanhngo.pollmaster.core.model.Template
 import kotlinx.coroutines.launch
 
 /**
- * Returns a function that creates a record of a template and reports its id. While the surveyor name is not set in
+ * Returns a function that creates a record of a template in a project and reports its id. While the surveyor name is not set in
  * Settings it asks for it once (dialog), stores it and fills `HD-surveyor` of the new record.
  */
 @Composable
-fun rememberRecordCreator(onCreated: (String) -> Unit): (Template) -> Unit {
+fun rememberRecordCreator(onCreated: (String) -> Unit): (Template, String?) -> Unit {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
-    var pending by remember { mutableStateOf<Template?>(null) }
+    var pending by remember { mutableStateOf<Pair<Template, String?>?>(null) }
 
-    fun create(t: Template) {
-        scope.launch { onCreated(container.records.create(t).id) }
+    fun create(t: Template, projectId: String?) {
+        scope.launch { onCreated(container.records.create(t, projectId).id) }
     }
-    pending?.let { t ->
+    pending?.let { (t, projectId) ->
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { pending = null },
@@ -46,13 +46,13 @@ fun rememberRecordCreator(onCreated: (String) -> Unit): (Template) -> Unit {
                 TextButton(enabled = name.isNotBlank(), onClick = {
                     container.settings.setSurveyorName(name.trim())
                     pending = null
-                    create(t)
+                    create(t, projectId)
                 }) { Text(stringResource(R.string.surveyor_ask_save)) }
             },
-            dismissButton = { TextButton(onClick = { pending = null; create(t) }) { Text(stringResource(R.string.surveyor_ask_skip)) } },
+            dismissButton = { TextButton(onClick = { pending = null; create(t, projectId) }) { Text(stringResource(R.string.surveyor_ask_skip)) } },
         )
     }
     return remember(container) {
-        { t: Template -> if (container.settings.surveyorName.value.isBlank()) pending = t else create(t) }
+        { t: Template, projectId: String? -> if (container.settings.surveyorName.value.isBlank()) pending = t to projectId else create(t, projectId) }
     }
 }

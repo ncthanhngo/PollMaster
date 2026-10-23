@@ -43,7 +43,7 @@ fun LookupInput(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ScalarInput(field.copy(lookup = null), fv?.v, onValue, enabled)
         // No imported list yet: the button loads one (CSV picker) and opens the chooser right after.
-        val loadCsv = rememberSitesCsvPicker { result ->
+        val loadCsv = rememberSitesCsvPicker(env.projectId) { result ->
             result.onSuccess { choosing = true }
                 .onFailure { Toast.makeText(context, context.getString(R.string.settings_sites_error, it.message.orEmpty()), Toast.LENGTH_LONG).show() }
         }

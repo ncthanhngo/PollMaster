@@ -9,6 +9,8 @@ import android.provider.MediaStore
 import com.ncthanhngo.pollmaster.core.export.ZipExporter
 import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.recordCode
+import com.ncthanhngo.pollmaster.core.project.ProjectRules
+import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +34,7 @@ class BackupService(
     private val templates: TemplatesRepository,
     private val records: RecordsRepository,
     private val settings: Settings,
+    private val projects: ProjectsRepository,
 ) {
     private val mutex = Mutex()
     private val _status = MutableStateFlow(BackupStatus())
@@ -59,10 +62,11 @@ class BackupService(
             val at = nowIso()
             val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
             val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
+            val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
             val tmp = File(context.cacheDir, "backup-$recordId.zip")
             try {
-                tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it) }
-                write(Backup.fileName(template.recordCode(record), recordId), tmp)
+                tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it, project?.ref()) }
+                write(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code), tmp)
             } finally {
                 tmp.delete()
             }
@@ -75,16 +79,44 @@ class BackupService(
         }
     }
 
-    private fun write(name: String, file: File) {
+    /** Removes the backup file of [recordId] in its current project's folder (used before the record moves to another project). */
+    suspend fun deleteBackup(recordId: String): Boolean = mutex.withLock {
+        try {
+            records.flushEditor(recordId)
+            val record = store.load(recordId) ?: return@withLock true
+            val template = templates.find(record.templateId, record.templateVersion) ?: return@withLock true
+            val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
+            remove(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code))
+            true
+        } catch (e: Exception) { // reported in Settings, never swallowed
+            _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
+            false
+        }
+    }
+
+    private fun remove(name: String, folder: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "PollMaster")
-            if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Không tạo được thư mục ${Backup.FOLDER}")
+            File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), folder.removePrefix("Download/")), name).delete()
+            return
+        }
+        val resolver = context.contentResolver
+        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        resolver.query(
+            collection, arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?", arrayOf(name, "$folder/"), null,
+        )?.use { c -> while (c.moveToNext()) resolver.delete(ContentUris.withAppendedId(collection, c.getLong(0)), null, null) }
+    }
+
+    private fun write(name: String, folder: String, file: File) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), folder.removePrefix("Download/"))
+            if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Không tạo được thư mục $folder")
             file.copyTo(File(dir, name), overwrite = true)
             return
         }
         val resolver = context.contentResolver
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        val relative = "${Backup.FOLDER}/"
+        val relative = "$folder/"
         val existing = resolver.query(
             collection, arrayOf(MediaStore.MediaColumns._ID),
             "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?", arrayOf(name, relative), null,

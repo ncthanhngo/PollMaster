@@ -15,6 +15,8 @@ import com.ncthanhngo.pollmaster.core.model.Row
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.tables
+import com.ncthanhngo.pollmaster.core.project.Project
+import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.sites.Site
 import com.ncthanhngo.pollmaster.core.validation.Issue
 import com.ncthanhngo.pollmaster.core.validation.Warning
@@ -72,6 +74,8 @@ class EditorEnv(
     val checker: WarningChecker = WarningChecker(controller.template),
     val sites: List<Site> = emptyList(),
     val reviewMode: Boolean = false,
+    /** Project of the record, whose list of planned sites is [sites]. */
+    val projectId: String? = null,
 ) {
     /** Fields that use a photo field as evidence: photo field id -> ids of the referencing fields (template order). */
     val photoUsers: Map<String, List<String>> by lazy {
@@ -106,16 +110,20 @@ fun rememberRecordState(controller: EditorController): State<Record> {
 
 @Composable
 fun rememberEditorEnv(controller: EditorController): EditorEnv {
-    val sites by LocalContainer.current.sites.sites.collectAsState()
+    val container = LocalContainer.current
+    val allSites by container.sites.all.collectAsState()
+    val projects by container.projects.projects.collectAsState()
     val record by rememberRecordState(controller)
+    val projectId = ProjectRules.effectiveProjectId(record, projects.firstOrNull { it.id == Project.CHUNG_ID }?.id)
+    val sites = allSites[projectId].orEmpty()
     val showErrors by controller.showErrors.collectAsState()
     val touched by controller.touched.collectAsState()
     val reviewMode by controller.reviewMode.collectAsState()
-    return remember(controller, record, showErrors, touched, sites, reviewMode) {
+    return remember(controller, record, showErrors, touched, sites, reviewMode, projectId) {
         val checker = WarningChecker(controller.template, sites)
         EditorEnv(
             controller, record, controller.issues(record).groupBy { it.key }.mapValues { it.value.first() }, showErrors, touched,
-            checker.check(record).groupBy { it.key }.mapValues { it.value.first() }, checker, sites, reviewMode,
+            checker.check(record).groupBy { it.key }.mapValues { it.value.first() }, checker, sites, reviewMode, projectId,
         )
     }
 }

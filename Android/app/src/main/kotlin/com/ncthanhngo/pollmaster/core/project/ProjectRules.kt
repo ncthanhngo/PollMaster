@@ -1,0 +1,21 @@
+package com.ncthanhngo.pollmaster.core.project
+
+import com.ncthanhngo.pollmaster.core.model.Record
+
+/** Business rules about records and projects that need no storage. */
+object ProjectRules {
+    /** Projects a record can move to: other, not archived projects that list the record's template (any version). */
+    fun moveTargets(record: Record, projects: List<Project>, currentProjectId: String? = record.projectId): List<Project> =
+        projects.filter { !it.archived && it.id != currentProjectId && it.templates.any { t -> t.id == record.templateId } }
+
+    /** A project can be deleted only while no record belongs to it. */
+    fun canDelete(projectId: String, records: List<Record>, chungId: String?): Boolean =
+        records.none { effectiveProjectId(it, chungId) == projectId }
+
+    /** Project of [record]; records without one belong to "Chung". */
+    fun effectiveProjectId(record: Record, chungId: String?): String? = record.projectId ?: chungId
+
+    /** `{newer version}` of [ref]'s template when the library has a newer one, else null. */
+    fun newerVersion(ref: TemplateRef, library: List<TemplateRef>, compare: (String, String) -> Int): String? =
+        library.filter { it.id == ref.id && compare(it.version, ref.version) > 0 }.maxWithOrNull { a, b -> compare(a.version, b.version) }?.version
+}

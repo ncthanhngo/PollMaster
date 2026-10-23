@@ -18,6 +18,9 @@ class TemplateStore(root: File) {
             .mapNotNull { runCatching { TemplateParser.parse(it.readText()) }.getOrNull() }
             .sortedWith(compareBy({ it.title }, { it.version }))
 
+    /** The stored JSON text of a template (bundled into project packages as is). */
+    fun raw(id: String, version: String): String? = file(id, version).takeIf { it.isFile }?.readText()
+
     fun get(id: String, version: String): Template? =
         file(id, version).takeIf { it.isFile }?.let { runCatching { TemplateParser.parse(it.readText()) }.getOrNull() }
 

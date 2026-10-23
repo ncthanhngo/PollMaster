@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.model.Field
+import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.core.project.Project
+import com.ncthanhngo.pollmaster.ui.projects.ProjectChoiceDialog
 import com.ncthanhngo.pollmaster.data.DeleteResult
 import androidx.compose.runtime.collectAsState
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
@@ -49,6 +52,23 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     val outdated = template != null && newestVersions(all).none { it.id == template.id && it.version == template.version } && all.any { it.id == template.id }
     var inUse by remember { mutableStateOf<Int?>(null) }
     val startRecord = rememberRecordCreator(onRecordCreated)
+    val projects by container.projects.projects.collectAsState()
+    val currentId by container.projects.currentId.collectAsState()
+    var usedBy by remember { mutableStateOf<String?>(null) }
+    var noProject by remember { mutableStateOf(false) }
+    var choosing by remember { mutableStateOf<List<Project>?>(null) }
+
+    /** New record goes to the current project when it lists this template, else to the only (or a chosen) project that does. */
+    fun createRecord(t: Template) {
+        val candidates = projects.filter { p -> !p.archived && p.templates.any { it.id == t.id } }
+        val current = candidates.firstOrNull { it.id == currentId }
+        when {
+            current != null -> startRecord(t, current.id)
+            candidates.size == 1 -> startRecord(t, candidates.first().id)
+            candidates.isEmpty() -> noProject = true
+            else -> choosing = candidates
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,7 +100,7 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
             }
             item {
                 Button(
-                    onClick = { startRecord(template) },
+                    onClick = { createRecord(template) },
                     enabled = !outdated,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.template_create_record)) }
@@ -121,10 +141,22 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
                     when (val r = container.templates.delete(template)) {
                         DeleteResult.Deleted -> onBack()
                         is DeleteResult.InUse -> inUse = r.count
+                        is DeleteResult.UsedByProjects -> usedBy = r.codes.joinToString()
                     }
                 }
             },
             onDismiss = { confirmDelete = false },
+        )
+    }
+    usedBy?.let { codes ->
+        MessageDialog(stringResource(R.string.template_delete), stringResource(R.string.template_used_by_projects, codes)) { usedBy = null }
+    }
+    if (noProject) MessageDialog(stringResource(R.string.template_create_record), stringResource(R.string.template_create_no_project)) { noProject = false }
+    choosing?.let { list ->
+        ProjectChoiceDialog(
+            title = stringResource(R.string.pick_project), projects = list, multi = false,
+            onDismiss = { choosing = null },
+            onConfirm = { choosing = null; if (template != null) startRecord(template, it.first().id) },
         )
     }
     inUse?.let { count ->

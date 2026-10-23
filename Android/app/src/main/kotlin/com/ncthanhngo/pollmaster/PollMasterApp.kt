@@ -10,6 +10,10 @@ class PollMasterApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        container.scope.launch { container.templates.installBundled() }
+        container.scope.launch {
+            container.templates.installBundled()
+            container.projects.migrate()
+            container.records.refresh()
+        }
     }
 }

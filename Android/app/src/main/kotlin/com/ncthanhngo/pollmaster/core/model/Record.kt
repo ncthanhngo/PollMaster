@@ -17,6 +17,8 @@ import kotlinx.serialization.json.JsonTransformingSerializer
 data class Record(
     @EncodeDefault val schemaVersion: Int = 1,
     val id: String,
+    /** Owning project (schema 9.1); missing in records written before projects existed, which belong to "Chung". */
+    val projectId: String? = null,
     val templateId: String = "",
     val templateVersion: String = "",
     @EncodeDefault val status: String = STATUS_DRAFT,

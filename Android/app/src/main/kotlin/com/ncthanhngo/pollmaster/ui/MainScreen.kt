@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -13,35 +14,42 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.ui.projects.ProjectsScreen
 import com.ncthanhngo.pollmaster.ui.records.RecordsScreen
 import com.ncthanhngo.pollmaster.ui.settings.SettingsScreen
 import com.ncthanhngo.pollmaster.ui.templates.TemplatesScreen
 
-/** Root tabs: records, templates, settings. */
+/** Root tabs: records, projects, templates, settings. */
 @Composable
-fun MainScreen(onOpenRecord: (String) -> Unit, onOpenTemplate: (Template) -> Unit) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+fun MainScreen(
+    tab: Int,
+    onTab: (Int) -> Unit,
+    onOpenRecord: (String) -> Unit,
+    onOpenTemplate: (Template) -> Unit,
+    onOpenProject: (String) -> Unit,
+    onNewProject: () -> Unit,
+) {
     Scaffold(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = tab == 0, onClick = { tab = 0 },
+                    selected = tab == 0, onClick = { onTab(0) },
                     icon = { Icon(Icons.Filled.Description, null) }, label = { Text(stringResource(R.string.tab_records)) },
                 )
                 NavigationBarItem(
-                    selected = tab == 1, onClick = { tab = 1 },
+                    selected = tab == 1, onClick = { onTab(1) },
+                    icon = { Icon(Icons.Filled.Folder, null) }, label = { Text(stringResource(R.string.tab_projects)) },
+                )
+                NavigationBarItem(
+                    selected = tab == 2, onClick = { onTab(2) },
                     icon = { Icon(Icons.Filled.Inventory2, null) }, label = { Text(stringResource(R.string.tab_templates)) },
                 )
                 NavigationBarItem(
-                    selected = tab == 2, onClick = { tab = 2 },
+                    selected = tab == 3, onClick = { onTab(3) },
                     icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(stringResource(R.string.tab_settings)) },
                 )
             }
@@ -49,8 +57,9 @@ fun MainScreen(onOpenRecord: (String) -> Unit, onOpenTemplate: (Template) -> Uni
     ) { padding ->
         Box(Modifier.padding(padding).consumeWindowInsets(padding)) {
             when (tab) {
-                0 -> RecordsScreen(onOpenRecord)
-                1 -> TemplatesScreen(onOpenTemplate)
+                0 -> RecordsScreen(onOpenRecord, onNewProject)
+                1 -> ProjectsScreen(onOpenProject, onNewProject)
+                2 -> TemplatesScreen(onOpenTemplate)
                 else -> SettingsScreen()
             }
         }

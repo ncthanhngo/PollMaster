@@ -2,6 +2,7 @@ package com.ncthanhngo.pollmaster.data
 
 import android.content.Context
 import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
@@ -18,6 +19,8 @@ import java.net.URL
 sealed interface DeleteResult {
     data object Deleted : DeleteResult
     data class InUse(val count: Int) : DeleteResult
+    /** Listed by one or more projects (their codes). */
+    data class UsedByProjects(val codes: List<String>) : DeleteResult
 }
 
 class TemplatesRepository(
@@ -25,6 +28,7 @@ class TemplatesRepository(
     private val store: TemplateStore,
     private val records: RecordStore,
     private val settings: Settings,
+    private val projects: ProjectStore,
 ) {
     private val _templates = MutableStateFlow<List<Template>>(emptyList())
     val templates: StateFlow<List<Template>> = _templates.asStateFlow()
@@ -83,6 +87,8 @@ class TemplatesRepository(
     suspend fun delete(template: Template): DeleteResult = withContext(Dispatchers.IO) {
         val used = records.list().count { it.templateId == template.id && it.templateVersion == template.version }
         if (used > 0) return@withContext DeleteResult.InUse(used)
+        val listing = projects.list().filter { p -> p.templates.any { it.id == template.id && it.version == template.version } }
+        if (listing.isNotEmpty()) return@withContext DeleteResult.UsedByProjects(listing.map { it.code })
         store.delete(template.id, template.version)
         _templates.value = store.list()
         DeleteResult.Deleted

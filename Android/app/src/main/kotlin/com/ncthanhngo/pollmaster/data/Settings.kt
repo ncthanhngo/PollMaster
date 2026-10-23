@@ -40,6 +40,18 @@ class Settings(context: Context) {
     private val _autoBackup = MutableStateFlow(prefs.getBoolean(KEY_BACKUP, true))
     val autoBackup: StateFlow<Boolean> = _autoBackup.asStateFlow()
 
+    private val _projectFilter = MutableStateFlow(prefs.getString(KEY_PROJECT, "")?.takeIf { it.isNotEmpty() })
+    /** Project whose records the list, map and + button show; null = "Tất cả dự án". */
+    val projectFilter: StateFlow<String?> = _projectFilter.asStateFlow()
+
+    /** False until the user (or the first migration) has picked a project. */
+    val hasProjectChoice: Boolean get() = prefs.contains(KEY_PROJECT)
+
+    fun setProjectFilter(id: String?) {
+        _projectFilter.value = id
+        prefs.edit().putString(KEY_PROJECT, id.orEmpty()).apply()
+    }
+
     fun setCompactMode(value: Boolean) {
         _compactMode.value = value
         prefs.edit().putBoolean(KEY_COMPACT, value).apply()
@@ -98,5 +110,6 @@ class Settings(context: Context) {
         const val KEY_ONE_HAND = "one_hand"
         const val KEY_THEME = "theme_mode"
         const val KEY_BACKUP = "auto_backup"
+        const val KEY_PROJECT = "project_filter"
     }
 }

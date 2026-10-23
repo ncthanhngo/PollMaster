@@ -19,7 +19,7 @@ const val SURVEYOR_FIELD_ID = "HD-surveyor"
 
 object RecordFactory {
 
-    fun create(template: Template, surveyorName: String?, now: String = nowIso(), recordCode: String? = null): Record {
+    fun create(template: Template, surveyorName: String?, now: String = nowIso(), recordCode: String? = null, projectId: String? = null): Record {
         val values = HashMap<String, FieldValue>()
         for (f in template.allFields()) {
             val v: JsonElement? = when {
@@ -32,6 +32,7 @@ object RecordFactory {
         }
         return Record(
             id = UUID.randomUUID().toString(),
+            projectId = projectId,
             templateId = template.id,
             templateVersion = template.version,
             createdAt = now,

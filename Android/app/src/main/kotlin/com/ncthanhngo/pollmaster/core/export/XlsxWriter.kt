@@ -84,7 +84,7 @@ object XlsxWriter {
         }
         val sb = StringBuilder(XML_DECL)
         sb.append("<worksheet xmlns=\"$NS\"><sheetViews><sheetView workbookViewId=\"0\">")
-        sb.append("<pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>")
+        sb.append("<pane ySplit=\"${s.headerRows}\" topLeftCell=\"A${s.headerRows + 1}\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>")
         sb.append("<cols>")
         widths.forEachIndexed { i, w -> sb.append("<col min=\"${i + 1}\" max=\"${i + 1}\" width=\"$w\" customWidth=\"1\"/>") }
         sb.append("</cols><sheetData>")
@@ -96,7 +96,7 @@ object XlsxWriter {
             row.forEachIndexed { c, cell ->
                 when (cell) {
                     is Cell.Num -> sb.append("<c r=\"${ref(c, r + 2)}\"><v>${formatShortest(cell.value)}</v></c>")
-                    is Cell.Text -> if (cell.value.isNotEmpty()) sb.append(textCell(ref(c, r + 2), cell.value, 0))
+                    is Cell.Text -> if (cell.value.isNotEmpty()) sb.append(textCell(ref(c, r + 2), cell.value, if (r < s.headerRows - 1) 1 else 0))
                 }
             }
             sb.append("</row>")

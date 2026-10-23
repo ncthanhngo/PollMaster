@@ -16,9 +16,16 @@ object Backup {
         return updated.isAfter(backup)
     }
 
-    /** `{recordCode}_{first 8 of record id}_backup.zip`, or `{recordId}_backup.zip` without a code. Stable per record so a new backup overwrites the old one. */
-    fun fileName(recordCode: String?, recordId: String): String {
-        val code = recordCode?.let(::sanitizeFileName)?.takeIf { it.isNotEmpty() } ?: return "${recordId}_backup.zip"
-        return "${code}_${recordId.take(8)}_backup.zip"
+    /** MediaStore relative path of one project's backups: `Download/PollMaster/{projectCode}/` (schema 9.4). */
+    fun folder(projectCode: String?): String = if (projectCode.isNullOrEmpty()) FOLDER else "$FOLDER/$projectCode"
+
+    /**
+     * `{projectCode}_{recordCode}_{first 8 of record id}_backup.zip`, or `{projectCode}_{recordId}_backup.zip` without a code
+     * (no project prefix when [projectCode] is null). Stable per record so a new backup overwrites the old one.
+     */
+    fun fileName(recordCode: String?, recordId: String, projectCode: String? = null): String {
+        val prefix = projectCode?.takeIf { it.isNotEmpty() }?.let { "${it}_" }.orEmpty()
+        val code = recordCode?.let(::sanitizeFileName)?.takeIf { it.isNotEmpty() } ?: return "$prefix${recordId}_backup.zip"
+        return "$prefix${code}_${recordId.take(8)}_backup.zip"
     }
 }

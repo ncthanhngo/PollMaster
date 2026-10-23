@@ -15,6 +15,7 @@ import com.ncthanhngo.pollmaster.core.model.Record
 import com.ncthanhngo.pollmaster.core.model.TableItem
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.mediaItems
+import com.ncthanhngo.pollmaster.core.project.ProjectRef
 import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_TITLE
 
 /** One field line of the "Thông tin" sheet / document tables. */
@@ -31,7 +32,7 @@ private const val DEFAULT_ROW_LABEL = "Dòng"
 private const val INDEX_COLUMN_WEIGHT = 0.12f
 
 /** Builds sheets and the neutral document from a record. */
-class ExportBuilder(private val template: Template, private val record: Record) {
+class ExportBuilder(private val template: Template, private val record: Record, private val project: ProjectRef? = null) {
     private val engine = FormulaEngine(RecordSource(template, record))
     private val formatter = ValueFormatter { record.values[it] }
 
@@ -64,14 +65,15 @@ class ExportBuilder(private val template: Template, private val record: Record) 
                 Cell.Text(r.value?.review.orEmpty()),
             )
         }
-        return SheetData("Thông tin", headers, rows)
+        val projectRow = project?.let { listOf(listOf<Cell>(Cell.Text(""), Cell.Text(""), Cell.Text("Dự án"), Cell.Text(it.display()), Cell.Text(""), Cell.Text(""), Cell.Text(""), Cell.Text(""), Cell.Text(""))) }.orEmpty()
+        return SheetData("Thông tin", headers, projectRow + rows)
     }
 
     fun tableSheets(): List<SheetData> = template.sections.flatMap { s -> s.items.filterIsInstance<TableItem>() }
-        .map { t ->
-            val rows = t.rowViews(record).map { view -> t.columns.map { cell(it, view) } }
-            SheetData(t.id, t.columns.map { it.label }, rows)
-        }
+        .map { t -> SheetData(t.id, t.columns.map { it.label }, tableCells(t)) }
+
+    /** Rows of one table as cells (numbers stay numbers), in template order. */
+    fun tableCells(t: TableItem): List<List<Cell>> = t.rowViews(record).map { view -> t.columns.map { cell(it, view) } }
 
     fun allSheets(): List<SheetData> = listOf(infoSheet()) + tableSheets()
 
@@ -91,6 +93,7 @@ class ExportBuilder(private val template: Template, private val record: Record) 
     fun document(): ExportDoc {
         val blocks = mutableListOf<DocBlock>()
         blocks += DocBlock.Title(template.title, template.subtitle)
+        project?.let { blocks += DocBlock.Paragraph("Dự án: ${it.display()}") }
         val infoBySection = infoRows().groupBy { it.section }
         blocks += DocBlock.SectionTitle(HEADER_SECTION_TITLE)
         blocks += fieldGrid(infoBySection[HEADER_SECTION_TITLE].orEmpty())

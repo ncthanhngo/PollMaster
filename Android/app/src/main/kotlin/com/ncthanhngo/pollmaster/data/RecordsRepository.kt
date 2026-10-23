@@ -4,7 +4,9 @@ import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.editor.RecordCodes
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
 import com.ncthanhngo.pollmaster.core.format.recordTitle
+import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.Record
+import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.mediaItems
@@ -35,6 +37,8 @@ data class RecordItem(
     val thumbnail: File? = null,
     /** `{template id} · {record code}` (second line of a list row). */
     val subtitle: String = "",
+    /** Owning project; records stored without one belong to "Chung". */
+    val projectId: String? = record.projectId,
 ) {
     val needsBackup: Boolean get() = Backup.needsBackup(record)
 }
@@ -46,6 +50,8 @@ class RecordsRepository(
     private val store: RecordStore,
     private val templates: TemplatesRepository,
     private val settings: Settings,
+    /** Id of the "Chung" project (where records without a project belong), read lazily. */
+    private val chungId: () -> String? = { null },
 ) {
     private val _items = MutableStateFlow<List<RecordItem>>(emptyList())
     val items: StateFlow<List<RecordItem>> = _items.asStateFlow()
@@ -89,6 +95,7 @@ class RecordsRepository(
                     t?.let { Validator(it).requiredProgress(r) } ?: Progress(0, 0),
                     thumbnail = t?.let { thumbnailOf(it, r) },
                     subtitle = listOfNotNull(r.templateId, t?.recordCode(r)).joinToString(" · "),
+                    projectId = ProjectRules.effectiveProjectId(r, chungId()),
                 )
             }
         }
@@ -100,10 +107,17 @@ class RecordsRepository(
         return File(store.dir(record.id), photo.file).takeIf { it.isFile }
     }
 
-    suspend fun create(template: Template): Record = withContext(Dispatchers.IO) {
+    suspend fun create(template: Template, projectId: String?): Record = withContext(Dispatchers.IO) {
         val existing = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
-        RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing))
+            .filter { ProjectRules.effectiveProjectId(it, chungId()) == projectId } // codes are numbered per project
+        RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId)
             .also { store.save(it) }
+    }
+
+    /** Moves a record to another project; the record keeps its template, values and media. */
+    suspend fun move(recordId: String, projectId: String) = withContext(Dispatchers.IO) {
+        release(recordId)
+        store.load(recordId)?.let { store.save(it.copy(projectId = projectId, updatedAt = nowIso(), backupAt = null)) } // old backup is removed by the caller; a new one is due
     }
 
     suspend fun duplicate(item: RecordItem): Record? = withContext(Dispatchers.IO) {

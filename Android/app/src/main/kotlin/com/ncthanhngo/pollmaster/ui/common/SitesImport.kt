@@ -12,9 +12,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Returns a function that opens the CSV file picker and imports the chosen file as the sites list; [onResult] gets the count or the error. */
+/** Returns a function that opens the CSV file picker and imports the chosen file as the sites list of project [projectId]; [onResult] gets the count or the error. */
 @Composable
-fun rememberSitesCsvPicker(onResult: (Result<Int>) -> Unit): () -> Unit {
+fun rememberSitesCsvPicker(projectId: String?, onResult: (Result<Int>) -> Unit): () -> Unit {
     val container = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -25,7 +25,7 @@ fun rememberSitesCsvPicker(onResult: (Result<Int>) -> Unit): () -> Unit {
                 runCatching {
                     val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
                         ?: throw SitesCsvException("Không mở được tệp")
-                    container.sites.importCsv(text)
+                    container.sites.importCsv(projectId ?: throw SitesCsvException("Phiếu chưa thuộc dự án nào"), text)
                 }
             }
             onResult(result)
