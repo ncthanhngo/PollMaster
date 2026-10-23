@@ -1,0 +1,63 @@
+name: PollMaster
+options:
+  bundleIdPrefix: com.ncthanhngo
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: vi
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  PollMasterCore:
+    path: PollMasterCore
+targets:
+  PollMaster:
+    type: application
+    platform: iOS
+    sources:
+      - path: PollMaster
+        excludes:
+          - Info.plist
+      # Bundled templates are shared with the Android app: referenced in place, not copied.
+      - path: ../shared/templates
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: PollMasterCore
+    info:
+      path: PollMaster/Info.plist
+      properties:
+        CFBundleDisplayName: PollMaster
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSCameraUsageDescription: "PollMaster cần dùng camera để chụp ảnh và quay video khảo sát."
+        NSPhotoLibraryUsageDescription: "PollMaster cần truy cập thư viện ảnh để đính kèm ảnh và video vào phiếu khảo sát."
+        NSLocationWhenInUseUsageDescription: "PollMaster dùng vị trí để ghi tọa độ điểm khảo sát và gắn vị trí vào ảnh."
+        NSMicrophoneUsageDescription: "PollMaster cần micro để ghi âm khi quay video khảo sát."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ncthanhngo.pollmaster
+        PRODUCT_NAME: PollMaster
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: PollMaster
+schemes:
+  PollMaster:
+    build:
+      targets:
+        PollMaster: all
+    run:
+      config: Debug

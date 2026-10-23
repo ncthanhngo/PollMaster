@@ -1,0 +1,6 @@
+PollMaster.xcodeproj/
+.build/
+build/
+DerivedData/
+*.xcuserstate
+.swiftpm/
