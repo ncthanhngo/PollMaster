@@ -34,6 +34,7 @@ android {
     }
 
     sourceSets["main"].assets.srcDir("../../shared/templates")
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/guideAssets"))
     sourceSets["main"].java.srcDir("src/main/kotlin")
     sourceSets["test"].java.srcDir("src/test/kotlin")
 
@@ -46,6 +47,14 @@ android {
 kotlin {
     jvmToolchain(17)
 }
+
+// Stages only the AI guide from ../shared into an assets dir (the file itself is not duplicated in the repo).
+val stageGuideAsset by tasks.registering(Sync::class) {
+    from("../../shared") { include("huong-dan-tao-mau-bang-ai.md") }
+    into(layout.buildDirectory.dir("generated/guideAssets"))
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(stageGuideAsset) }
+tasks.matching { it.name.startsWith("lintVital") || it.name.startsWith("lintAnalyze") || it.name.startsWith("generate") && it.name.endsWith("LintReportModel") }.configureEach { dependsOn(stageGuideAsset) }
 
 dependencies {
     implementation(libs.androidx.core.ktx)

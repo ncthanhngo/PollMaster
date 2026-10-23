@@ -44,7 +44,6 @@ import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.fieldCount
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
-import com.ncthanhngo.pollmaster.ui.common.MessageDialog
 import kotlinx.coroutines.launch
 
 private sealed interface ImportState {
@@ -61,6 +60,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     val templates by container.templates.templates.collectAsState()
     var menu by remember { mutableStateOf(false) }
     var askUrl by rememberSaveable { mutableStateOf(false) }
+    var askPaste by rememberSaveable { mutableStateOf(false) }
     var state by remember { mutableStateOf<ImportState?>(null) }
 
     LaunchedEffect(Unit) { container.templates.refresh() }
@@ -103,15 +103,17 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                         },
                     )
                     DropdownMenuItem(text = { Text(stringResource(R.string.import_url)) }, onClick = { menu = false; askUrl = true })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.paste_json)) }, onClick = { menu = false; askPaste = true })
                 }
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            if (templates.isEmpty()) {
-                Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(24.dp))
-            }
             LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item(key = "ai-guide") { AiGuideCard(onPaste = { askPaste = true }) }
+                if (templates.isEmpty()) {
+                    item(key = "empty") { Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(8.dp)) }
+                }
                 val newest = newestVersions(templates).map { it.id to it.version }.toSet()
                 items(templates, key = { "${it.id}@${it.version}" }) { t ->
                     Card(Modifier.fillMaxWidth().clickable { onOpenTemplate(t) }) {
@@ -134,8 +136,10 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
 
     if (askUrl) UrlDialog(onDismiss = { askUrl = false }, onSubmit = { url -> guarded { container.templates.download(url) } })
 
+    if (askPaste) PasteJsonDialog(onDismiss = { askPaste = false }, onSubmit = { importJson(it) })
+
     when (val s = state) {
-        is ImportState.Failed -> MessageDialog(stringResource(R.string.import_error), s.message) { state = null }
+        is ImportState.Failed -> ImportErrorDialog(s.message) { state = null }
         is ImportState.Overwrite -> ConfirmDialog(
             title = stringResource(R.string.overwrite_title),
             message = stringResource(R.string.overwrite_message, s.template.id, s.template.version),
