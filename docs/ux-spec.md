@@ -150,3 +150,53 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   Sáng/Tối cụ thể). Trong màn soạn phiếu: mục "Giao diện tối" / "Giao diện sáng" trong menu ⋯.
 - "Tương phản cao" vẫn là công tắc riêng, áp lên cả Sáng và Tối.
 - Android: **tắt dynamic color** (Material You theo hình nền) — dùng bảng màu thương hiệu cố định cho cả Sáng và Tối để 2 app đồng nhất.
+
+## L. Bản sửa sau review 3 (hiện trường + UI/UX)
+1. **Stopwatch ghim**: trong form Ghi lượt / form dòng có stopwatch, khối đồng hồ dính đầu màn; khi cuộn thu thành dải mảnh
+   `mm:ss · [Ghi T4] · ↶`. Rung nhẹ (haptic) mỗi lần ghi mốc. `cues` (schema §8) hiện banner nhắc.
+2. **Hint**: luôn hiện dưới nhãn (1 lần), **không** làm placeholder trong ô hẹp (samples, parts, hàng gọn). Placeholder ô hẹp = "Nhập…".
+3. **Hàng gọn** chỉ cho number/integer (không parts, không samples) và text có `short`. Text khác luôn ô rộng.
+4. Chữ báo bảng trống dùng đúng tên nút: "Chưa có lượt nào — bấm Ghi lượt mới" (bảng quickEntry, theo `rowLabel` viết thường) /
+   "Chưa có dòng nào — bấm Thêm dòng".
+5. **roundEntry** (schema §8) cho G2.
+6. **Bảng `inline`** (schema §8) cho E2.
+7. `stepper`, `chipsRange` (schema §8).
+8. **Kiểm tra & hoàn thành**: đầu màn "Còn N mục bắt buộc" + nút lớn **"Điền lần lượt"**; danh sách lỗi gom theo mục, mỗi mục thu gọn được
+   (mặc định mở mục đầu). Dưới nút Hoàn thành khi bị tắt: "Còn N mục bắt buộc". **Chế độ Điền lần lượt**: màn chỉ hiện 1 field thiếu
+   (thẻ field đầy đủ, hàng gọn tắt), thanh trên "k / N · tên mục", nút **Tiếp** (lưu, sang field thiếu kế tiếp theo thứ tự mẫu),
+   **Bỏ qua**, **KĐĐ** (nhập lý do), **Thoát**. Bảng/media thiếu → nút "Mở" đưa tới đúng chỗ rồi quay lại.
+9. **Tạo phiếu**: chỉ có 1 mẫu dùng được → tạo ngay, không hỏi. Mã phiếu tự đề xuất (schema §8). Chưa có tên người khảo sát trong
+   Cài đặt → hỏi 1 lần (dialog nhập tên, lưu Cài đặt) rồi điền `HD-surveyor`.
+10. **GPS**: nút lớn "Lấy vị trí hiện tại" ở trên; hiển thị kết quả `lat, lng ±m`; ô lat/long ẩn sau nút "Nhập tay".
+11. **sessionTime**: một dòng `18:41 → …` + nút ✎ (mở sheet sửa bắt đầu/kết thúc).
+12. **Parts**: ≥ 3 part number/integer mà tất cả ngắn → 1 hàng 3 cột trên điện thoại (L × W × H).
+13. **Lookup khi chưa có danh sách điểm**: nút đổi thành "Nạp danh sách điểm (CSV)" → mở thẳng bộ chọn tệp CSV (nạp xong mở sheet chọn).
+14. **Mục lục**: mọi mục có dòng phụ thống kê: bắt buộc `x/y` (nếu có) · số lượt/dòng của bảng lặp (`3 lượt`, `2 người`) ·
+    ảnh/video `12/15` (field media có ≥ 1 tệp / tổng field media). Biểu tượng 📷 khi còn field ảnh `required`/`minCount` chưa đủ.
+15. **OCR nhãn**: field `text`/`multiline` có `photoRef` → nút "Đọc chữ từ ảnh": nhận dạng chữ (on-device, tiếng Việt + Latin) trên
+    các ảnh của field tham chiếu, hiện danh sách dòng chữ; chạm dòng → điền (text: thay; multiline: nối thêm). Không có ảnh → mở camera của field tham chiếu trước.
+16. **Đọc giọng nói**: field `multiline` (kể cả cột bảng) có nút 🎤: nói → chữ (ưu tiên on-device, ngôn ngữ vi-VN), nối vào cuối.
+    Quyền micro + nhận dạng giọng nói; không có dịch vụ → ẩn nút.
+17. **Chế độ một tay / đeo găng** (Cài đặt, mặc định tắt): vùng chạm tối thiểu 56, chữ +10 %, thanh hành động dưới cùng trong màn soạn
+    (`‹ Mục trước · Kiểm tra · Mục sau ›`), FAB và nút chính ở nửa dưới màn; menu ⋯ của field thay bằng nhấn giữ thẻ.
+18. **Bản đồ phiếu**: tab Phiếu khảo sát có nút chuyển **Danh sách / Bản đồ**. Bản đồ hiện mỗi phiếu có GPS (field `gps` đầu tiên có giá trị)
+    là một ghim màu theo trạng thái (Nháp xám, Hoàn thành xanh, Cần sửa cam) + điểm trong danh sách điểm chưa có phiếu (ghim rỗng).
+    Chạm ghim → thẻ tóm tắt → mở phiếu. iOS: MapKit. Android: osmdroid (OpenStreetMap), cần mạng để tải nền bản đồ; offline vẫn hiện ghim.
+
+## M. Dự án
+- **Tab**: `Phiếu khảo sát · Dự án · Mẫu · Cài đặt`.
+- **Dự án hiện tại**: tiêu đề tab Phiếu khảo sát = tên dự án (chấm màu dự án) + ▾. Chạm → sheet chọn dự án (tìm kiếm, mỗi dòng: tên, mã,
+  số phiếu Nháp/Hoàn thành), mục "Tất cả dự án", nút "+ Dự án mới", "Nhập gói dự án". Lựa chọn được nhớ. Danh sách phiếu, bản đồ, nút +
+  đều theo dự án hiện tại ("Tất cả dự án": phiếu có nhãn mã dự án; nút + hỏi dự án trước).
+- **Tab Dự án**: danh sách dự án (đang hoạt động trước, "Đã lưu trữ" thu gọn cuối), mỗi thẻ: chấm màu, tên, mã, khách hàng, số mẫu,
+  số phiếu Nháp/Hoàn thành, hoạt động gần nhất. Nút + "Dự án mới" / "Nhập gói dự án".
+- **Tạo/Sửa dự án**: Tên (bắt buộc), Mã (tự sinh từ tên: bỏ dấu, in hoa, khoảng trắng → `-`, tối đa 16 ký tự; sửa được; kiểm trùng),
+  Khách hàng, Mô tả, Màu (6 màu chọn sẵn).
+- **Chi tiết dự án**: thống kê (Nháp/Hoàn thành/Cần sửa, phiếu gần nhất) · **Mẫu của dự án** (thêm từ thư viện, gỡ, gợi ý bản mới) ·
+  **Danh sách điểm** (nạp CSV, số điểm, xem/tìm, xóa; số điểm đã có phiếu / chưa) · Hành động: **Chia sẻ gói dự án**, **Xuất tổng hợp
+  (Excel)** (+ tùy chọn kèm zip phiếu, lọc Hoàn thành), **Mở danh sách phiếu**, **Lưu trữ / Bỏ lưu trữ**, **Xóa dự án** (chỉ khi không còn
+  phiếu; còn phiếu → gợi ý chuyển phiếu sang dự án khác hoặc lưu trữ).
+- **Chuyển phiếu sang dự án khác**: menu phiếu → "Chuyển dự án" (chỉ tới dự án có cùng mẫu; nếu không có → báo).
+- **Mẫu (thư viện)**: thêm dòng "Dùng trong: VGREEN-HN, CHUNG" mỗi mẫu; sau khi nhập/dán mẫu mới → hỏi "Thêm vào dự án …?" (chọn nhiều).
+- Settings "Danh sách điểm" chuyển vào chi tiết dự án (Cài đặt bỏ mục này).
+- Mở tệp `.pmproject` từ app khác → mở app, hiện xem trước (tên, mã, số mẫu, số điểm) + nút Nhập.
