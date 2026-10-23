@@ -60,11 +60,21 @@ public struct ExportSignature: Equatable, Sendable {
     public var file: String?
 }
 
+public struct ProjectInfo: Equatable, Sendable {
+    public var id: String
+    public var code: String
+    public var name: String
+    public init(_ p: Project) { id = p.id; code = p.code; name = p.name }
+    public var label: String { "\(name) (\(code))" }
+}
+
 public struct ExportModel: Sendable {
     public var title: String
     public var subtitle: String?
     public var recordTitle: String
     public var baseName: String
+    /// Shown under the title in PDF/DOCX and as the first row of the xlsx `Thông tin` sheet.
+    public var project: ProjectInfo?
     public var sections: [ExportSection]      // header first
     public var signatures: [ExportSignature]
 
@@ -86,7 +96,7 @@ public enum ExportModelBuilder {
         return f.decimals.map { FormulaMath.round(d, $0) } ?? d
     }
 
-    public static func build(_ t: Template, _ r: Record, now: Date = Date()) -> ExportModel {
+    public static func build(_ t: Template, _ r: Record, now: Date = Date(), project: Project? = nil) -> ExportModel {
         let computed = ComputedEngine(template: t, record: r).computeAll()
         let recordLookup: (String) -> FieldValue? = { r.values[$0] }
 
@@ -157,6 +167,7 @@ public enum ExportModelBuilder {
             return ExportSignature(label: s.label, name: e?.name ?? "", signedAt: e?.signedAt, file: e?.file)
         }
         return ExportModel(title: t.title, subtitle: t.subtitle, recordTitle: RecordNaming.title(t, r),
-                           baseName: RecordNaming.exportBaseName(t, r, now: now), sections: sections, signatures: sigs)
+                           baseName: RecordNaming.exportBaseName(t, r, now: now, projectCode: project?.code),
+                           project: project.map(ProjectInfo.init), sections: sections, signatures: sigs)
     }
 }

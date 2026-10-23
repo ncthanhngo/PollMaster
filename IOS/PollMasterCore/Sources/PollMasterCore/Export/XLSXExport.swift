@@ -22,14 +22,14 @@ public enum XLSXExport {
         return candidate
     }
 
-    static func sheetXML(rows: [[Cell]], widths: [Double]) -> String {
+    static func sheetXML(rows: [[Cell]], widths: [Double], headerRows: Int = 1) -> String {
         var x = XML.header + "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
-        x += "<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>"
+        x += "<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"\(headerRows)\" topLeftCell=\"A\(headerRows + 1)\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>"
         x += "<cols>" + widths.enumerated().map { "<col min=\"\($0 + 1)\" max=\"\($0 + 1)\" width=\"\($1)\" customWidth=\"1\"/>" }.joined() + "</cols><sheetData>"
         for (r, row) in rows.enumerated() {
             x += "<row r=\"\(r + 1)\">"
             for (c, cell) in row.enumerated() {
-                let ref = "\(column(c))\(r + 1)", style = r == 0 ? 1 : 0
+                let ref = "\(column(c))\(r + 1)", style = r < headerRows ? 1 : 0
                 switch cell {
                 case .text(let s) where !s.isEmpty:
                     x += "<c r=\"\(ref)\" s=\"\(style)\" t=\"inlineStr\"><is><t xml:space=\"preserve\">\(XML.escape(s))</t></is></c>"
@@ -50,7 +50,8 @@ public enum XLSXExport {
         var used = Set<String>()
         var sheets: [(name: String, xml: String)] = []
 
-        let infoRows: [[Cell]] = [CSVExport.infoHeaders.map { .text($0) }] + model.entries.map { e in
+        let projectRow: [[Cell]] = model.project.map { [[.text("Dự án"), .text($0.code), .text("Dự án"), .text($0.name), .empty, .empty, .empty, .empty, .empty]] } ?? []
+        let infoRows: [[Cell]] = [CSVExport.infoHeaders.map { .text($0) }] + projectRow + model.entries.map { e in
             [.text(e.sectionTitle), .text(e.id), .text(e.label), e.number.map { .number($0) } ?? .text(e.display),
              .text(e.unit), .text(e.flag), .text(e.reason), .text(e.note), .text(e.review)]
         }
@@ -62,6 +63,11 @@ public enum XLSXExport {
             sheets.append((sheetName(t.id, used: &used), sheetXML(rows: rows, widths: t.columns.map { _ in 20 })))
         }
 
+        return workbook(sheets)
+    }
+
+    /// Package parts (content types, workbook, styles, one part per sheet) for sheets already rendered to XML.
+    static func workbook(_ sheets: [(name: String, xml: String)]) -> [(path: String, data: Data)] {
         let ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
         var parts: [(String, String)] = []
         parts.append(("[Content_Types].xml", XML.header + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/>"
@@ -78,8 +84,12 @@ public enum XLSXExport {
     }
 
     public static func write(_ model: ExportModel, to url: URL) throws {
+        try write(build(model), to: url)
+    }
+
+    static func write(_ parts: [(path: String, data: Data)], to url: URL) throws {
         var zip = ZipBuilder()
-        for p in build(model) { zip.add(p.path, data: p.data) }
+        for p in parts { zip.add(p.path, data: p.data) }
         try zip.write(to: url)
     }
 }

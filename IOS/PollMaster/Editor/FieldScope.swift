@@ -17,6 +17,8 @@ struct FieldScope {
     /// Checker mode: notes on cards can be written even though the record is locked.
     var reviewMode = false
     var sites: [Site] = []
+    /// Project of the record being edited (where an imported site list goes).
+    var projectId: String?
     var warnings: (Field, FieldValue?) -> [String] = { _, _ in [] }
     var visit: (Field) -> Void = { _ in }
     /// Referenced photo/video field (`photoRef`) with a binding to its value.

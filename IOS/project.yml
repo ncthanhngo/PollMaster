@@ -53,6 +53,18 @@ targets:
         NSMicrophoneUsageDescription: "PollMaster cần micro để ghi âm bản ghi và quay video khảo sát."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.ncthanhngo.pollmaster.project
+            UTTypeDescription: Gói dự án PollMaster
+            UTTypeConformsTo: [public.zip-archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [pmproject]
+              public.mime-type: [application/zip]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Gói dự án PollMaster
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.ncthanhngo.pollmaster.project]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ncthanhngo.pollmaster

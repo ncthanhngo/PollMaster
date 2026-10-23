@@ -19,6 +19,7 @@ public enum PDFExport {
         guard let pdf = PDFCanvas(url: url, totalPages: totalPages) else { throw PDFError.cannotCreate }
         pdf.paragraph(model.title, size: 16, bold: true, align: .center, after: 4)
         if let s = model.subtitle { pdf.paragraph(s, size: 10, italic: true, align: .center, after: 4) }
+        if let p = model.project { pdf.paragraph("Dự án: \(p.label)", size: 10, align: .center, after: 4) }
         pdf.paragraph(model.recordTitle, size: 12, bold: true, align: .center, after: 12)
 
         for section in model.sections {

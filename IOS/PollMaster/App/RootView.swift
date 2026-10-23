@@ -10,6 +10,9 @@ struct RootView: View {
             RecordsListView()
                 .tabItem { Label("Phiếu khảo sát", systemImage: "list.clipboard") }
                 .tag(AppTab.records)
+            ProjectsView()
+                .tabItem { Label("Dự án", systemImage: "folder") }
+                .tag(AppTab.projects)
             TemplatesView()
                 .tabItem { Label("Mẫu", systemImage: "doc.text") }
                 .tag(AppTab.templates)
@@ -17,6 +20,8 @@ struct RootView: View {
                 .tabItem { Label("Cài đặt", systemImage: "gearshape") }
                 .tag(AppTab.settings)
         }
+        .sheet(item: $env.incomingBundle) { ProjectImportSheet(incoming: $0) }
+        .sheet(item: $env.addToProjectsFor) { AddToProjectsSheet(template: $0) }
         .alert("Tên người khảo sát", isPresented: Binding(get: { env.askSurveyorFor != nil }, set: { _ in })) {
             TextField("Họ tên", text: $surveyorName)
             Button("Bỏ qua") { env.answerSurveyor("") }

@@ -130,6 +130,9 @@ public struct TemplateStore: Sendable {
         (try? Data(contentsOf: url(id, version))).flatMap { try? TemplateLoader.decode($0) }
     }
 
+    /// File content as installed (what a project bundle carries).
+    public func data(id: String, version: String) -> Data? { try? Data(contentsOf: url(id, version)) }
+
     /// Validate and write. Returns the parsed template.
     @discardableResult
     public func install(_ data: Data) throws -> Template {

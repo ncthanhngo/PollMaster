@@ -10,12 +10,23 @@ struct BackupService: Sendable {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("PollMaster Backup", isDirectory: true)
     }
 
-    /// Writes `{base}_backup.zip` off the main thread.
-    func write(_ t: Template, _ r: Record) async throws {
+    /// `PollMaster Backup/{projectCode}/` (the root folder when the project is unknown).
+    static func directory(for project: Project?) -> URL {
+        project.map { directory.appendingPathComponent($0.code, isDirectory: true) } ?? directory
+    }
+
+    /// Writes `{projectCode}_{base}_backup.zip` off the main thread.
+    func write(_ t: Template, _ r: Record, project: Project?) async throws {
         let store = store
         try await Task.detached(priority: .utility) {
-            _ = try RecordExporter(store: store).writeBackup(t, r, into: Self.directory)
+            _ = try RecordExporter(store: store).writeBackup(t, r, into: Self.directory(for: project), project: project)
         }.value
+    }
+
+    /// Drops the copy of a record from its project's folder (the record moved to another project).
+    static func removeBackup(_ t: Template, _ r: Record, project: Project?) {
+        let file = directory(for: project).appendingPathComponent(RecordExporter.backupFileName(t, r, projectCode: project?.code))
+        try? FileManager.default.removeItem(at: file)
     }
 
     /// `backupAt` for a copy made from a snapshot: the snapshot's edit time when the record changed meanwhile,

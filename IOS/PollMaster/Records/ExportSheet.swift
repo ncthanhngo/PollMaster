@@ -54,11 +54,12 @@ struct ExportSheet: View {
         working = true; error = nil
         let exporter = RecordExporter(store: env.recordStore)
         let formats = Array(env.settings.exportFormats)
+        let project = env.project(of: record)
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("exports/\(UUID().uuidString)")
         Task {
             do {
                 let urls = try await Task.detached(priority: .userInitiated) {
-                    try exporter.export(template, record, formats: formats, into: dir)
+                    try exporter.export(template, record, formats: formats, into: dir, project: project)
                 }.value
                 share = ShareItems(urls: urls)
             } catch { self.error = "Xuất thất bại: \(error.localizedDescription)" }

@@ -79,6 +79,8 @@ struct TemplatesView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(t.title).font(.headline)
             Text("\(t.id) · v\(t.version) · \(fieldCount(t)) trường").font(.caption).secondaryText()
+            let used = env.projects(using: t)
+            if !used.isEmpty { Text("Dùng trong: " + used.map(\.code).joined(separator: ", ")).font(.caption).secondaryText() }
         }
     }
 
@@ -92,7 +94,9 @@ struct TemplatesView: View {
 
     private func handle(_ data: Data) throws {
         switch try env.importTemplate(data) {
-        case .installed(let t): message = "Đã nhập mẫu \(t.title)."
+        case .installed(let t):
+            if env.activeProjects.isEmpty { message = "Đã nhập mẫu \(t.title)."; return }
+            Task { try? await Task.sleep(for: .milliseconds(500)); env.addToProjectsFor = t }
         case .needsOverwrite(let t, let d): overwrite = (t, d)
         }
     }

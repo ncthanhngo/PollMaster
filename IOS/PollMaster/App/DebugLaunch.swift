@@ -12,13 +12,21 @@ extension AppEnvironment {
     /// `-pmFocus <fieldId>` scroll the pushed section to it; `-pmPartial 1` fill only the header and section A; `-pmReviewDraft 1` open the
     /// review screen of the draft; `-pmFillStep 1` open "Điền lần lượt"; `-pmMap 1` records tab as map; `-pmSites 1` install sample planned sites;
     /// `-pmOneHand 0|1` set one-hand mode; `-pmScrollDown 1` scroll a stopwatch form to its end.
+    /// Projects: `-pmSeedProjects 1` two sample projects with sites/records; `-pmProject <code>` current project; `-pmProjectDetail <code>`;
+    /// `-pmSwitcher 1` open the project switcher; `-pmNewProject 1` open the create form; `-pmImportBundle <path>` preview a .pmproject.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
         if let a = d.string(forKey: "pmAppearance").flatMap(AppearanceMode.init) { settings.appearance = a }
         if d.object(forKey: "pmOneHand") != nil { settings.oneHand = d.bool(forKey: "pmOneHand") }
         if d.bool(forKey: "pmMap") { recordsShowMap = true }
-        if d.bool(forKey: "pmSites") { try? siteStore.save(sampleSites); reloadSites() }
-        if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings][tab] ?? .records }
+        if d.bool(forKey: "pmSeedProjects") { seedProjects() }
+        if d.bool(forKey: "pmSites"), let p = currentProject ?? project(id: nil) { try? projectStore.sites(p.id).save(sampleSites); reload() }
+        if let code = d.string(forKey: "pmProject") { currentProjectId = projects.first { $0.code == code }?.id }
+        if let code = d.string(forKey: "pmProjectDetail"), let p = projects.first(where: { $0.code == code }) { selectedTab = .projects; projectsPath = [ProjectRoute(id: p.id)] }
+        if d.bool(forKey: "pmSwitcher") { showProjectSwitcher = true }
+        if d.bool(forKey: "pmNewProject") { selectedTab = .projects; showNewProject = true }
+        if let path = d.string(forKey: "pmImportBundle") { openIncoming(URL(fileURLWithPath: path)) }
+        if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings, "projects": .projects][tab] ?? .records }
         if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reload() }
         guard let tid = d.string(forKey: "pmCreate"), let t = newestTemplates.first(where: { $0.id == tid }) else { return }
         var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
@@ -80,8 +88,24 @@ extension AppEnvironment {
         r.values["HD-code"] = FieldValue(v: .string("001/A"))
     }
 
-    private func seed(_ t: Template) {
-        var done = RecordFactory.make(template: t)
+    /// Two projects with the sample template, sites and a few records each (skipped when they already exist).
+    private func seedProjects() {
+        guard let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) else { return }
+        let seeds = [("Khảo sát tủ đổi pin Hà Nội", "V-Green", Project.palette[1]), ("Trạm sạc Đà Nẵng", "EVN", Project.palette[3])]
+        for (i, (name, client, color)) in seeds.enumerated() {
+            let code = ProjectCode.base(from: name)
+            guard !projects.contains(where: { $0.code == code }) else { continue }
+            guard let p = try? projectStore.create(Project(code: code, name: name, client: client, description: "Đợt khảo sát mẫu", color: color,
+                                                           templates: [TemplateRef(t)])) else { continue }
+            if i == 0 { try? projectStore.sites(p.id).save(sampleSites) }
+            seed(t, projectId: p.id, count: i == 0 ? 3 : 1)
+        }
+        reload()
+        if let first = projects.first(where: { $0.code == ProjectCode.base(from: seeds[0].0) }) { currentProjectId = first.id }
+    }
+
+    private func seed(_ t: Template, projectId: String? = nil, count: Int = 3) {
+        var done = RecordFactory.make(template: t, projectId: projectId)
         fillRequired(t, &done)
         done.values["A-01"] = FieldValue(v: .string("TDP-007"))
         let rel = "media/photo.jpg"
@@ -95,15 +119,15 @@ extension AppEnvironment {
         done.values["P01-04"] = photo
         RecordFactory.complete(&done, template: t)
         done.backupAt = Date()
-        var returned = RecordFactory.make(template: t)
+        var returned = RecordFactory.make(template: t, projectId: projectId)
         returned.values["A-01"] = FieldValue(v: .string("TDP-021"))
         returned.values["A-03"] = FieldValue(v: .string("5 Nguyễn Huệ"))
         returned.values["B-02"] = FieldValue(v: .number(1500), review: "Đo lại chiều cao khoang")
         returned.returned = true
         returned.values["A-04"] = FieldValue(v: GPSValue(lat: 10.7820, lng: 106.6950, accuracy: 6).json)
-        var fresh = RecordFactory.make(template: t, now: Date().addingTimeInterval(-3600))
+        var fresh = RecordFactory.make(template: t, now: Date().addingTimeInterval(-3600), projectId: projectId)
         fresh.values["A-04"] = FieldValue(v: GPSValue(lat: 10.7700, lng: 106.7100, accuracy: 9).json)
-        for r in [done, returned, fresh] { try? recordStore.save(r) }
+        for r in [done, returned, fresh].prefix(count) { try? recordStore.save(r) }
     }
 }
 #else

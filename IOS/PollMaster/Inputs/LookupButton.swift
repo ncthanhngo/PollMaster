@@ -13,7 +13,8 @@ struct LookupButton: View {
     @State private var pendingSite: Site?
     @State private var message: String?
 
-    private var noSites: Bool { env.sites.isEmpty }
+    private var sites: [Site] { env.sites(forProject: scope.projectId) }
+    private var noSites: Bool { sites.isEmpty }
 
     var body: some View {
         if field.lookup != nil, !scope.locked, !field.isComputed {
@@ -22,11 +23,11 @@ struct LookupButton: View {
                       systemImage: noSites ? "square.and.arrow.down" : "list.bullet.rectangle")
             }
             .buttonStyle(.bordered)
-            .sheet(isPresented: $picking) { SitePicker(sites: env.sites, onPick: choose) }
+            .sheet(isPresented: $picking) { SitePicker(sites: sites, onPick: choose) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.commaSeparatedText, .plainText, .text]) { result in
                 switch result {
                 case .success(let url):
-                    do { _ = try env.importSites(from: url); picking = true } catch { message = error.localizedDescription }
+                    do { _ = try env.importSites(from: url, projectId: scope.projectId); picking = true } catch { message = error.localizedDescription }
                 case .failure(let e): message = e.localizedDescription
                 }
             }

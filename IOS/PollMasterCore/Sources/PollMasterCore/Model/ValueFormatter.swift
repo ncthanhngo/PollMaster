@@ -172,8 +172,10 @@ public enum RecordNaming {
         })
     }
 
-    public static func exportBaseName(_ t: Template, _ r: Record, now: Date = Date()) -> String {
-        "\(recordCode(t, r) ?? r.id)_\(ISODate.format(now, "yyyyMMdd-HHmm"))"
+    /// `{projectCode}_{recordCode|recordId}_{yyyyMMdd-HHmm}`; no project prefix when `projectCode` is nil.
+    public static func exportBaseName(_ t: Template, _ r: Record, now: Date = Date(), projectCode: String? = nil) -> String {
+        let base = "\(recordCode(t, r) ?? r.id)_\(ISODate.format(now, "yyyyMMdd-HHmm"))"
+        return projectCode.map { "\($0)_\(base)" } ?? base
     }
 
     static func replace(_ pattern: String, _ resolve: (String) -> String) -> String {

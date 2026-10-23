@@ -1,6 +1,6 @@
 import Foundation
 
-enum AppTab: Hashable { case records, templates, settings }
+enum AppTab: Hashable { case records, projects, templates, settings }
 
 /// Navigation destinations inside the "Phiếu khảo sát" stack.
 enum Route: Hashable {

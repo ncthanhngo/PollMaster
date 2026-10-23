@@ -209,10 +209,12 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
     /// Last automatic backup; the record counts as unsaved when `updatedAt` is later.
     public var backupAt: Date?
     public var rawTimes = RawTimes()
+    /// Owning project (schema §9.1); nil only for records written before projects existed (read as "Chung").
+    public var projectId: String?
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, id, templateId, templateVersion, status, createdAt, updatedAt, completedAt, values, tables, signatures
-        case returned, lastPosition, backupAt
+        case returned, lastPosition, backupAt, projectId
     }
 
     /// Every key except `id` is optional on read (Android omits keys).
@@ -233,13 +235,15 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         returned = c.lenient(Bool.self, .returned) ?? false
         lastPosition = c.lenient(LastPosition.self, .lastPosition)
         backupAt = c.lenient(Date.self, .backupAt)
+        projectId = c.lenient(String.self, .projectId)?.nilIfEmpty
         rawTimes = RawTimes(created: c.lenient(String.self, .createdAt), updated: c.lenient(String.self, .updatedAt),
                             completed: c.lenient(String.self, .completedAt))
     }
 
     public init(id: String = UUID().uuidString, templateId: String, templateVersion: String, status: RecordStatus = .draft,
                 createdAt: Date = Date(), values: [String: FieldValue] = [:], tables: [String: [Row]] = [:],
-                signatures: [String: SignatureEntry] = [:]) {
+                signatures: [String: SignatureEntry] = [:], projectId: String? = nil) {
+        self.projectId = projectId
         self.id = id; self.templateId = templateId; self.templateVersion = templateVersion; self.status = status
         self.createdAt = createdAt; self.updatedAt = createdAt; self.completedAt = nil
         self.values = values; self.tables = tables; self.signatures = signatures
@@ -256,6 +260,7 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         if returned { try c.encode(true, forKey: .returned) }
         try c.encodeIfPresent(lastPosition, forKey: .lastPosition)
         try c.encodeIfPresent(backupAt, forKey: .backupAt)
+        try c.encodeIfPresent(projectId, forKey: .projectId)
     }
 
     /// Edited since the last automatic backup (or never backed up).

@@ -95,10 +95,11 @@ public enum SitesCSV {
     }
 }
 
-/// `<root>/sites.json`.
+/// `<root>/sites.json` (legacy, global) or a project's `sites.json`.
 public struct SiteStore: Sendable {
     public let url: URL
     public init(root: URL) { url = root.appendingPathComponent("sites.json") }
+    public init(file: URL) { url = file }
 
     public func load() -> [Site] {
         guard let d = try? Data(contentsOf: url) else { return [] }

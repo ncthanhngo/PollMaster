@@ -1,4 +1,5 @@
 import Foundation
+import Testing
 @testable import PollMasterCore
 
 enum Fixtures {
@@ -40,4 +41,17 @@ enum Fixtures {
         t.allFields.forEach { fill($0, into: &r) }
         return r
     }
+}
+
+extension Fixtures {
+    /// bb-tdp-01 re-labelled with another id and/or version (a second template for project tests).
+    static func variantData(id: String? = nil, version: String? = nil, title: String? = nil) throws -> Data {
+        var o = try #require(try JSONSerialization.jsonObject(with: templateData()) as? [String: Any])
+        if let id { o["id"] = id }
+        if let version { o["version"] = version }
+        if let title { o["title"] = title }
+        return try JSONSerialization.data(withJSONObject: o)
+    }
+
+    static func install(_ data: Data, root: URL) throws -> Template { try TemplateStore(root: root).install(data) }
 }

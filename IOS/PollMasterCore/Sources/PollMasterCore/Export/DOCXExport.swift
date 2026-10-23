@@ -75,6 +75,7 @@ public enum DOCXExport {
         let b = Builder(recordFolder: recordFolder)
         b.body += b.paragraph(model.title, bold: true, size: 32, center: true)
         if let s = model.subtitle { b.body += b.paragraph(s, italic: true, size: 20, center: true) }
+        if let p = model.project { b.body += b.paragraph("Dự án: \(p.label)", center: true, after: 80) }
         b.body += b.paragraph(model.recordTitle, bold: true, size: 22, center: true, after: 160)
 
         let entryWidths = [1100, 3500, 3438, 1600]

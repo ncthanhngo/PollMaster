@@ -2,8 +2,8 @@ import Foundation
 
 public enum RecordFactory {
     /// New draft with defaults applied, sessionTime started and fixed table rows created.
-    public static func make(template t: Template, now: Date = Date(), surveyorName: String? = nil) -> Record {
-        var r = Record(templateId: t.id, templateVersion: t.version, createdAt: now)
+    public static func make(template t: Template, now: Date = Date(), surveyorName: String? = nil, projectId: String? = nil) -> Record {
+        var r = Record(templateId: t.id, templateVersion: t.version, createdAt: now, projectId: projectId)
         for f in t.allFields {
             if f.type == .sessionTime { r.values[f.id] = FieldValue(v: SessionTime(start: now).json) }
             else if let d = f.default {
@@ -25,7 +25,8 @@ public enum RecordFactory {
     /// Copy of values/tables only: no media, no signatures, fresh id, draft.
     public static func duplicate(_ source: Record, template: Template? = nil, now: Date = Date()) -> Record {
         var r = Record(templateId: source.templateId, templateVersion: source.templateVersion, createdAt: now,
-                       values: source.values.mapValues(strippedOfMedia).filter { !$0.value.isBlank }, tables: source.tables.mapValues { $0.map(strippedRow) })
+                       values: source.values.mapValues(strippedOfMedia).filter { !$0.value.isBlank }, tables: source.tables.mapValues { $0.map(strippedRow) },
+                       projectId: source.projectId)
         r.updatedAt = now
         for f in template?.allFields ?? [] where f.type == .sessionTime { r.values[f.id] = FieldValue(v: SessionTime(start: now).json) }
         return r

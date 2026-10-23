@@ -34,11 +34,13 @@ final class RecordEditorModel {
     @ObservationIgnored let settings: AppSettings
     @ObservationIgnored let backups: BackupService
     @ObservationIgnored let sites: () -> [Site]
+    /// Project of a record (by `projectId`), for backup naming.
+    @ObservationIgnored let project: (String?) -> Project?
 
     init(template: Template, record: Record, store: RecordStore, location: LocationService, settings: AppSettings,
-         backups: BackupService, sites: @escaping () -> [Site]) {
+         backups: BackupService, sites: @escaping () -> [Site], project: @escaping (String?) -> Project?) {
         self.template = template; self.record = record; self.store = store; self.location = location; self.settings = settings
-        self.backups = backups; self.sites = sites
+        self.backups = backups; self.sites = sites; self.project = project
         lastSaved = record.updatedAt
         refresh()
     }
@@ -257,7 +259,7 @@ final class RecordEditorModel {
         defer { backingUp = false }
         let snapshot = record
         do {
-            try await backups.write(template, snapshot)
+            try await backups.write(template, snapshot, project: project(snapshot.projectId))
             record.backupAt = BackupService.backupTime(snapshot: snapshot.updatedAt, currentUpdatedAt: record.updatedAt)
             scheduleSave()
         } catch { backupError = "Không sao lưu được: \(error.localizedDescription)" }

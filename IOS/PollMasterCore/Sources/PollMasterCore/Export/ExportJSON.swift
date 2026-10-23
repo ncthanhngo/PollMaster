@@ -2,7 +2,7 @@ import Foundation
 
 public enum ExportJSON {
     /// `export.json` per schema §5.1.
-    public static func build(_ t: Template, _ r: Record) throws -> Data {
+    public static func build(_ t: Template, _ r: Record, project: Project? = nil) throws -> Data {
         let computed = ComputedEngine(template: t, record: r).computeAll()
         /// Stored text copied verbatim (not re-serialized in the device time zone) while it still matches the date.
         func dateJSON(_ d: Date?, raw: String?) -> JSONValue {
@@ -51,7 +51,7 @@ public enum ExportJSON {
             })
         }
 
-        let root: JSONValue = .object([
+        var root: [String: JSONValue] = [
             "template": .object(["id": .string(t.id), "version": .string(t.version), "title": .string(t.title)]),
             "record": .object(["id": .string(r.id), "status": .string(r.status.rawValue), "createdAt": dateJSON(r.createdAt, raw: r.rawTimes.created),
                                "updatedAt": dateJSON(r.updatedAt, raw: r.rawTimes.updated),
@@ -59,7 +59,8 @@ public enum ExportJSON {
             "fields": .object(fields),
             "computed": .object(computed),
             "tables": .object(tables),
-        ])
-        return try JSONCoding.makeEncoder().encode(root)
+        ]
+        if let p = project { root["project"] = .object(["id": .string(p.id), "code": .string(p.code), "name": .string(p.name)]) }
+        return try JSONCoding.makeEncoder().encode(JSONValue.object(root))
     }
 }

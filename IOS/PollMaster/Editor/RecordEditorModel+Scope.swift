@@ -30,6 +30,7 @@ extension RecordEditorModel {
             compact: settings.compactMode,
             reviewMode: reviewMode,
             sites: sites(),
+            projectId: record.projectId,
             warnings: { [unowned self] field, fv in
                 var out = Warnings.messages(for: field, fv, lookup: lookup)
                 if table == nil, let d = self.plannedDistance(field.id), let m = Warnings.plannedDistanceMessage(d) { out.append(m) }

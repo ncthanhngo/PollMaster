@@ -10,6 +10,8 @@ struct RecordSummary: Identifiable, Equatable {
     var updatedAt: Date
     var status: RecordStatus
     var progress: RequiredProgress
+    /// Owning project; records written before projects existed belong to "Chung".
+    var projectId = ""
     var returned = false
     var needsBackup = false
     var thumbnail: URL?
@@ -21,6 +23,8 @@ struct RecordSummary: Identifiable, Equatable {
 
 struct GPSCoordinate: Equatable { var lat: Double; var lng: Double }
 
+struct PendingCreate { var template: Template; var project: Project }
+
 enum ImportOutcome { case installed(Template), needsOverwrite(Template, Data) }
 
 @MainActor @Observable
@@ -28,24 +32,39 @@ final class AppEnvironment {
     let root: URL
     let templateStore: TemplateStore
     let recordStore: RecordStore
-    let siteStore: SiteStore
+    let projectStore: ProjectStore
     let backups: BackupService
     let settings = AppSettings()
     let location = LocationService()
 
     var templates: [Template] = []
-    var sites: [Site] = []
+    var projects: [Project] = []
     var summaries: [RecordSummary] = []
-    /// Codes of planned sites that already have a record (a lookup field holds the code).
-    private(set) var visitedSiteCodes: Set<String> = []
+    private(set) var projectStats: [String: ProjectStats] = [:]
+    /// Planned sites per project id, loaded on `reload()`.
+    private(set) var siteCache: [String: [Site]] = [:]
+    /// Codes of planned sites that already have a record (a lookup field holds the code), per project id.
+    private(set) var visitedByProject: [String: Set<String>] = [:]
+    /// Project shown in the records tab; nil = "Tất cả dự án". Remembered across launches.
+    var currentProjectId: String? { didSet { UserDefaults.standard.set(currentProjectId, forKey: "currentProjectId") } }
+    /// Records-tab project switcher sheet.
+    var showProjectSwitcher = false
+    var projectsPath: [ProjectRoute] = []
+    var showNewProject = false
+    /// A `.pmproject` opened from another app, waiting on the preview sheet.
+    var incomingBundle: IncomingBundle?
+    /// Template just imported: asks which projects should get it.
+    var addToProjectsFor: Template?
     var selectedTab: AppTab = .records
     var recordsPath: [Route] = []
     var errorMessage: String?
+    /// Plain notice (title "Thông báo").
+    var infoMessage: String?
     /// Set while the one-time "Tên người khảo sát" question is open (ux-spec L9).
-    var askSurveyorFor: Template?
+    var askSurveyorFor: PendingCreate?
     /// Records tab shows the map instead of the list.
     var recordsShowMap = false
-    @ObservationIgnored private var editors: [String: RecordEditorModel] = [:]
+    @ObservationIgnored var editors: [String: RecordEditorModel] = [:]
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -53,10 +72,11 @@ final class AppEnvironment {
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         templateStore = TemplateStore(root: root)
         recordStore = RecordStore(root: root)
-        siteStore = SiteStore(root: root)
+        projectStore = ProjectStore(root: root)
         backups = BackupService(store: recordStore)
-        sites = siteStore.load()
+        currentProjectId = UserDefaults.standard.string(forKey: "currentProjectId")
         installBundledTemplates()
+        do { try ProjectMigration(root: root).run() } catch { errorMessage = "Không chuyển dữ liệu cũ vào dự án: \(error.localizedDescription)" }
         reload()
     }
 
@@ -78,41 +98,35 @@ final class AppEnvironment {
         editors.values.forEach { $0.flush() }
         templates = templateStore.list()
         let byKey = Dictionary(templates.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
-        var visited = Set<String>()
+        projects = projectStore.list()
+        if let id = currentProjectId, !projects.contains(where: { $0.id == id }) { currentProjectId = nil }
+        let general = projects.last(where: \.isGeneral)?.id ?? projects.last?.id ?? ""
+        siteCache = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, projectStore.sites($0.id).load()) })
+        var visited: [String: Set<String>] = [:], stats: [String: ProjectStats] = [:]
         summaries = recordStore.listItems().map { item in
             guard let r = item.record else {
                 return RecordSummary(id: item.id, title: item.id, subtitle: item.error ?? "", updatedAt: item.modifiedAt,
-                                     status: .draft, progress: RequiredProgress(done: 0, total: 0), loadError: item.error ?? "Không đọc được")
+                                     status: .draft, progress: RequiredProgress(done: 0, total: 0), projectId: general, loadError: item.error ?? "Không đọc được")
             }
+            let pid = r.projectId ?? general
+            stats[pid, default: ProjectStats()].add(r)
             guard let t = byKey["\(r.templateId)@\(r.templateVersion)"] else {
                 return RecordSummary(id: r.id, title: "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"),
                                      subtitle: "\(r.templateId) (thiếu mẫu)", updatedAt: r.updatedAt, status: r.status,
-                                     progress: RequiredProgress(done: 0, total: 0), returned: r.returned, needsBackup: r.needsBackup)
+                                     progress: RequiredProgress(done: 0, total: 0), projectId: pid, returned: r.returned, needsBackup: r.needsBackup)
             }
-            for f in t.allFields where f.lookup != nil { if let code = r.values[f.id]?.v?.string, !code.isEmpty { visited.insert(code) } }
+            for f in t.allFields where f.lookup != nil { if let code = r.values[f.id]?.v?.string, !code.isEmpty { visited[pid, default: []].insert(code) } }
             let gps = t.allFields.filter { $0.type == .gps }.compactMap { GPSValue(r.values[$0.id]?.v) }.first
             return RecordSummary(id: r.id, title: RecordNaming.title(t, r), subtitle: RecordInfo.subtitle(t, r), updatedAt: r.updatedAt,
-                                 status: r.status, progress: Validator.progress(t, r), returned: r.returned, needsBackup: r.needsBackup,
+                                 status: r.status, progress: Validator.progress(t, r), projectId: pid, returned: r.returned, needsBackup: r.needsBackup,
                                  thumbnail: RecordInfo.firstPhoto(t, r).map { recordStore.fileURL(r.id, $0.file) },
                                  coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) })
         }
-        visitedSiteCodes = visited
+        visitedByProject = visited; projectStats = stats
     }
 
     /// Newest version of each template: what new records are created from.
     var newestTemplates: [Template] { TemplateVersion.newest(templates) }
-
-    func reloadSites() { sites = siteStore.load() }
-
-    /// Replaces the planned-site list with a CSV picked by the user (security-scoped URL). Returns the number of sites.
-    func importSites(from url: URL) throws -> Int {
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let list = try SitesCSV.parse(Data(contentsOf: url))
-        try siteStore.save(list)
-        reloadSites()
-        return list.count
-    }
 
     // MARK: backup
 
@@ -123,7 +137,7 @@ final class AppEnvironment {
             if let m = editors[s.id] { await m.backup(force: true); if m.backupError == nil { done += 1 } else { failed += 1 }; continue }
             guard var r = recordStore.load(s.id), let t = templateStore.load(id: r.templateId, version: r.templateVersion) else { failed += 1; continue }
             do {
-                try await backups.write(t, r)
+                try await backups.write(t, r, project: project(of: r))
                 r.backupAt = BackupService.backupTime(snapshot: r.updatedAt, currentUpdatedAt: r.updatedAt)
                 try recordStore.save(r)
                 done += 1
@@ -155,6 +169,10 @@ final class AppEnvironment {
     func deleteTemplate(_ t: Template) {
         let n = recordCount(using: t)
         guard n == 0 else { errorMessage = TemplateError.inUse(count: n).localizedDescription; return }
+        let users = projects.filter { $0.templates.contains(TemplateRef(t)) }
+        guard users.isEmpty else {
+            errorMessage = "Còn \(users.count) dự án dùng mẫu này (\(users.map(\.code).joined(separator: ", "))). Gỡ mẫu khỏi dự án trước."; return
+        }
         do { try templateStore.delete(t); reload() } catch { errorMessage = error.localizedDescription }
     }
 
@@ -174,24 +192,25 @@ final class AppEnvironment {
     // MARK: records
 
     /// Entry point of every "create record" button: asks for the surveyor name once when Cài đặt has none, then creates.
-    func startCreate(from t: Template) {
-        if settings.surveyorName.isEmpty, !settings.surveyorAsked, t.field("HD-surveyor") != nil { askSurveyorFor = t }
-        else { createRecord(from: t) }
+    func startCreate(from t: Template, in project: Project) {
+        if settings.surveyorName.isEmpty, !settings.surveyorAsked, t.field("HD-surveyor") != nil { askSurveyorFor = PendingCreate(template: t, project: project) }
+        else { createRecord(from: t, in: project) }
     }
 
     func answerSurveyor(_ name: String) {
-        guard let t = askSurveyorFor else { return }
+        guard let pending = askSurveyorFor else { return }
         askSurveyorFor = nil
         settings.surveyorAsked = true
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { settings.surveyorName = trimmed }
-        createRecord(from: t)
+        createRecord(from: pending.template, in: pending.project)
     }
 
-    func createRecord(from t: Template) {
-        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
+    func createRecord(from t: Template, in project: Project) {
+        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName, projectId: project.id)
+        let mine = recordStore.list().filter { ($0.projectId ?? "") == project.id }
         if let code = t.recordCodeField, r.values[code.id]?.v?.isBlank != false,
-           let proposed = RecordCodeProposal.propose(for: t, among: recordStore.list()) {
+           let proposed = RecordCodeProposal.propose(for: t, among: mine) {
             r.values[code.id] = FieldValue(v: .string(proposed))
         }
         do {
@@ -222,7 +241,8 @@ final class AppEnvironment {
         if let m = editors[id] { return m }
         guard let r = recordStore.load(id), let t = templateStore.load(id: r.templateId, version: r.templateVersion) else { return nil }
         let m = RecordEditorModel(template: t, record: r, store: recordStore, location: location, settings: settings, backups: backups,
-                              sites: { [unowned self] in self.sites })
+                              sites: { [unowned self] in self.sites(forProject: r.projectId) },
+                              project: { [unowned self] pid in self.project(id: pid) })
         editors[id] = m
         return m
     }

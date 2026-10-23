@@ -31,18 +31,13 @@ struct SettingsView: View {
                 }
                 Section {
                     Toggle("Tự động sao lưu", isOn: $settings.autoBackup)
-                    LabeledContent("Thư mục", value: "Tệp > PollMaster > PollMaster Backup")
+                    LabeledContent("Thư mục", value: "Tệp > PollMaster > PollMaster Backup > mã dự án")
                     Button { runBackup() } label: {
                         HStack { Text("Sao lưu tất cả ngay"); if backingUp { Spacer(); ProgressView() } }
                     }
                     .disabled(backingUp)
                 } header: { Text("Sao lưu") } footer: {
-                    Text(backupMessage ?? "Mỗi phiếu có một tệp .zip (JSON + media) trong thư mục này, xem được trong app Tệp.")
-                }
-                Section("Danh sách điểm") {
-                    NavigationLink { SitesView() } label: {
-                        LabeledContent("Danh sách điểm", value: env.sites.isEmpty ? "Chưa có" : "\(env.sites.count) điểm")
-                    }
+                    Text(backupMessage ?? "Mỗi phiếu có một tệp .zip (JSON + media) trong thư mục của dự án, xem được trong app Tệp.")
                 }
                 Section("Thông tin") {
                     LabeledContent("Dung lượng đã dùng", value: ByteCountFormatter.string(fromByteCount: used, countStyle: .file))
