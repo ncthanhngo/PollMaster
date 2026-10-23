@@ -231,6 +231,12 @@
     <string name="settings_compact_hint">Nhãn và ô nhập cùng một hàng cho trường ngắn</string>
     <string name="settings_contrast">Tương phản cao</string>
     <string name="settings_contrast_hint">Dễ đọc ngoài trời: nền trắng/đen, viền đậm, chữ lớn hơn 10%</string>
+    <string name="settings_theme">Giao diện</string>
+    <string name="theme_light">Sáng</string>
+    <string name="theme_dark">Tối</string>
+    <string name="theme_system">Theo hệ thống</string>
+    <string name="theme_switch_dark">Giao diện tối</string>
+    <string name="theme_switch_light">Giao diện sáng</string>
     <string name="settings_sites">Danh sách điểm</string>
     <string name="settings_sites_count">%1$d điểm</string>
     <string name="settings_sites_import">Nhập CSV</string>

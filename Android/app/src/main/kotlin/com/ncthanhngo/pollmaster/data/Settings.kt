@@ -1,6 +1,7 @@
 package com.ncthanhngo.pollmaster.data
 
 import android.content.Context
+import com.ncthanhngo.pollmaster.core.theme.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,9 @@ class Settings(context: Context) {
     private val _highContrast = MutableStateFlow(prefs.getBoolean(KEY_CONTRAST, false))
     val highContrast: StateFlow<Boolean> = _highContrast.asStateFlow()
 
+    private val _themeMode = MutableStateFlow(ThemeMode.fromKey(prefs.getString(KEY_THEME, null)))
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
     private val _autoBackup = MutableStateFlow(prefs.getBoolean(KEY_BACKUP, true))
     val autoBackup: StateFlow<Boolean> = _autoBackup.asStateFlow()
 
@@ -40,6 +44,11 @@ class Settings(context: Context) {
     fun setHighContrast(value: Boolean) {
         _highContrast.value = value
         prefs.edit().putBoolean(KEY_CONTRAST, value).apply()
+    }
+
+    fun setThemeMode(value: ThemeMode) {
+        _themeMode.value = value
+        prefs.edit().putString(KEY_THEME, value.key).apply()
     }
 
     fun setAutoBackup(value: Boolean) {
@@ -77,6 +86,7 @@ class Settings(context: Context) {
         const val KEY_BUNDLED = "bundled_installed"
         const val KEY_COMPACT = "compact_mode"
         const val KEY_CONTRAST = "high_contrast"
+        const val KEY_THEME = "theme_mode"
         const val KEY_BACKUP = "auto_backup"
     }
 }

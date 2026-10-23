@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.templates
 
+import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -90,7 +91,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_templates)) }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_templates)) }, actions = { ThemeToggleButton() }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.template_import))

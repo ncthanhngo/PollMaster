@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.ui.settings
 
+import com.ncthanhngo.pollmaster.core.theme.ThemeMode
+import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -56,10 +58,11 @@ fun SettingsScreen() {
     val quality by container.settings.photoQuality.collectAsState()
     val compact by container.settings.compactMode.collectAsState()
     val contrast by container.settings.highContrast.collectAsState()
+    val themeMode by container.settings.themeMode.collectAsState()
     var used by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { container.recordStore.usedBytes() } }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }, actions = { ThemeToggleButton() }) }) { padding ->
         Column(
             Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -85,6 +88,19 @@ fun SettingsScreen() {
                         onClick = { container.settings.setPhotoQuality(PhotoQuality.MEDIUM) },
                         label = { Text(stringResource(R.string.quality_medium)) },
                     )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(ThemeMode.LIGHT to R.string.theme_light, ThemeMode.DARK to R.string.theme_dark, ThemeMode.SYSTEM to R.string.theme_system)
+                        .forEach { (mode, label) ->
+                            FilterChip(
+                                selected = themeMode == mode,
+                                onClick = { container.settings.setThemeMode(mode) },
+                                label = { Text(stringResource(label)) },
+                            )
+                        }
                 }
             }
             HorizontalDivider()

@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -94,6 +96,7 @@ fun OutlineScreen(
             ?.let { pos to it }
     }
 
+    val systemDark = isSystemInDarkTheme()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -116,6 +119,10 @@ fun OutlineScreen(
                         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; exporting = true })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (LocalUiPrefs.current.dark) R.string.theme_switch_light else R.string.theme_switch_dark)) },
+                                onClick = { menu = false; container.settings.setThemeMode(container.settings.themeMode.value.toggled(systemDark)) },
+                            )
                             if (template.instructions != null) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.menu_instructions)) }, onClick = { menu = false; showInstructions = true })
                             }

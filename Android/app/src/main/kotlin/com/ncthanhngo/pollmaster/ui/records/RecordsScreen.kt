@@ -1,8 +1,9 @@
 package com.ncthanhngo.pollmaster.ui.records
 
+import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
+import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -95,7 +96,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_records)) }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_records)) }, actions = { ThemeToggleButton() }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { picking = true }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.record_new))
@@ -247,7 +248,7 @@ private fun Thumb(file: java.io.File?) {
 @Composable
 private fun RecordChips(item: RecordItem) {
     val scheme = MaterialTheme.colorScheme
-    val dark = isSystemInDarkTheme()
+    val dark = LocalUiPrefs.current.dark
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (item.record.isCompleted) {
             StatusChip(stringResource(R.string.status_completed), if (dark) Color(0xFF1E4D33) else Color(0xFFD7F0DF), if (dark) Color(0xFFBFF0D0) else Color(0xFF0E4A25))
