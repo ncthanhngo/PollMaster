@@ -7,6 +7,13 @@ struct RouteDestination: View {
     @Environment(AppEnvironment.self) private var env
 
     var body: some View {
+        Group {
+            destination
+        }
+        .toolbar(.hidden, for: .tabBar)      // the whole editing flow runs full screen
+    }
+
+    @ViewBuilder private var destination: some View {
         if let model = env.editor(for: route.recordId) {
             switch route {
             case .editor: EditorRootView(model: model)
@@ -21,30 +28,38 @@ struct RouteDestination: View {
     }
 }
 
-/// Table of contents of a record: header + sections with missing-required counts.
+/// Table of contents of a record: header + sections with neutral progress, resume button.
 struct EditorRootView: View {
     let model: RecordEditorModel
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.pmTheme) private var theme
     @State private var exporting = false
     @State private var showInstructions = false
+    @State private var confirmReturn = false
 
     var body: some View {
         List {
-            if model.isLocked {
-                Section { LockedBanner(model: model) }
+            if model.isLocked { Section { LockedBanner(model: model) } }
+            if model.record.returned && !model.isLocked {
+                Section { Label("Phiếu được trả lại để sửa. Xem các ghi chú kiểm tra màu cam.", systemImage: "arrow.uturn.backward.circle.fill")
+                    .foregroundStyle(.orange).font(.subheadline) }
             }
-            Section {
-                ProgressRow(progress: model.progress)
+            if let resume = model.resumeTarget {
+                Section {
+                    NavigationLink(value: Route.section(record: model.record.id, index: resume.index, focus: resume.fieldId)) {
+                        Label("Tiếp tục: \(resume.fieldId) \(resume.label)", systemImage: "arrow.right.circle.fill").lineLimit(2)
+                    }
+                    .foregroundStyle(Color.accentColor)
+                }
             }
+            Section { ProgressRow(progress: model.progress) }
             Section("Mục lục") {
                 ForEach(Array(model.sectionTitles.enumerated()), id: \.offset) { i, s in
                     NavigationLink(value: Route.section(record: model.record.id, index: i, focus: nil)) {
                         HStack {
                             Text(s.title)
                             Spacer()
-                            let n = model.issueCount(section: s.id)
-                            if n > 0 { Text("\(n)").font(.caption.bold()).foregroundStyle(.white)
-                                .padding(.horizontal, 8).padding(.vertical, 2).background(Color.red, in: Capsule()) }
+                            sectionBadge(s.id)
                         }
                     }
                 }
@@ -54,29 +69,75 @@ struct EditorRootView: View {
                     Label("Kiểm tra & hoàn thành", systemImage: "checkmark.seal")
                 }
             }
+            if model.isLocked && model.reviewMode {
+                Section {
+                    Button("Trả lại để sửa", systemImage: "arrow.uturn.backward") { confirmReturn = true }
+                    Button("Thoát chế độ kiểm tra") { model.reviewMode = false }
+                } header: { Text("Chế độ kiểm tra") } footer: { Text("Chạm thẻ trường để thêm ghi chú kiểm tra.") }
+            }
         }
         .navigationTitle(model.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    Text(model.title).font(.headline).lineLimit(1).truncationMode(.tail)
+                    Text(subtitle).font(.caption2).secondaryText().lineLimit(1)
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
-                Button("Kiểm tra") {
+                Button(model.showAllErrors && !model.issues.isEmpty ? "Kiểm tra · \(model.issues.count)" : "Kiểm tra") {
                     model.showAllErrors = true
                     env.recordsPath.append(.review(record: model.record.id))
                 }
+                .font(.subheadline)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Menu {
                     Button("Xuất", systemImage: "square.and.arrow.up") { exporting = true }
                     Button("Hướng dẫn mẫu", systemImage: "book") { showInstructions = true }
+                    if model.isLocked {
+                        Button(model.reviewMode ? "Thoát chế độ kiểm tra" : "Chế độ kiểm tra", systemImage: "text.badge.checkmark") {
+                            model.reviewMode.toggle()
+                        }
+                    }
+                    Button("Sao lưu ngay", systemImage: "externaldrive") { Task { await model.backup(force: true) } }
                 } label: { Image(systemName: "ellipsis.circle") }
             }
         }
         .sheet(isPresented: $exporting) { ExportSheet(recordId: model.record.id) }
         .sheet(isPresented: $showInstructions) { InstructionsSheet(template: model.template) }
+        .confirmationDialog("Trả phiếu về cho người khảo sát sửa? Trạng thái sẽ về Nháp, kèm các ghi chú kiểm tra.", isPresented: $confirmReturn,
+                            titleVisibility: .visible) {
+            Button("Trả lại để sửa") { model.returnForFix() }
+        }
         .onDisappear { model.flush() }
-        .alert("Lỗi", isPresented: Binding(get: { model.saveError != nil }, set: { if !$0 { model.saveError = nil } })) {
-            Button("OK") { model.saveError = nil }
-        } message: { Text(model.saveError ?? "") }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15 * 60))
+                await model.backup()
+            }
+        }
+        .alert("Lỗi", isPresented: Binding(get: { model.saveError != nil || model.backupError != nil }, set: { if !$0 { model.saveError = nil; model.backupError = nil } })) {
+            Button("OK") { model.saveError = nil; model.backupError = nil }
+        } message: { Text(model.saveError ?? model.backupError ?? "") }
+    }
+
+    private var subtitle: String {
+        let saved = model.lastSaved.map { " · Đã lưu \(ISODate.format($0, "HH:mm"))" } ?? ""
+        return "\(model.progress.done)/\(model.progress.total) bắt buộc\(saved)"
+    }
+
+    /// Grey "đã điền/bắt buộc", green check when complete; red numbers only after the first "Kiểm tra".
+    @ViewBuilder private func sectionBadge(_ id: String) -> some View {
+        let missing = model.issueCount(section: id)
+        if model.showAllErrors && missing > 0 {
+            Text("\(missing)").font(.caption.bold()).foregroundStyle(.white)
+                .padding(.horizontal, 8).padding(.vertical, 2).background(Color.red, in: Capsule())
+        } else if let p = model.sectionProgress[id], p.total > 0 {
+            if p.done == p.total { Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(theme.success) }
+            else { Text("\(p.done)/\(p.total)").font(.footnote.monospacedDigit()).secondaryText() }
+        }
     }
 }
 
@@ -98,7 +159,10 @@ struct LockedBanner: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Đã hoàn thành lúc \(model.record.completedAt.map { ISODate.format($0, "HH:mm dd/MM/yyyy") } ?? "")",
                   systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-            Button("Mở lại") { confirm = true }.buttonStyle(.bordered)
+            HStack {
+                Button("Mở lại") { confirm = true }.buttonStyle(.bordered)
+                if !model.reviewMode { Button("Chế độ kiểm tra") { model.reviewMode = true }.buttonStyle(.bordered) }
+            }
         }
         .confirmationDialog("Mở lại phiếu để chỉnh sửa? Trạng thái sẽ về Nháp.", isPresented: $confirm, titleVisibility: .visible) {
             Button("Mở lại") { model.reopen() }

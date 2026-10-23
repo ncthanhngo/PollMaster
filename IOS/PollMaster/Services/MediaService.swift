@@ -48,6 +48,13 @@ struct MediaService {
         return Media(file: rel, takenAt: Date(), lat: location?.coordinate.latitude, lng: location?.coordinate.longitude)
     }
 
+    /// Moves a finished recording (m4a) into the record's media folder.
+    func saveAudio(from source: URL, fieldId: String, location: CLLocation?) throws -> Media {
+        let (url, rel) = uniqueURL(fieldId: fieldId, ext: "m4a")
+        try FileManager.default.copyItem(at: source, to: url)
+        return Media(file: rel, takenAt: Date(), lat: location?.coordinate.latitude, lng: location?.coordinate.longitude)
+    }
+
     func saveSignature(_ png: Data, id: String) throws -> String {
         let dir = store.mediaDir(recordId)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

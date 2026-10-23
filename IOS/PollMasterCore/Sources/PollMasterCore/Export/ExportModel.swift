@@ -11,6 +11,7 @@ public struct ExportEntry: Equatable, Sendable {
     public var flag: String           // "~", "KĐĐ" or ""
     public var reason: String
     public var note: String
+    public var review: String
     public var isComputed: Bool
 }
 
@@ -92,7 +93,7 @@ public enum ExportModelBuilder {
         func entry(_ f: Field, section: String) -> ExportEntry {
             let fv = r.values[f.id]
             var e = ExportEntry(sectionTitle: section, id: f.id, label: f.label, method: f.method, display: "", number: nil,
-                                unit: f.type == .gps ? "" : (f.unit ?? ""), flag: "", reason: fv?.reason ?? "", note: fv?.note ?? "", isComputed: f.isComputed)
+                                unit: f.type == .gps ? "" : (f.unit ?? ""), flag: "", reason: fv?.reason ?? "", note: fv?.note ?? "", review: fv?.review ?? "", isComputed: f.isComputed)
             if f.isComputed {
                 let v = computed[f.id]
                 e.display = ValueFormatter.displayComputed(f, v)

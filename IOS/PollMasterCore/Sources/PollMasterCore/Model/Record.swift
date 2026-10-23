@@ -46,14 +46,16 @@ public struct FieldValue: Codable, Equatable, Sendable {
     public var other: [String: String]?
     public var parts: [String: JSONValue]?
     public var media: [Media]?
+    /// Checker's note (schema §7.4).
+    public var review: String?
 
     public init(v: JSONValue? = nil, flag: FieldFlag? = nil, reason: String? = nil, note: String? = nil,
-                other: [String: String]? = nil, parts: [String: JSONValue]? = nil, media: [Media]? = nil) {
+                other: [String: String]? = nil, parts: [String: JSONValue]? = nil, media: [Media]? = nil, review: String? = nil) {
         self.v = v; self.flag = flag; self.reason = reason; self.note = note
-        self.other = other; self.parts = parts; self.media = media
+        self.other = other; self.parts = parts; self.media = media; self.review = review
     }
 
-    enum CodingKeys: String, CodingKey { case v, flag, reason, note, other, parts, media }
+    enum CodingKeys: String, CodingKey { case v, flag, reason, note, other, parts, media, review }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -64,6 +66,7 @@ public struct FieldValue: Codable, Equatable, Sendable {
         other = c.lenient([String: String].self, .other)
         parts = c.lenient([String: JSONValue].self, .parts)
         media = c.lenient([Media].self, .media)
+        review = c.lenient(String.self, .review)
         normalize()
     }
 
@@ -77,6 +80,7 @@ public struct FieldValue: Codable, Equatable, Sendable {
         parts = parts?.filter { !$0.value.isEmpty }
         if parts?.isEmpty == true { parts = nil }
         if media?.isEmpty == true { media = nil }
+        if review?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { review = nil }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -85,13 +89,13 @@ public struct FieldValue: Codable, Equatable, Sendable {
         try c.encodeIfPresent(n.v, forKey: .v); try c.encodeIfPresent(n.flag, forKey: .flag)
         try c.encodeIfPresent(n.reason, forKey: .reason); try c.encodeIfPresent(n.note, forKey: .note)
         try c.encodeIfPresent(n.other, forKey: .other); try c.encodeIfPresent(n.parts, forKey: .parts)
-        try c.encodeIfPresent(n.media, forKey: .media)
+        try c.encodeIfPresent(n.media, forKey: .media); try c.encodeIfPresent(n.review, forKey: .review)
     }
 
     /// Nothing at all stored (no value, flag, note, parts, media).
     public var isBlank: Bool {
         var n = self; n.normalize()
-        return n.v == nil && n.flag == nil && n.reason == nil && n.note == nil && n.other == nil && n.parts == nil && n.media == nil
+        return n.v == nil && n.flag == nil && n.reason == nil && n.note == nil && n.other == nil && n.parts == nil && n.media == nil && n.review == nil
     }
 
     /// Element `i` of a samples value.
@@ -173,6 +177,20 @@ public struct RawTimes: Equatable, Sendable {
     public static func == (_: RawTimes, _: RawTimes) -> Bool { true }
 }
 
+/// Where the user last worked (section id + field id or table id).
+public struct LastPosition: Codable, Equatable, Sendable {
+    public var section: String
+    public var field: String
+    public init(section: String, field: String) { self.section = section; self.field = field }
+
+    enum CodingKeys: String, CodingKey { case section, field }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        section = try c.decode(String.self, forKey: .section)
+        field = try c.decode(String.self, forKey: .field)
+    }
+}
+
 public struct Record: Codable, Equatable, Sendable, Identifiable {
     public var schemaVersion: Int = 1
     public var id: String
@@ -185,10 +203,16 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
     public var values: [String: FieldValue]
     public var tables: [String: [Row]]
     public var signatures: [String: SignatureEntry]
+    /// Handed back by the checker for corrections (status is draft again); cleared on completion.
+    public var returned: Bool = false
+    public var lastPosition: LastPosition?
+    /// Last automatic backup; the record counts as unsaved when `updatedAt` is later.
+    public var backupAt: Date?
     public var rawTimes = RawTimes()
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, id, templateId, templateVersion, status, createdAt, updatedAt, completedAt, values, tables, signatures
+        case returned, lastPosition, backupAt
     }
 
     /// Every key except `id` is optional on read (Android omits keys).
@@ -206,6 +230,9 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         values = c.lenient([String: FieldValue].self, .values) ?? [:]
         tables = c.lenient([String: [Row]].self, .tables) ?? [:]
         signatures = c.lenient([String: SignatureEntry].self, .signatures) ?? [:]
+        returned = c.lenient(Bool.self, .returned) ?? false
+        lastPosition = c.lenient(LastPosition.self, .lastPosition)
+        backupAt = c.lenient(Date.self, .backupAt)
         rawTimes = RawTimes(created: c.lenient(String.self, .createdAt), updated: c.lenient(String.self, .updatedAt),
                             completed: c.lenient(String.self, .completedAt))
     }
@@ -217,6 +244,22 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         self.createdAt = createdAt; self.updatedAt = createdAt; self.completedAt = nil
         self.values = values; self.tables = tables; self.signatures = signatures
     }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion); try c.encode(id, forKey: .id)
+        try c.encode(templateId, forKey: .templateId); try c.encode(templateVersion, forKey: .templateVersion)
+        try c.encode(status, forKey: .status)
+        try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try c.encode(values, forKey: .values); try c.encode(tables, forKey: .tables); try c.encode(signatures, forKey: .signatures)
+        if returned { try c.encode(true, forKey: .returned) }
+        try c.encodeIfPresent(lastPosition, forKey: .lastPosition)
+        try c.encodeIfPresent(backupAt, forKey: .backupAt)
+    }
+
+    /// Edited since the last automatic backup (or never backed up).
+    public var needsBackup: Bool { backupAt.map { updatedAt > $0 } ?? true }
 
     public func value(_ id: String) -> FieldValue { values[id] ?? FieldValue() }
     public func rows(_ tableId: String) -> [Row] { tables[tableId] ?? [] }

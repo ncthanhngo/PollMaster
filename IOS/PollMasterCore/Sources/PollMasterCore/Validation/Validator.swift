@@ -108,6 +108,30 @@ public enum Validator {
         return out
     }
 
+    /// Required progress per section id (`header` first). Same "done" rule as `progress`.
+    public static func sectionProgress(_ t: Template, _ r: Record) -> [String: RequiredProgress] {
+        let lookup: (String) -> FieldValue? = { r.values[$0] }
+        let tableIssues = Set(validate(t, r).map(\.fieldId))
+        func count(_ items: [Item]) -> RequiredProgress {
+            var p = RequiredProgress(done: 0, total: 0)
+            for item in items {
+                switch item {
+                case .field(let f) where f.required && !f.isComputed:
+                    p.total += 1
+                    if issues(for: f, r.values[f.id], lookup: lookup).isEmpty { p.done += 1 }
+                case .table(let tb) where tb.required:
+                    p.total += 1
+                    if !tableIssues.contains(tb.id) { p.done += 1 }
+                default: break
+                }
+            }
+            return p
+        }
+        var out = [headerSectionId: count(t.header.map { .field($0) })]
+        for s in t.sections { out[s.id] = count(s.items) }
+        return out
+    }
+
     /// Required items filled / total required (fields and tables).
     public static func progress(_ t: Template, _ r: Record) -> RequiredProgress {
         var done = 0, total = 0

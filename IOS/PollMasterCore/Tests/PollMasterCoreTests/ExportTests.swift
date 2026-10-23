@@ -97,7 +97,7 @@ private func writeJPEG(to url: URL, width: Int = 120, height: Int = 80) throws {
         let d = CSVExport.info(m)
         #expect(Array(d.prefix(3)) == [0xEF, 0xBB, 0xBF])
         let text = String(decoding: d.dropFirst(3), as: UTF8.self)
-        #expect(text.hasPrefix("Mục,Mã,Thông số,Giá trị,Đơn vị,Cờ,Lý do,Ghi chú\r\n"))
+        #expect(text.hasPrefix("Mục,Mã,Thông số,Giá trị,Đơn vị,Cờ,Lý do,Ghi chú,Kiểm tra\r\n"))
         #expect(text.contains("\"K<1> & \"\"x\"\"\""))
     }
 

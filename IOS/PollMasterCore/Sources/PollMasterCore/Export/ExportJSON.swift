@@ -31,6 +31,7 @@ public enum ExportJSON {
             if let flag = fv?.flag { o["flag"] = .string(flag.rawValue) }
             if let s = fv?.reason { o["reason"] = .string(s) }
             if let s = fv?.note { o["note"] = .string(s) }
+            if let s = fv?.review { o["review"] = .string(s) }
             if let other = fv?.other { o["other"] = .object(other.mapValues { .string($0) }) }
             if let p = fv?.parts { o["parts"] = .object(p) }
             if let m = fv?.media, !m.isEmpty { o["media"] = .array(m.map { .string($0.fileName) }) }

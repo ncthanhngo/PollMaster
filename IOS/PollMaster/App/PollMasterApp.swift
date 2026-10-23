@@ -7,13 +7,13 @@ struct PollMasterApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            ThemeHost(highContrast: env.settings.highContrast) { RootView() }
                 .environment(env)
                 .task { env.applyDebugLaunchArguments() }
                 .alert("Lỗi", isPresented: Binding(get: { env.errorMessage != nil }, set: { if !$0 { env.errorMessage = nil } })) {
                     Button("OK") { env.errorMessage = nil }
                 } message: { Text(env.errorMessage ?? "") }
-                .onChange(of: phase) { _, p in if p != .active { env.reload() } }
+                .onChange(of: phase) { _, p in if p != .active { env.reload() }; if p == .background { env.backupOpenEditors() } }
         }
     }
 }

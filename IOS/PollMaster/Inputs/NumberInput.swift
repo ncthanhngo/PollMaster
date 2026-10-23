@@ -1,25 +1,39 @@
 import SwiftUI
 import PollMasterCore
 
+extension Notification.Name {
+    /// Posted by the keyboard toolbar "±" button; the focused number input flips its sign.
+    static let pmToggleSign = Notification.Name("pmToggleSign")
+}
+
 /// Decimal text entry that keeps in-progress text ("1.", "-") while the stored value is a number.
 struct NumberInput: View {
     var placeholder: String = ""
     var integer: Bool
+    var unit: String?
     @Binding var value: JSONValue?
     var focus: FocusSlot?
     @State private var text = ""
 
     var body: some View {
-        TextField(placeholder, text: $text)
-            .keyboardType(integer ? .numbersAndPunctuation : .decimalPad)
-            .textFieldStyle(.roundedBorder)
-            .submitLabel(.next)
-            .focusSlot(focus)
-            .onAppear { text = format(value) }
-            .onChange(of: text) { _, new in commit(new) }
-            .onChange(of: value) { _, new in
-                if parse(text) != new?.double { text = format(new) }
-            }
+        HStack(spacing: 4) {
+            TextField(placeholder, text: $text)
+                .keyboardType(integer ? .numberPad : .decimalPad)
+                .textFieldStyle(.plain)
+                .submitLabel(.next)
+                .focusSlot(focus)
+            if let unit { Text(unit).font(.subheadline).secondaryText().fixedSize() }
+        }
+        .inputBox()
+        .onAppear { text = format(value) }
+        .onChange(of: text) { _, new in commit(new) }
+        .onChange(of: value) { _, new in
+            if parse(text) != new?.double { text = format(new) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pmToggleSign)) { _ in
+            guard let focus, focus.state.wrappedValue == focus.key else { return }
+            text = text.hasPrefix("-") ? String(text.dropFirst()) : "-" + text
+        }
     }
 
     private func parse(_ s: String) -> Double? {

@@ -46,7 +46,9 @@ targets:
         NSCameraUsageDescription: "PollMaster cần dùng camera để chụp ảnh và quay video khảo sát."
         NSPhotoLibraryUsageDescription: "PollMaster cần truy cập thư viện ảnh để đính kèm ảnh và video vào phiếu khảo sát."
         NSLocationWhenInUseUsageDescription: "PollMaster dùng vị trí để ghi tọa độ điểm khảo sát và gắn vị trí vào ảnh."
-        NSMicrophoneUsageDescription: "PollMaster cần micro để ghi âm khi quay video khảo sát."
+        NSMicrophoneUsageDescription: "PollMaster cần micro để ghi âm bản ghi và quay video khảo sát."
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ncthanhngo.pollmaster

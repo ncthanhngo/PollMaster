@@ -69,7 +69,7 @@ import Foundation
         r.values["A-01"] = FieldValue(v: "K1")
         #expect(RecordNaming.title(t, r) == "K1")
         r.values["A-01"] = nil
-        #expect(RecordNaming.title(t, r) == t.title)
+        #expect(RecordNaming.title(t, r) == "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"))
     }
 
     @Test func xlsxNumbersRoundedAndSheetNames() throws {
@@ -144,11 +144,11 @@ extension ParityDisplayTests {
         #expect(Validator.progress(t, r).done == ok.done - 1)
     }
 
-    @Test func missingRecordTitleFallsBackToTemplateTitle() {
+    @Test func missingRecordTitleFallsBackToNewRecordTitle() {
         var t = t
         t.recordTitle = nil
         var r = Record(templateId: t.id, templateVersion: t.version)
         r.values["HD-code"] = FieldValue(v: "X")
-        #expect(RecordNaming.title(t, r) == t.title)
+        #expect(RecordNaming.title(t, r) == "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"))
     }
 }

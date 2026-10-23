@@ -1,10 +1,10 @@
 import Foundation
 
 public enum CSVExport {
-    public static let infoHeaders = ["Mục", "Mã", "Thông số", "Giá trị", "Đơn vị", "Cờ", "Lý do", "Ghi chú"]
+    public static let infoHeaders = ["Mục", "Mã", "Thông số", "Giá trị", "Đơn vị", "Cờ", "Lý do", "Ghi chú", "Kiểm tra"]
 
     public static func infoRow(_ e: ExportEntry) -> [String] {
-        [e.sectionTitle, e.id, e.label, e.display, e.unit, e.flag, e.reason, e.note]
+        [e.sectionTitle, e.id, e.label, e.display, e.unit, e.flag, e.reason, e.note, e.review]
     }
 
     static func escape(_ s: String) -> String {

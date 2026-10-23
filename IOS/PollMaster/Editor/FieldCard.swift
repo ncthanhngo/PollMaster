@@ -1,7 +1,7 @@
 import SwiftUI
 import PollMasterCore
 
-/// One field: code badge, label, input by type, parts, KĐĐ reason, note, validation message.
+/// One field: code badge, label, flag toggles, input by type, parts, photo reference, KĐĐ reason, note, warnings, errors.
 struct FieldCard: View {
     let field: Field
     @Binding var fv: FieldValue
@@ -9,114 +9,132 @@ struct FieldCard: View {
     var showCode = true
     @State private var showFormula = false
     @State private var editingNote = false
+    @State private var addingReview = false
+    @State private var pickingSite = false
+    @State private var pendingSite: Site?
+    @Environment(\.pmTheme) private var theme
 
     private var notMeasurable: Bool { fv.flag == .notMeasurable }
+    private var warnings: [String] { scope.warnings(field, fv) }
+    private var error: String? { scope.errorText(field) }
+    private var showsReview: Bool { scope.tableId == nil && (fv.review != nil || addingReview) }
+
+    /// Short single-value fields share one row: label left, input right (~40 %).
+    private var compactRow: Bool {
+        scope.compact && [.number, .integer, .text].contains(field.type) && field.samples == nil && (field.parts ?? []).isEmpty
+            && !field.attachPhoto && field.lookup == nil && field.prefix == nil && !notMeasurable
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            FieldHeader(field: field, fv: $fv, editingNote: $editingNote, locked: scope.locked, showCode: showCode)
-            if let m = field.method { Text(m).font(.caption).foregroundStyle(.secondary) }
-            if field.isComputed {
-                ComputedBlock(field: field, value: scope.computedValue(field.id), showFormula: $showFormula)
-            } else {
-                Group {
-                    FieldInput(field: field, fv: $fv, scope: scope)
-                    PartsBlock(field: field, fv: $fv, scope: scope)
-                    if field.attachPhoto {
-                        MediaInput(field: field, video: false, fieldValue: $fv, scope: scope)
+        VStack(alignment: .leading, spacing: 8) {
+            if showsReview {
+                ReviewBox(text: Binding(get: { fv.review ?? "" }, set: { fv.review = $0.isEmpty ? nil : $0 }),
+                          editable: scope.reviewMode, canResolve: !scope.locked) { addingReview = false }
+            }
+            if compactRow {
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        // the code badge shares the line of the method hint, leaving the full width to the label
+                        let codeOnHintLine = showCode && field.method != nil
+                        FieldTitle(field: field, fv: fv, showCode: showCode && !codeOnHintLine)
+                        if codeOnHintLine || field.method != nil {
+                            HStack(spacing: 6) {
+                                if codeOnHintLine { CodeBadge(id: field.id) }
+                                if let m = field.method { Text(m).font(.caption).secondaryText().lineLimit(1) }
+                            }
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    input.containerRelativeFrame(.horizontal) { w, _ in min(w * 0.30, 200) }
+                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope, withChips: false)
                 }
-                .opacity(notMeasurable ? 0.4 : 1)
-                .disabled(notMeasurable || field.readonly || scope.locked)
-                if notMeasurable {
-                    TextField("Lý do không đo được (bắt buộc)", text: Binding(get: { fv.reason ?? "" }, set: { fv.reason = $0 }))
-                        .textFieldStyle(.roundedBorder).disabled(scope.locked)
+            } else {
+                HStack(alignment: .center, spacing: 6) {
+                    FieldTitle(field: field, fv: fv, showCode: showCode).frame(maxWidth: .infinity, alignment: .leading)
+                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope, withChips: true)
                 }
+                if let m = field.method { Text(m).font(.caption).secondaryText() }
+                if field.isComputed {
+                    ComputedBlock(field: field, value: scope.computedValue(field.id), showFormula: $showFormula)
+                } else {
+                    input
+                    lookupButton
+                }
+            }
+            if notMeasurable {
+                TextField("Lý do không đo được (bắt buộc)", text: Binding(get: { fv.reason ?? "" }, set: { fv.reason = $0 }))
+                    .textFieldStyle(.plain).inputBox().disabled(scope.locked)
             }
             if editingNote || !(fv.note ?? "").isEmpty {
                 TextField("Ghi chú", text: Binding(get: { fv.note ?? "" }, set: { fv.note = $0 }), axis: .vertical)
-                    .font(.footnote).textFieldStyle(.roundedBorder).disabled(scope.locked)
+                    .font(.footnote).textFieldStyle(.plain).inputBox().disabled(scope.locked)
             }
-            if let e = scope.errorText(field) {
-                Label(e, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.red)
+            photoRef
+            ForEach(warnings, id: \.self) { w in
+                Label("\(w) — kiểm tra lại", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(theme.warning)
             }
+            if let e = error { Label(e, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(theme.alert) }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-        .overlay { if scope.errorText(field) != nil { RoundedRectangle(cornerRadius: 12).stroke(Color.red.opacity(0.5), lineWidth: 1) } }
+        .cardBox(stroke: error != nil ? theme.alert.opacity(0.7) : (showsReview ? .orange : nil), padding: compactRow ? 8 : 12)
         .id(field.id)
+        .simultaneousGesture(TapGesture().onEnded { scope.visit(field) })
         .onDisappear { scope.touch(field) }
-    }
-}
-
-private struct FieldHeader: View {
-    let field: Field
-    @Binding var fv: FieldValue
-    @Binding var editingNote: Bool
-    let locked: Bool
-    let showCode: Bool
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            if showCode {
-                Text(field.id).font(.caption.monospaced().weight(.semibold))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
-            }
-            if fv.flag == .estimate { flagBadge("~") }
-            if fv.flag == .notMeasurable { flagBadge("KĐĐ") }
-            (Text(field.label) + (field.required ? Text(" *").foregroundColor(.red) : Text("")))
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if field.isComputed {
-                Image(systemName: "function").foregroundStyle(.secondary)
-            } else if !locked && !field.readonly {
-                Menu {
-                    if field.flagsEnabled {
-                        Button(fv.flag == .estimate ? "Bỏ ước lượng (~)" : "Ước lượng (~)", systemImage: "tilde") {
-                            fv.flag = fv.flag == .estimate ? nil : .estimate
-                        }
-                        Button(fv.flag == .notMeasurable ? "Bỏ không đo được" : "Không đo được (KĐĐ)", systemImage: "nosign") {
-                            fv.flag = fv.flag == .notMeasurable ? nil : .notMeasurable
-                        }
-                    }
-                    Button("Thêm ghi chú", systemImage: "note.text") { editingNote = true }
-                    Button("Xóa giá trị", systemImage: "trash", role: .destructive) {
-                        fv = FieldValue(note: fv.note)
-                    }
-                } label: { Image(systemName: "ellipsis.circle").font(.title3) }
-            }
+        .sheet(isPresented: $pickingSite) { SitePicker(sites: scope.sites, onPick: choose) }
+        .confirmationDialog(conflictTitle, isPresented: Binding(get: { pendingSite != nil }, set: { if !$0 { pendingSite = nil } }),
+                            titleVisibility: .visible) {
+            Button("Ghi đè") { fill(overwrite: true) }
+            Button("Chỉ điền ô trống") { fill(overwrite: false) }
+            Button("Hủy", role: .cancel) {}
         }
     }
 
-    private func flagBadge(_ t: String) -> some View {
-        Text(t).font(.caption.weight(.bold)).foregroundStyle(.white)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.orange, in: RoundedRectangle(cornerRadius: 5))
-    }
-}
-
-private struct ComputedBlock: View {
-    let field: Field
-    let value: JSONValue?
-    @Binding var showFormula: Bool
-
-    var body: some View {
-        let text = ValueFormatter.displayComputed(field, value, includeUnit: true)
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: "function").foregroundStyle(.secondary)
-                Text(text.isEmpty ? "—" : text).font(.body.monospacedDigit())
-                Spacer()
+    @ViewBuilder private var input: some View {
+        if !field.isComputed {
+            Group {
+                FieldInput(field: field, fv: $fv, scope: scope)
+                PartsBlock(field: field, fv: $fv, scope: scope)
+                if field.attachPhoto { MediaInput(field: field, video: false, fieldValue: $fv, scope: scope) }
             }
-            .padding(10).background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 8))
-            .contentShape(Rectangle())
-            .onTapGesture { showFormula.toggle() }
-            if showFormula, let f = field.formula {
-                Text("ƒx  \(f)").font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
-            }
+            .opacity(notMeasurable ? 0.4 : 1)
+            .disabled(notMeasurable || field.readonly || scope.locked)
         }
+    }
+
+    @ViewBuilder private var lookupButton: some View {
+        if field.lookup != nil, !scope.locked, !field.isComputed {
+            Button { pickingSite = true } label: {
+                Label("Chọn từ danh sách", systemImage: "list.bullet.rectangle")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    @ViewBuilder private var photoRef: some View {
+        if let ref = field.photoRef, let r = scope.reference(ref) {
+            MediaInput(field: r.field, video: r.field.type == .video, fieldValue: r.value, scope: refScope, captureTitle: "Chụp \(ref)").controlSize(.small)
+                .disabled(scope.locked)
+        }
+        let users = field.isMedia ? scope.photoUsers(field.id) : []
+        if !users.isEmpty { Text("Dùng cho: \(users.joined(separator: ", "))").font(.caption).secondaryText() }
+    }
+
+    /// Reference media is named after the referenced record field, not after a table column.
+    private var refScope: FieldScope { var s = scope; s.tableId = nil; return s }
+
+    private var conflictTitle: String {
+        guard let site = pendingSite, let lk = field.lookup else { return "" }
+        return "Ghi đè \(scope.lookupConflicts(lk, site).joined(separator: ", "))?"
+    }
+
+    private func choose(_ site: Site) {
+        fv.v = .string(site.code)
+        guard let lk = field.lookup else { return }
+        if scope.lookupConflicts(lk, site).isEmpty { scope.applyLookup(lk, site, true) } else { pendingSite = site }
+    }
+
+    private func fill(overwrite: Bool) {
+        if let site = pendingSite, let lk = field.lookup { scope.applyLookup(lk, site, overwrite) }
+        pendingSite = nil
     }
 }
 
@@ -134,11 +152,12 @@ struct FieldInput: View {
         switch field.type {
         case .composite: EmptyView()
         case .sessionTime: SessionTimeInput(value: v)
-        case .gps: GPSInput(value: v, location: scope.location)
+        case .gps: GPSInput(field: field, value: v, location: scope.location, plannedDistance: scope.plannedDistance(field))
         case .photo: MediaInput(field: field, video: false, fieldValue: $fv, scope: scope)
         case .video: MediaInput(field: field, video: true, fieldValue: $fv, scope: scope)
+        case .audio: AudioInput(field: field, fieldValue: $fv, scope: scope)
         case .signature:
-            Text("Ký tại màn Kiểm tra & hoàn thành.").font(.footnote).foregroundStyle(.secondary)
+            Text("Ký tại màn Kiểm tra & hoàn thành.").font(.footnote).secondaryText()
         default:
             if let n = field.samples { samples(n) }
             else {
@@ -151,45 +170,18 @@ struct FieldInput: View {
         let horizontal = [.number, .integer, .time, .text, .elapsed, .compass].contains(field.type)
         let cells = ForEach(0..<n, id: \.self) { i in
             VStack(alignment: .leading, spacing: 2) {
-                Text("Lần \(i + 1)").font(.caption2).foregroundStyle(.secondary)
+                Text("Lần \(i + 1)").font(.caption2).secondaryText()
                 ScalarInput(field: field, value: Binding(get: { fv.sample(i).isNull ? nil : fv.sample(i) },
                                                          set: { fv.setSample(i, count: n, to: $0) }),
                             other: other, focus: slot("\(field.id)#\(i)"), location: scope.location, showUnit: false)
             }
+            .frame(maxWidth: .infinity)
         }
         if horizontal {
             HStack(alignment: .top, spacing: 8) { cells }
-            if let u = field.unit { Text(u).font(.caption).foregroundStyle(.secondary) }
+            if let u = field.unit { Text(u).font(.caption).secondaryText() }
         } else {
             VStack(alignment: .leading, spacing: 8) { cells }
-        }
-    }
-}
-
-private struct PartsBlock: View {
-    let field: Field
-    @Binding var fv: FieldValue
-    let scope: FieldScope
-
-    var body: some View {
-        let parts = PartVisibility.visibleParts(of: field, value: fv, lookup: scope.lookup)
-        if !parts.isEmpty {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .top)], alignment: .leading, spacing: 8) {
-                ForEach(parts) { p in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(p.label + (p.unit.map { " (\($0))" } ?? "")).font(.caption2).foregroundStyle(.secondary)
-                        ScalarInput(field: p.asField,
-                                    value: Binding(get: { fv.parts?[p.id] }, set: { new in
-                                        var d = fv.parts ?? [:]
-                                        d[p.id] = new
-                                        fv.parts = d
-                                    }),
-                                    other: .constant(nil),
-                                    focus: scope.focus.map { FocusSlot(state: $0, key: "\(field.id).\(p.id)") },
-                                    location: scope.location, showUnit: false)
-                    }
-                }
-            }
         }
     }
 }

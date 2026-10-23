@@ -20,14 +20,18 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>PollMaster cần dùng camera để chụp ảnh và quay video khảo sát.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>PollMaster dùng vị trí để ghi tọa độ điểm khảo sát và gắn vị trí vào ảnh.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>PollMaster cần micro để ghi âm khi quay video khảo sát.</string>
+	<string>PollMaster cần micro để ghi âm bản ghi và quay video khảo sát.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PollMaster cần truy cập thư viện ảnh để đính kèm ảnh và video vào phiếu khảo sát.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

@@ -38,6 +38,24 @@ public struct RecordExporter: Sendable {
         return out
     }
 
+    /// Folder-visible safety copy: `{code|id}[_{id8}]_backup.zip` (JSON + media), replacing the previous copy of this record.
+    public static func backupFileName(_ t: Template, _ r: Record) -> String {
+        if let code = RecordNaming.recordCode(t, r) { return "\(code)_\(r.id.prefix(8))_backup.zip" }
+        return "\(r.id)_backup.zip"
+    }
+
+    @discardableResult
+    public func writeBackup(_ t: Template, _ r: Record, into dir: URL) throws -> URL {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let final = dir.appendingPathComponent(Self.backupFileName(t, r))
+        let tmp = dir.appendingPathComponent(".\(UUID().uuidString).tmp")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        try writeZip(t, r, to: tmp)
+        if FileManager.default.fileExists(atPath: final.path) { _ = try FileManager.default.replaceItemAt(final, withItemAt: tmp) }
+        else { try FileManager.default.moveItem(at: tmp, to: final) }
+        return final
+    }
+
     func writeZip(_ t: Template, _ r: Record, to url: URL) throws {
         var zip = ZipBuilder()
         zip.add("record.json", data: try JSONCoding.makeEncoder().encode(r))

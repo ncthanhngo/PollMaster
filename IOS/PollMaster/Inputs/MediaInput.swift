@@ -20,6 +20,8 @@ struct MediaInput: View {
     let video: Bool
     @Binding var fieldValue: FieldValue
     let scope: FieldScope
+    /// Reduced layout: small thumbnails + one capture button with this title (photoRef, "Quay video lượt này").
+    var captureTitle: String?
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var capture: CaptureKind?
     @State private var viewing: Media?
@@ -33,29 +35,37 @@ struct MediaInput: View {
         if field.isMedia { fieldValue.mediaInV = new } else { fieldValue.media = new.isEmpty ? nil : new }
     }
 
+    private var hasCamera: Bool { CameraPicker.isAvailable }
     private var mediaFieldId: String { RecordNaming.mediaFieldId(table: scope.tableId, column: field.id) }
     private var remaining: Int? { field.maxCount.map { max($0 - list.count, 0) } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !list.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], alignment: .leading, spacing: 8) {
+                let size: CGFloat = captureTitle == nil ? 92 : 52
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: size), spacing: 8)], alignment: .leading, spacing: 8) {
                     ForEach(list, id: \.file) { m in
-                        Button { viewing = m } label: { Thumbnail(url: scope.media.url(m), video: video) }
+                        Button { viewing = m } label: { Thumbnail(url: scope.media.url(m), video: video, size: size) }
                             .buttonStyle(.plain)
                             .contextMenu { Button("Xóa", systemImage: "trash", role: .destructive) { remove(m) } }
                     }
                 }
             }
+            let cam = hasCamera
             HStack {
-                if CameraPicker.isAvailable {
-                    Button { capture = video ? .video : .photo } label: { Label("Chụp", systemImage: video ? "video" : "camera") }
-                        .buttonStyle(.bordered)
+                if cam {
+                    Button { capture = video ? .video : .photo } label: {
+                        Label(captureTitle ?? "Chụp", systemImage: video ? "video" : "camera").frame(minHeight: captureTitle == nil ? 0 : 28)
+                    }
+                    .buttonStyle(.bordered)
                 }
                 PhotosPicker(selection: $pickerItems, maxSelectionCount: remaining.map { max($0, 1) },
-                             matching: video ? .videos : .images) { Label("Thư viện", systemImage: "photo.on.rectangle") }
-                    .buttonStyle(.bordered)
-                if let n = field.minCount { Text("\(list.count)/\(n)").font(.caption).foregroundStyle(.secondary) }
+                             matching: video ? .videos : .images) {
+                    if captureTitle != nil, cam { Image(systemName: "photo.on.rectangle").frame(minHeight: 28) }
+                    else { Label(captureTitle ?? "Thư viện", systemImage: "photo.on.rectangle").frame(minHeight: captureTitle == nil ? 0 : 28) }
+                }
+                .buttonStyle(.bordered)
+                if let n = field.minCount { Text("\(list.count)/\(n)").font(.caption).secondaryText() }
             }
             .disabled(remaining == 0)
             if let error { Text(error).font(.caption).foregroundStyle(.red) }

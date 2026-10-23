@@ -8,6 +8,7 @@ struct StopwatchBlock: View {
     let table: TableDef
     let row: Row
     let columns: [String]
+    @Environment(\.pmTheme) private var theme
 
     private func isFilled(_ col: String) -> Bool { row.values[col]?.v?.double != nil }
     private var nextColumn: String? { columns.first { !isFilled($0) } }
@@ -21,10 +22,10 @@ struct StopwatchBlock: View {
             }
             if row.stopwatchStart == nil {
                 Button { mutate { $0.stopwatchStart = Date() } } label: { Text("Bắt đầu (T0)").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    .buttonStyle(.borderedProminent).controlSize(.large).frame(minHeight: 56)
             } else if let next = nextColumn {
-                Button { mark(next) } label: { Text("Ghi mốc \(next)").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large)
+                Button { mark(next) } label: { Text("Ghi mốc \(next)").font(.title3.weight(.semibold)).frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).controlSize(.large).frame(minHeight: 56)
             } else {
                 Label("Đã ghi đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
@@ -32,7 +33,8 @@ struct StopwatchBlock: View {
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil)
         }
         .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.border, lineWidth: theme.borderWidth))
         .disabled(model.isLocked)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = running }
         .onChange(of: running) { _, now in UIApplication.shared.isIdleTimerDisabled = now }

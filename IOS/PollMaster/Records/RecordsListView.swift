@@ -17,7 +17,7 @@ struct RecordsListView: View {
     private var shown: [RecordSummary] {
         env.summaries.filter { s in
             (filter == .all || (filter == .draft) == (s.status == .draft))
-                && (search.isEmpty || s.title.localizedCaseInsensitiveContains(search))
+                && (search.isEmpty || s.title.localizedCaseInsensitiveContains(search) || s.subtitle.localizedCaseInsensitiveContains(search))
         }
     }
 
@@ -67,7 +67,7 @@ struct RecordsListView: View {
             .navigationDestination(for: Route.self) { RouteDestination(route: $0) }
             .onAppear { env.reload() }
             .confirmationDialog("Chọn mẫu", isPresented: $choosingTemplate, titleVisibility: .visible) {
-                ForEach(env.templates) { t in Button("\(t.title) (\(t.id) v\(t.version))") { env.createRecord(from: t) } }
+                ForEach(env.newestTemplates) { t in Button("\(t.title) (\(t.id) v\(t.version))") { env.createRecord(from: t) } }
             }
             .confirmationDialog("Xóa phiếu này? Ảnh và dữ liệu đi kèm sẽ mất.", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                                 titleVisibility: .visible) {
@@ -80,32 +80,54 @@ struct RecordsListView: View {
 
 struct RecordRow: View {
     let summary: RecordSummary
-
-    private var badge: (text: String, color: Color) {
-        if summary.loadError != nil { return ("Lỗi đọc", .red) }
-        return summary.status == .draft ? ("Nháp", .orange) : ("Hoàn thành", .green)
-    }
+    @Environment(\.pmTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
+        HStack(alignment: .top, spacing: 12) {
+            thumbnail
+            VStack(alignment: .leading, spacing: 3) {
                 Text(summary.title).font(.headline).lineLimit(1)
-                Spacer()
-                Text(badge.text).font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8).padding(.vertical, 2)
-                    .background(badge.color.opacity(0.2), in: Capsule())
-                    .foregroundStyle(badge.color)
-            }
-            Text(summary.templateTitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(summary.loadError == nil ? 1 : 3)
-            HStack {
-                Text(ISODate.format(summary.updatedAt, "HH:mm dd/MM/yyyy")).font(.caption).foregroundStyle(.secondary)
-                Spacer()
+                Text(summary.subtitle).font(.subheadline).secondaryText().lineLimit(summary.loadError == nil ? 1 : 3)
                 if summary.loadError == nil {
-                    Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    HStack {
+                        Text("Cập nhật \(ISODate.format(summary.updatedAt, "dd/MM HH:mm"))")
+                        Spacer()
+                        Text("\(summary.progress.done)/\(summary.progress.total)").monospacedDigit()
+                    }
+                    .font(.caption).secondaryText()
+                    ProgressView(value: summary.progress.fraction)
+                }
+                FlowLayout(spacing: 6) {
+                    ForEach(chips, id: \.text) { c in
+                        Text(c.text).font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(c.color.opacity(0.18), in: Capsule())
+                            .overlay(Capsule().stroke(c.color.opacity(theme.highContrast ? 1 : 0.35), lineWidth: 1))
+                            .foregroundStyle(c.text == "Nháp" ? theme.secondaryText : c.color)
+                    }
                 }
             }
-            if summary.loadError == nil { ProgressView(value: summary.progress.fraction) }
         }
         .padding(.vertical, 3)
+    }
+
+    @ViewBuilder private var thumbnail: some View {
+        if let url = summary.thumbnail {
+            Thumbnail(url: url, video: false, size: 48)
+        } else {
+            Image(systemName: summary.loadError == nil ? "doc.text" : "exclamationmark.triangle")
+                .font(.title3).secondaryText()
+                .frame(width: 48, height: 48)
+                .background(theme.inputBackground, in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private var chips: [(text: String, color: Color)] {
+        if summary.loadError != nil { return [("Lỗi đọc", theme.alert)] }
+        var out: [(String, Color)] = []
+        if summary.returned && summary.status == .draft { out.append(("Cần sửa", .orange)) }
+        else { out.append(summary.status == .draft ? ("Nháp", .gray) : ("Hoàn thành", theme.success)) }
+        if summary.needsBackup { out.append(("Chưa sao lưu", theme.warning)) }
+        return out
     }
 }

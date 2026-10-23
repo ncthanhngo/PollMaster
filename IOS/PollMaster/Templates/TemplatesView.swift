@@ -61,7 +61,7 @@ struct TemplatesView: View {
     private func templateRow(_ t: Template) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(t.title).font(.headline)
-            Text("\(t.id) · v\(t.version) · \(fieldCount(t)) trường").font(.caption).foregroundStyle(.secondary)
+            Text("\(t.id) · v\(t.version) · \(fieldCount(t)) trường").font(.caption).secondaryText()
         }
     }
 

@@ -83,6 +83,26 @@ public enum TemplateLoader {
     }
 }
 
+public enum TemplateVersion {
+    /// Dotted numeric compare ("1.10" > "1.9"); non-numeric parts compare as text.
+    public static func isNewer(_ a: String, than b: String) -> Bool {
+        let x = a.split(separator: "."), y = b.split(separator: ".")
+        for i in 0..<max(x.count, y.count) {
+            let l = i < x.count ? String(x[i]) : "0", r = i < y.count ? String(y[i]) : "0"
+            if let ln = Int(l), let rn = Int(r) { if ln != rn { return ln > rn } }
+            else if l != r { return l.compare(r, options: .numeric) == .orderedDescending }
+        }
+        return false
+    }
+
+    /// Newest version of every template id (what new records are made from).
+    public static func newest(_ all: [Template]) -> [Template] {
+        var best: [String: Template] = [:]
+        for t in all where best[t.id].map({ isNewer(t.version, than: $0.version) }) ?? true { best[t.id] = t }
+        return all.filter { best[$0.id]?.version == $0.version }
+    }
+}
+
 /// Templates installed on device: `<root>/templates/<id>@<version>.json`.
 public struct TemplateStore: Sendable {
     public let dir: URL

@@ -31,13 +31,7 @@ public enum RecordFactory {
         return r
     }
 
-    private static func strippedOfMedia(_ v: FieldValue) -> FieldValue {
-        var c = v
-        c.media = nil
-        if let arr = c.v?.array, arr.contains(where: { $0.object?["file"] != nil }) { c.v = nil }   // photo/video lists
-        if c.v?.object?["file"] != nil { c.v = nil }                                              // signature field
-        return c
-    }
+    private static func strippedOfMedia(_ v: FieldValue) -> FieldValue { TableOps.strippedOfMedia(v) }
 
     private static func strippedRow(_ row: Row) -> Row {
         Row(id: row.id, values: row.values.mapValues(strippedOfMedia), stopwatchStart: row.stopwatchStart)
@@ -46,6 +40,7 @@ public enum RecordFactory {
     /// Mark finished: status, completedAt, end of sessionTime fields.
     public static func complete(_ r: inout Record, template t: Template, now: Date = Date()) {
         r.status = .completed
+        r.returned = false
         r.completedAt = now
         r.updatedAt = now
         for f in t.allFields where f.type == .sessionTime {
@@ -53,6 +48,26 @@ public enum RecordFactory {
             st.end = now
             r.values[f.id]?.v = st.json
         }
+    }
+
+    /// Checker hands a completed record back: draft again, flagged `returned`. False when it is not completed.
+    @discardableResult
+    public static func returnForFix(_ r: inout Record, now: Date = Date()) -> Bool {
+        guard r.status == .completed else { return false }
+        r.status = .draft
+        r.returned = true
+        r.completedAt = nil
+        r.updatedAt = now
+        return true
+    }
+
+    /// Sets (or clears, for blank text) the checker note of a record field.
+    public static func setReview(_ r: inout Record, fieldId: String, text: String?, now: Date = Date()) {
+        var fv = r.values[fieldId] ?? FieldValue()
+        fv.review = text
+        fv.normalize()
+        r.values[fieldId] = fv.isBlank ? nil : fv
+        r.updatedAt = now
     }
 
     public static func reopen(_ r: inout Record, now: Date = Date()) {

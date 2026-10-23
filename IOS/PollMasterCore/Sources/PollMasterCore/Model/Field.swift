@@ -3,7 +3,7 @@ import Foundation
 public enum FieldType: String, Codable, Sendable, CaseIterable {
     case text, multiline, number, integer, singleChoice, multiChoice, yesNo, rating
     case date, time, datetime, sessionTime, month, gps, compass, photo, video
-    case elapsed, composite, computed, signature
+    case elapsed, composite, computed, signature, audio
 }
 
 public struct Option: Codable, Equatable, Sendable, Hashable {
@@ -38,8 +38,10 @@ public struct Part: Codable, Equatable, Sendable, Identifiable {
     public var unit: String?
     public var options: [Option]?
     public var showWhen: ShowWhen?
+    public var warnMin: Double?
+    public var warnMax: Double?
 
-    enum CodingKeys: String, CodingKey { case id, label, type, unit, options, showWhen }
+    enum CodingKeys: String, CodingKey { case id, label, type, unit, options, showWhen, warnMin, warnMax }
 
     /// `label` is required, `type` defaults to text (schema §6.6).
     public init(from decoder: Decoder) throws {
@@ -50,17 +52,42 @@ public struct Part: Codable, Equatable, Sendable, Identifiable {
         unit = try c.decodeIfPresent(String.self, forKey: .unit)
         options = try c.decodeIfPresent([Option].self, forKey: .options)
         showWhen = try c.decodeIfPresent(ShowWhen.self, forKey: .showWhen)
+        warnMin = try c.decodeIfPresent(Double.self, forKey: .warnMin)
+        warnMax = try c.decodeIfPresent(Double.self, forKey: .warnMax)
     }
 
-    public init(id: String, label: String, type: FieldType, unit: String? = nil, options: [Option]? = nil, showWhen: ShowWhen? = nil) {
+    public init(id: String, label: String, type: FieldType, unit: String? = nil, options: [Option]? = nil, showWhen: ShowWhen? = nil,
+                warnMin: Double? = nil, warnMax: Double? = nil) {
         self.id = id; self.label = label; self.type = type; self.unit = unit; self.options = options; self.showWhen = showWhen
+        self.warnMin = warnMin; self.warnMax = warnMax
     }
 
     /// Pseudo field so part inputs reuse the scalar input views.
     public var asField: Field {
         var f = Field(id: id, label: label, type: type)
-        f.unit = unit; f.options = options; f.flags = false
+        f.unit = unit; f.options = options; f.flags = false; f.warnMin = warnMin; f.warnMax = warnMax
         return f
+    }
+}
+
+/// `lookup` of a text field: pick a site, then fill other fields (`fill`: target field id -> site attribute).
+public struct Lookup: Codable, Equatable, Sendable {
+    public var source: String
+    public var fill: [String: String]
+    /// GPS field compared against the chosen site's planned coordinate (never filled from it).
+    public var gps: String?
+
+    enum CodingKeys: String, CodingKey { case source, fill, gps }
+
+    public init(source: String = "sites", fill: [String: String] = [:], gps: String? = nil) {
+        self.source = source; self.fill = fill; self.gps = gps
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "sites"
+        fill = try c.decodeIfPresent([String: String].self, forKey: .fill) ?? [:]
+        gps = try c.decodeIfPresent(String.self, forKey: .gps)
     }
 }
 
@@ -91,6 +118,12 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
     public var minLabel: String?
     public var maxLabel: String?
     public var formula: String?
+    public var photoRef: String?
+    public var warnMin: Double?
+    public var warnMax: Double?
+    public var maxAccuracy: Double?
+    public var lookup: Lookup?
+    public var carryOver: Bool = false
 
     public init(id: String, label: String, type: FieldType) {
         self.id = id; self.label = label; self.type = type
@@ -99,6 +132,7 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, label, type, required, unit, method, hint, flags, samples, parts, `default`, readonly, role, prefix
         case attachPhoto, options, min, max, decimals, minCount, maxCount, labels, allowUnknown, minLabel, maxLabel, formula
+        case photoRef, warnMin, warnMax, maxAccuracy, lookup, carryOver
     }
 
     public init(from decoder: Decoder) throws {
@@ -129,6 +163,12 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
         minLabel = try c.decodeIfPresent(String.self, forKey: .minLabel)
         maxLabel = try c.decodeIfPresent(String.self, forKey: .maxLabel)
         formula = try c.decodeIfPresent(String.self, forKey: .formula)
+        photoRef = try c.decodeIfPresent(String.self, forKey: .photoRef)
+        warnMin = try c.decodeIfPresent(Double.self, forKey: .warnMin)
+        warnMax = try c.decodeIfPresent(Double.self, forKey: .warnMax)
+        maxAccuracy = try c.decodeIfPresent(Double.self, forKey: .maxAccuracy)
+        lookup = try c.decodeIfPresent(Lookup.self, forKey: .lookup)
+        carryOver = try c.decodeIfPresent(Bool.self, forKey: .carryOver) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -149,6 +189,10 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
         if allowUnknown { try c.encode(true, forKey: .allowUnknown) }
         try c.encodeIfPresent(minLabel, forKey: .minLabel); try c.encodeIfPresent(maxLabel, forKey: .maxLabel)
         try c.encodeIfPresent(formula, forKey: .formula)
+        try c.encodeIfPresent(photoRef, forKey: .photoRef)
+        try c.encodeIfPresent(warnMin, forKey: .warnMin); try c.encodeIfPresent(warnMax, forKey: .warnMax)
+        try c.encodeIfPresent(maxAccuracy, forKey: .maxAccuracy); try c.encodeIfPresent(lookup, forKey: .lookup)
+        if carryOver { try c.encode(true, forKey: .carryOver) }
     }
 
     /// `~` / KĐĐ markers allowed? Default true for number, composite, text.
@@ -158,6 +202,8 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
     public var isComputed: Bool { type == .computed }
     public var ratingMax: Int { Int(max ?? 5) }
     public var displayDecimals: Int { decimals ?? 2 }
-    public var isMedia: Bool { type == .photo || type == .video }
+    /// photo / video / audio: a `Media` list stored in `v`.
+    public var isMedia: Bool { type == .photo || type == .video || type == .audio }
+    public var gpsMaxAccuracy: Double { maxAccuracy ?? 15 }
     public func optionLabel(_ value: String) -> String { options?.first { $0.value == value }?.label ?? value }
 }

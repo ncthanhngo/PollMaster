@@ -52,9 +52,9 @@ public enum XLSXExport {
 
         let infoRows: [[Cell]] = [CSVExport.infoHeaders.map { .text($0) }] + model.entries.map { e in
             [.text(e.sectionTitle), .text(e.id), .text(e.label), e.number.map { .number($0) } ?? .text(e.display),
-             .text(e.unit), .text(e.flag), .text(e.reason), .text(e.note)]
+             .text(e.unit), .text(e.flag), .text(e.reason), .text(e.note), .text(e.review)]
         }
-        sheets.append((sheetName("Thông tin", used: &used), sheetXML(rows: infoRows, widths: [24, 10, 44, 28, 10, 7, 24, 30])))
+        sheets.append((sheetName("Thông tin", used: &used), sheetXML(rows: infoRows, widths: [24, 10, 44, 28, 10, 7, 24, 30, 30])))
 
         for t in model.tables {
             var rows: [[Cell]] = [t.columns.map { .text($0.label) }]

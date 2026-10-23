@@ -17,16 +17,17 @@ enum ThumbnailLoader {
 struct Thumbnail: View {
     let url: URL
     let video: Bool
+    var size: CGFloat = 92
     @State private var image: UIImage?
 
     var body: some View {
         ZStack {
             Color(.tertiarySystemFill)
             if let image { Image(uiImage: image).resizable().scaledToFill() }
-            else { Image(systemName: video ? "video" : "photo").foregroundStyle(.secondary) }
+            else { Image(systemName: video ? "video" : "photo").secondaryText() }
             if video { Image(systemName: "play.circle.fill").font(.title).foregroundStyle(.white).shadow(radius: 2) }
         }
-        .frame(width: 92, height: 92)
+        .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .task(id: url) { image = await ThumbnailLoader.load(url: url, video: video) }
     }
@@ -50,7 +51,7 @@ struct MediaViewer: View {
                         .scaleEffect(scale)
                         .gesture(MagnifyGesture().onChanged { scale = max(1, $0.magnification) })
                 } else {
-                    Text("Không mở được tệp").foregroundStyle(.secondary)
+                    Text("Không mở được tệp").secondaryText()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

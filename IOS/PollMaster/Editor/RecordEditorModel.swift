@@ -11,8 +11,19 @@ final class RecordEditorModel {
     private(set) var computed: [String: JSONValue] = [:]
     private(set) var issues: [ValidationIssue] = []
     private(set) var progress = RequiredProgress(done: 0, total: 0)
+    private(set) var sectionProgress: [String: RequiredProgress] = [:]
+    private(set) var warnings: [ReviewFinding] = []
+    private(set) var reviewNotes: [ReviewFinding] = []
+    /// Red error marks stay hidden until the user pressed "Kiểm tra" for the first time (this session).
     var showAllErrors = false
+    /// Completed record opened by the checker: read-only, notes allowed.
+    var reviewMode = false
     var saveError: String?
+    var backupError: String?
+    private(set) var lastSaved: Date?
+    /// Warnings the user accepted when leaving the field ("Giữ nguyên"), by field key.
+    private var acceptedWarnings: Set<String> = []
+    private var backingUp = false
     private var touched: Set<String> = []
     private var dirty = false
     private var saveTask: Task<Void, Never>?
@@ -20,13 +31,19 @@ final class RecordEditorModel {
     @ObservationIgnored let store: RecordStore
     @ObservationIgnored let location: LocationService
     @ObservationIgnored let settings: AppSettings
+    @ObservationIgnored let backups: BackupService
+    @ObservationIgnored let sites: () -> [Site]
 
-    init(template: Template, record: Record, store: RecordStore, location: LocationService, settings: AppSettings) {
+    init(template: Template, record: Record, store: RecordStore, location: LocationService, settings: AppSettings,
+         backups: BackupService, sites: @escaping () -> [Site]) {
         self.template = template; self.record = record; self.store = store; self.location = location; self.settings = settings
+        self.backups = backups; self.sites = sites
+        lastSaved = record.updatedAt
         refresh()
     }
 
     var isLocked: Bool { record.status == .completed }
+    var canEdit: Bool { !isLocked }
     var title: String { RecordNaming.title(template, record) }
 
     /// Section list for the table of contents: header first, then template sections.
@@ -41,6 +58,24 @@ final class RecordEditorModel {
     func sectionNote(_ index: Int) -> String? { index == 0 ? nil : template.sections[index - 1].note }
 
     func issueCount(section id: String) -> Int { issues.filter { $0.sectionId == id }.count }
+
+    func sectionIndex(of id: String) -> Int? { sectionTitles.firstIndex { $0.id == id } }
+
+    /// "Tiếp tục" target: the last position if it still exists in the template.
+    var resumeTarget: (index: Int, fieldId: String, label: String)? {
+        guard let p = record.lastPosition, let i = sectionIndex(of: p.section) else { return nil }
+        let label = template.field(p.field)?.label ?? template.table(p.field)?.title
+        guard let label else { return nil }
+        return (i, p.field, label)
+    }
+
+    /// Remembered without touching `updatedAt` (it is not an edit).
+    func setPosition(section: String, field: String) {
+        let new = LastPosition(section: section, field: field)
+        guard record.lastPosition != new else { return }
+        record.lastPosition = new
+        scheduleSave()
+    }
 
     // MARK: mutation
 
@@ -72,10 +107,12 @@ final class RecordEditorModel {
     }
 
     func mutateRow(_ table: String, _ rowId: String, _ body: (inout Row) -> Void) {
+        guard let def = template.table(table) else { return }
+        if !def.isFixed { TableOps.ensureRow(&record, template, table: def, rowId: rowId) }
         var rows = record.tables[table] ?? []
         if let i = rows.firstIndex(where: { $0.id == rowId }) {
             body(&rows[i])
-        } else if template.table(table)?.rows?.contains(where: { $0.id == rowId }) == true {
+        } else if def.rows?.contains(where: { $0.id == rowId }) == true {
             var row = Row(id: rowId)          // fixed row not stored yet
             body(&row)
             rows.append(row)
@@ -84,31 +121,33 @@ final class RecordEditorModel {
         changed()
     }
 
-    func addRow(_ table: String) -> String {
-        let row = Row()
-        record.tables[table, default: []].append(row)
+    /// Repairs a missing twin row of a paired table before it is shown (data from older versions).
+    func ensureRow(_ table: String, _ rowId: String) {
+        guard let def = template.table(table), !def.isFixed else { return }
+        let ids = [def.id] + (template.pairedTable(of: def).map { [$0.id] } ?? [])
+        guard ids.contains(where: { record.tables[$0]?.contains { $0.id == rowId } != true }) else { return }
+        TableOps.ensureRow(&record, template, table: def, rowId: rowId)
         changed()
-        return row.id
+    }
+
+    /// New row (and its twin in a paired table), `carryOver` columns prefilled from the previous row.
+    func addRow(_ table: String) -> String {
+        guard let def = template.table(table) else { return "" }
+        let id = TableOps.addRow(&record, template, table: def)
+        changed()
+        return id
     }
 
     func duplicateRow(_ table: String, _ rowId: String) {
-        guard var rows = record.tables[table], let i = rows.firstIndex(where: { $0.id == rowId }) else { return }
-        var copy = rows[i]
-        copy = Row(id: UUID().uuidString, values: copy.values.mapValues { v in
-            var c = v; c.media = nil
-            if c.v?.array?.contains(where: { $0.object?["file"] != nil }) == true { c.v = nil }
-            return c
-        })
-        rows.insert(copy, at: i + 1)
-        record.tables[table] = rows
+        guard let def = template.table(table), TableOps.duplicateRow(&record, template, table: def, rowId: rowId) != nil else { return }
         changed()
     }
 
     func deleteRow(_ table: String, _ rowId: String) {
-        let removed = record.rows(table).first { $0.id == rowId }
-        record.tables[table]?.removeAll { $0.id == rowId }
+        guard let def = template.table(table) else { return }
+        let removed = TableOps.deleteRow(&record, template, table: def, rowId: rowId)
         changed()
-        if let removed { removeMediaFiles(of: removed.values.values) }
+        removeMediaFiles(of: removed.flatMap { $0.values.values })
     }
 
     func setSignature(_ id: String, _ entry: SignatureEntry?) {
@@ -118,12 +157,52 @@ final class RecordEditorModel {
 
     func complete() {
         RecordFactory.complete(&record, template: template)
+        reviewMode = false
         changed(); flush()
+        if settings.autoBackup { Task { await backup() } }
     }
 
     func reopen() {
         RecordFactory.reopen(&record)
+        reviewMode = false
         changed(); flush()
+    }
+
+    /// Checker hands the record back to the surveyor.
+    func returnForFix() {
+        guard RecordFactory.returnForFix(&record) else { return }
+        reviewMode = false
+        changed(); flush()
+    }
+
+    /// Bulk KĐĐ for the empty flaggable fields of a section; returns the count.
+    @discardableResult
+    func markUnmeasurable(section id: String, reason: String) -> Int {
+        let n = SectionOps.markUnmeasurable(template, &record, sectionId: id, reason: reason)
+        if n > 0 { changed() }
+        return n
+    }
+
+    func emptyFlaggableCount(section id: String) -> Int { SectionOps.emptyFlaggableFields(template, record, sectionId: id).count }
+
+    func otherRecords() -> [Record] { SectionOps.candidates(for: record, among: store.list()) }
+
+    func hasData(section id: String) -> Bool { SectionOps.hasData(template, record, sectionId: id) }
+
+    @discardableResult
+    func copySection(_ id: String, from source: Record) -> Int {
+        let n = SectionOps.copySection(template, from: source, into: &record, sectionId: id)
+        if n > 0 { changed() }
+        return n
+    }
+
+    func applyLookup(_ lookup: Lookup, site: Site, overwrite: Bool) {
+        SiteLookup.apply(SiteLookup.fillValues(lookup, site: site), to: &record, overwrite: overwrite)
+        changed()
+    }
+
+    func lookupConflicts(_ lookup: Lookup, site: Site) -> [String] {
+        SiteLookup.fillValues(lookup, site: site).keys.filter { record.values[$0]?.v?.isBlank == false }.sorted()
     }
 
     private func removeMediaFiles(of values: some Sequence<FieldValue>) {
@@ -136,6 +215,10 @@ final class RecordEditorModel {
     private func changed() {
         record.updatedAt = Date()
         refresh()
+        scheduleSave()
+    }
+
+    private func scheduleSave() {
         dirty = true
         saveTask?.cancel()
         saveTask = Task { [weak self] in
@@ -149,7 +232,31 @@ final class RecordEditorModel {
         computed = ComputedEngine(template: template, record: record).computeAll()
         issues = Validator.validate(template, record)
         progress = Validator.progress(template, record)
+        sectionProgress = Validator.sectionProgress(template, record)
+        warnings = Warnings.all(template, record, sites: sites())
+        reviewNotes = Warnings.reviewNotes(template, record)
     }
+
+    // MARK: backup
+
+    /// Writes the folder backup of the current state; `force` also when nothing changed since the last one.
+    func backup(force: Bool = false) async {
+        guard force || (settings.autoBackup && record.needsBackup), !backingUp else { return }
+        flush()
+        backingUp = true; backupError = nil
+        defer { backingUp = false }
+        let snapshot = record
+        do {
+            try await backups.write(template, snapshot)
+            record.backupAt = BackupService.backupTime(snapshot: snapshot.updatedAt, currentUpdatedAt: record.updatedAt)
+            scheduleSave()
+        } catch { backupError = "Không sao lưu được: \(error.localizedDescription)" }
+    }
+
+    // MARK: warnings the user already accepted
+
+    func isAccepted(_ key: String) -> Bool { acceptedWarnings.contains(key) }
+    func accept(_ key: String) { acceptedWarnings.insert(key) }
 
     func flush() {
         saveTask?.cancel()
@@ -157,6 +264,7 @@ final class RecordEditorModel {
         do {
             try store.save(record)
             dirty = false
+            lastSaved = Date()
         } catch { saveError = "Không lưu được phiếu: \(error.localizedDescription)" }
     }
 
@@ -176,26 +284,5 @@ final class RecordEditorModel {
             guard let self else { return "\(fid)_\(seq)" }
             return RecordNaming.mediaName(t, self.record, fieldId: fid, seq: seq)
         }, quality: settings.photoQuality)
-    }
-
-    /// Scope for fields of the record body (`row == nil`) or of one table row.
-    func scope(table: TableDef? = nil, row: Row? = nil, focus: FocusState<String?>.Binding? = nil) -> FieldScope {
-        let rowId = row?.id
-        return FieldScope(
-            tableId: table?.id,
-            lookup: { [unowned self] id in
-                if let rowId, let table, let r = self.record.rows(of: table).first(where: { $0.id == rowId }), let v = r.values[id] { return v }
-                return self.record.values[id]
-            },
-            errorText: { [unowned self] field in
-                let key = table.map { "\($0.id)/\(rowId ?? "")/\(field.id)" } ?? field.id
-                return self.errorText(key: key, fieldId: table?.id ?? field.id, row: rowId, column: table == nil ? nil : field.id)
-            },
-            touch: { [unowned self] field in self.touch(table.map { "\($0.id)/\(rowId ?? "")/\(field.id)" } ?? field.id) },
-            computedValue: { [unowned self] id in self.computed[id] },
-            media: mediaService,
-            location: location,
-            locked: isLocked,
-            focus: focus)
     }
 }

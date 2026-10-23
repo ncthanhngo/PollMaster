@@ -40,8 +40,12 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
     public var rows: [FixedRow]?
     public var stopwatch: StopwatchDef?
     public var columns: [Field]
+    public var pairedWith: String?
+    public var quickEntry: Bool = false
 
-    enum CodingKeys: String, CodingKey { case kind, id, title, note, rowLabel, minRows, required, rows, stopwatch, columns }
+    enum CodingKeys: String, CodingKey {
+        case kind, id, title, note, rowLabel, minRows, required, rows, stopwatch, columns, pairedWith, quickEntry
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -54,6 +58,8 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
         rows = try c.decodeIfPresent([FixedRow].self, forKey: .rows)
         stopwatch = try c.decodeIfPresent(StopwatchDef.self, forKey: .stopwatch)
         columns = try c.decode([Field].self, forKey: .columns)
+        pairedWith = try c.decodeIfPresent(String.self, forKey: .pairedWith)
+        quickEntry = try c.decodeIfPresent(Bool.self, forKey: .quickEntry) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -64,6 +70,8 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
         if required { try c.encode(true, forKey: .required) }
         try c.encodeIfPresent(rows, forKey: .rows); try c.encodeIfPresent(stopwatch, forKey: .stopwatch)
         try c.encode(columns, forKey: .columns)
+        try c.encodeIfPresent(pairedWith, forKey: .pairedWith)
+        if quickEntry { try c.encode(true, forKey: .quickEntry) }
     }
 
     public var isFixed: Bool { rows != nil }
@@ -163,5 +171,17 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
 
     public func field(_ id: String) -> Field? { allFields.first { $0.id == id } }
     public func table(_ id: String) -> TableDef? { allTables.first { $0.id == id } }
+
+    /// Partner of a paired repeat table (declared on either side).
+    public func pairedTable(of table: TableDef) -> TableDef? {
+        guard !table.isFixed else { return nil }
+        let partner = table.pairedWith.flatMap(self.table) ?? allTables.first { $0.pairedWith == table.id }
+        return partner.flatMap { $0.id != table.id && !$0.isFixed ? $0 : nil }
+    }
+
+    /// Ids of fields (record fields and table columns) whose `photoRef` points at `fieldId`, in template order.
+    public func photoRefUsers(of fieldId: String) -> [String] {
+        (allFields + allTables.flatMap(\.columns)).filter { $0.photoRef == fieldId }.map(\.id)
+    }
     public var recordCodeField: Field? { allFields.first { $0.role == "recordCode" } }
 }

@@ -50,7 +50,7 @@ public enum ValueFormatter {
             guard let g = GPSValue(v) else { return "" }
             let acc = g.accuracy.map { " (±\(number($0, decimals: 0)) m)" } ?? ""
             return "\(String(format: "%.6f", g.lat)), \(String(format: "%.6f", g.lng))\(acc)"
-        case .photo, .video:
+        case .photo, .video, .audio:
             let fv = FieldValue(v: v)
             return fv.mediaInV.map(\.fileName).joined(separator: ", ")
         case .signature: return v.object?["file"]?.string.map { ($0 as NSString).lastPathComponent } ?? ""
@@ -132,9 +132,11 @@ public enum RecordNaming {
 
     private static let titleTrim = CharacterSet(charactersIn: " –-/·").union(.whitespacesAndNewlines)
 
-    /// `recordTitle` with `{fieldId}` replaced and stray separators trimmed; template title when nothing is filled.
+    static func newRecordTitle(_ r: Record) -> String { "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm") }
+
+    /// `recordTitle` with `{fieldId}` replaced and stray separators trimmed; "Phiếu mới · dd/MM/yyyy HH:mm" when nothing is filled.
     public static func title(_ t: Template, _ r: Record) -> String {
-        guard let pattern = t.recordTitle else { return t.title }
+        guard let pattern = t.recordTitle else { return newRecordTitle(r) }
         var anyFilled = false
         let out = replace(pattern) { id in
             guard let f = t.field(id) else { return "" }
@@ -143,7 +145,7 @@ public enum RecordNaming {
             return s
         }
         let trimmed = out.trimmingCharacters(in: titleTrim)
-        return anyFilled && !trimmed.isEmpty ? trimmed : t.title
+        return anyFilled && !trimmed.isEmpty ? trimmed : newRecordTitle(r)
     }
 
     /// `{fieldId}` used in media names; table columns are `{tableId}-{columnId}`.
