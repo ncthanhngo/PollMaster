@@ -26,7 +26,7 @@ struct TemplateDetailView: View {
                 if !isNewest {
                     Text("Phiên bản cũ: chỉ dùng cho các phiếu đã tạo. Phiếu mới được tạo từ phiên bản mới nhất.").font(.footnote).secondaryText()
                 }
-                Button { env.createRecord(from: template) } label: { Text("Tạo phiếu mới").frame(maxWidth: .infinity) }
+                Button { env.startCreate(from: template) } label: { Text("Tạo phiếu mới").frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent).controlSize(.large).disabled(!isNewest)
             }
         }

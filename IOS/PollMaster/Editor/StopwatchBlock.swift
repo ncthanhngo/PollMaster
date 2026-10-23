@@ -8,6 +8,10 @@ struct StopwatchBlock: View {
     let table: TableDef
     let row: Row
     let columns: [String]
+    /// Thin strip `mm:ss · [Ghi T4] · ↶` once the form is scrolled (ux-spec L1).
+    var compact = false
+    /// Called after a mark was recorded (cue banner).
+    var onMark: (String) -> Void = { _ in }
     @Environment(\.pmTheme) private var theme
 
     private func isFilled(_ col: String) -> Bool { row.values[col]?.v?.double != nil }
@@ -15,6 +19,35 @@ struct StopwatchBlock: View {
     private var running: Bool { row.stopwatchStart != nil && nextColumn != nil }
 
     var body: some View {
+        if compact { strip } else { full }
+    }
+
+    private var strip: some View {
+        HStack(spacing: 10) {
+            TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
+                Text(clock(ctx.date)).font(.system(size: 22, weight: .semibold, design: .monospaced))
+            }
+            Spacer(minLength: 4)
+            if row.stopwatchStart == nil {
+                Button { mutate { $0.stopwatchStart = Date() } } label: { Text("Bắt đầu (T0)").frame(minHeight: 32) }
+                    .buttonStyle(.borderedProminent)
+            } else if let next = nextColumn {
+                Button { mark(next) } label: { Text("Ghi \(next)").font(.headline).frame(minWidth: 90, minHeight: 32) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Label("Đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.subheadline)
+            }
+            Button { undo() } label: { Image(systemName: "arrow.uturn.backward").frame(minWidth: 32, minHeight: 32) }
+                .buttonStyle(.bordered).disabled(row.stopwatchStart == nil).accessibilityLabel("Hoàn tác mốc")
+        }
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(theme.border, lineWidth: theme.borderWidth))
+        .disabled(model.isLocked)
+        .modifier(KeepAwake(running: running))
+    }
+
+    private var full: some View {
         VStack(spacing: 12) {
             TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
                 Text(clock(ctx.date)).font(.system(size: 56, weight: .semibold, design: .monospaced))
@@ -36,9 +69,7 @@ struct StopwatchBlock: View {
         .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.border, lineWidth: theme.borderWidth))
         .disabled(model.isLocked)
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = running }
-        .onChange(of: running) { _, now in UIApplication.shared.isIdleTimerDisabled = now }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .modifier(KeepAwake(running: running))
     }
 
     private func clock(_ now: Date) -> String {
@@ -57,6 +88,8 @@ struct StopwatchBlock: View {
             v.v = .number(max(0, seconds))
             r.values[col] = v
         }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onMark(col)
     }
 
     private func undo() {
@@ -69,5 +102,16 @@ struct StopwatchBlock: View {
         } else {
             mutate { $0.stopwatchStart = nil }
         }
+    }
+}
+
+/// Keeps the screen on while the stopwatch runs.
+private struct KeepAwake: ViewModifier {
+    let running: Bool
+    func body(content: Content) -> some View {
+        content
+            .onAppear { UIApplication.shared.isIdleTimerDisabled = running }
+            .onChange(of: running) { _, now in UIApplication.shared.isIdleTimerDisabled = now }
+            .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }
 }

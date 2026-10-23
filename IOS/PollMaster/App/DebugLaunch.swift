@@ -9,14 +9,21 @@ extension AppEnvironment {
     /// `-pmCreate <templateId>` new record and open it; `-pmFill 1` fill its required fields; `-pmSection <n>` push a section;
     /// `-pmRow 1` add a row to the first quick-entry table and open it; `-pmReview 1` complete it and open the checker mode review screen;
     /// `-pmSeed 1` add a few varied records for the list; `-pmTab records|templates|settings`; `-pmAppearance light|dark|system` sets the stored appearance.
+    /// `-pmFocus <fieldId>` scroll the pushed section to it; `-pmPartial 1` fill only the header and section A; `-pmReviewDraft 1` open the
+    /// review screen of the draft; `-pmFillStep 1` open "Điền lần lượt"; `-pmMap 1` records tab as map; `-pmSites 1` install sample planned sites;
+    /// `-pmOneHand 0|1` set one-hand mode; `-pmScrollDown 1` scroll a stopwatch form to its end.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
         if let a = d.string(forKey: "pmAppearance").flatMap(AppearanceMode.init) { settings.appearance = a }
+        if d.object(forKey: "pmOneHand") != nil { settings.oneHand = d.bool(forKey: "pmOneHand") }
+        if d.bool(forKey: "pmMap") { recordsShowMap = true }
+        if d.bool(forKey: "pmSites") { try? siteStore.save(sampleSites); reloadSites() }
         if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings][tab] ?? .records }
         if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reload() }
         guard let tid = d.string(forKey: "pmCreate"), let t = newestTemplates.first(where: { $0.id == tid }) else { return }
         var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
         if d.bool(forKey: "pmFill") || d.bool(forKey: "pmReview") { fillRequired(t, &r) }
+        if d.bool(forKey: "pmPartial") { fillRequired(t, &r, fields: t.header + (t.sections.first?.fields ?? [])) }
         if d.bool(forKey: "pmRow"), let tb = t.allTables.first(where: { $0.quickEntry && $0.stopwatch != nil }) {
             let id = TableOps.addRow(&r, t, table: tb)
             r.tables[tb.id]?[0].values["kb"] = FieldValue(v: "S04")
@@ -31,17 +38,28 @@ extension AppEnvironment {
         }
         do { try recordStore.save(r) } catch { errorMessage = error.localizedDescription; return }
         reload(); open(r.id)
-        if d.bool(forKey: "pmReview") {
+        let focus = d.string(forKey: "pmFocus")
+        if d.bool(forKey: "pmReviewDraft") || d.bool(forKey: "pmFillStep") {
+            if d.bool(forKey: "pmFillStep") { recordsPath.append(.fill(record: r.id)) } else { recordsPath.append(.review(record: r.id)) }
+        } else if d.bool(forKey: "pmReview") {
             editor(for: r.id)?.reviewMode = true
             recordsPath.append(.review(record: r.id))
             if d.object(forKey: "pmSection") != nil { recordsPath.append(.section(record: r.id, index: d.integer(forKey: "pmSection"), focus: nil)) }
         } else if d.object(forKey: "pmSection") != nil {
-            recordsPath.append(.section(record: r.id, index: d.integer(forKey: "pmSection"), focus: nil))
+            recordsPath.append(.section(record: r.id, index: d.integer(forKey: "pmSection"), focus: focus))
         }
     }
 
-    private func fillRequired(_ t: Template, _ r: inout Record) {
-        for f in t.allFields where f.required && !f.isComputed {
+    private var sampleSites: [Site] {
+        [Site(code: "TDP-007", address: "3 Hai Bà Trưng, Q.1", lat: 10.7769, lng: 106.7009),
+         Site(code: "TDP-021", address: "5 Nguyễn Huệ, Q.1", lat: 10.7820, lng: 106.6950),
+         Site(code: "TDP-014", address: "12 Lê Lợi, Q.1", lat: 10.7905, lng: 106.7080),
+         Site(code: "TDP-033", address: "88 Trần Hưng Đạo, Q.5", lat: 10.7640, lng: 106.6900),
+         Site(code: "TDP-040", address: "20 Nguyễn Thị Thập, Q.7", lat: 10.7380, lng: 106.7200)]
+    }
+
+    private func fillRequired(_ t: Template, _ r: inout Record, fields: [Field]? = nil) {
+        for f in (fields ?? t.allFields) where f.required && !f.isComputed {
             var fv = r.values[f.id] ?? FieldValue()
             switch f.type {
             case .text, .multiline: fv.v = .string(f.id == "A-01" ? "TDP-014" : (f.id == "A-03" ? "12 Lê Lợi, Q.1" : "Mẫu"))
@@ -82,7 +100,9 @@ extension AppEnvironment {
         returned.values["A-03"] = FieldValue(v: .string("5 Nguyễn Huệ"))
         returned.values["B-02"] = FieldValue(v: .number(1500), review: "Đo lại chiều cao khoang")
         returned.returned = true
-        let fresh = RecordFactory.make(template: t, now: Date().addingTimeInterval(-3600))
+        returned.values["A-04"] = FieldValue(v: GPSValue(lat: 10.7820, lng: 106.6950, accuracy: 6).json)
+        var fresh = RecordFactory.make(template: t, now: Date().addingTimeInterval(-3600))
+        fresh.values["A-04"] = FieldValue(v: GPSValue(lat: 10.7700, lng: 106.7100, accuracy: 9).json)
         for r in [done, returned, fresh] { try? recordStore.save(r) }
     }
 }

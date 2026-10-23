@@ -24,8 +24,15 @@ struct RecordsListView: View {
     var body: some View {
         @Bindable var env = env
         NavigationStack(path: $env.recordsPath) {
-            Group {
-                if env.summaries.isEmpty {
+            VStack(spacing: 0) {
+                Picker("Hiển thị", selection: $env.recordsShowMap) {
+                    Text("Danh sách").tag(false)
+                    Text("Bản đồ").tag(true)
+                }
+                .pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 6)
+                if env.recordsShowMap {
+                    RecordsMapView(records: shown)
+                } else if env.summaries.isEmpty {
                     ContentUnavailableView("Chưa có phiếu", systemImage: "list.clipboard",
                                            description: Text("Nhấn + để tạo phiếu khảo sát từ một mẫu."))
                 } else {
@@ -62,13 +69,16 @@ struct RecordsListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Tạo phiếu", systemImage: "plus") { choosingTemplate = true }
+                    Button("Tạo phiếu", systemImage: "plus") {
+                        if let only = env.newestTemplates.first, env.newestTemplates.count == 1 { env.startCreate(from: only) }
+                        else { choosingTemplate = true }
+                    }
                 }
             }
             .navigationDestination(for: Route.self) { RouteDestination(route: $0) }
             .onAppear { env.reload() }
             .confirmationDialog("Chọn mẫu", isPresented: $choosingTemplate, titleVisibility: .visible) {
-                ForEach(env.newestTemplates) { t in Button("\(t.title) (\(t.id) v\(t.version))") { env.createRecord(from: t) } }
+                ForEach(env.newestTemplates) { t in Button("\(t.title) (\(t.id) v\(t.version))") { env.startCreate(from: t) } }
             }
             .confirmationDialog("Xóa phiếu này? Ảnh và dữ liệu đi kèm sẽ mất.", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                                 titleVisibility: .visible) {

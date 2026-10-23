@@ -39,6 +39,7 @@ struct GPSInput: View {
     var plannedDistance: Double?
     @State private var busy = false
     @State private var error: String?
+    @State private var manual = false
     /// Half-typed coordinates: stored only once both lat and long exist (never a made-up 0).
     @State private var draft: [String: Double] = [:]
     @Environment(\.pmTheme) private var theme
@@ -48,34 +49,51 @@ struct GPSInput: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button { fetch() } label: {
-                if busy { ProgressView() }
-                else { Label(gps == nil ? "Lấy vị trí hiện tại" : "Lấy lại", systemImage: "location.fill") }
+                Group {
+                    if busy { ProgressView() }
+                    else { Label(gps == nil ? "Lấy vị trí hiện tại" : "Lấy lại vị trí", systemImage: "location.fill").font(.headline) }
+                }
+                .frame(maxWidth: .infinity, minHeight: max(40, theme.minTouch))
             }
             .buttonStyle(.borderedProminent).disabled(busy)
 
-            HStack(spacing: 8) {
-                coordField("Vĩ độ (lat)", placeholder: "Chưa lấy vị trí", name: "lat", keyPath: \.lat)
-                coordField("Kinh độ (long)", placeholder: "Chưa lấy vị trí", name: "lng", keyPath: \.lng)
-            }
             if let g = gps {
                 HStack(spacing: 6) {
+                    Text(resultText(g)).font(.subheadline.monospacedDigit().weight(.semibold))
                     if let a = g.accuracy {
                         let ok = a <= field.gpsMaxAccuracy
-                        Label("±\(ValueFormatter.number(a, decimals: 0)) m", systemImage: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(ok ? theme.success : theme.warning).font(.caption.weight(.semibold))
-                    }
-                    if let d = plannedDistance {
-                        Text("Cách điểm kế hoạch \(ValueFormatter.number(d, decimals: 0)) m").font(.caption)
-                            .foregroundStyle(d > 100 ? theme.warning : theme.success)
+                        Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(ok ? theme.success : theme.warning)
                     }
                     Spacer()
                     if let url = URL(string: "http://maps.apple.com/?ll=\(g.lat),\(g.lng)") {
                         Link(destination: url) { Label("Bản đồ", systemImage: "map") }.font(.caption)
                     }
                 }
+                if let d = plannedDistance {
+                    Text("Cách điểm kế hoạch \(ValueFormatter.number(d, decimals: 0)) m").font(.caption)
+                        .foregroundStyle(d > 100 ? theme.warning : theme.success)
+                }
+            }
+
+            Button { withAnimation { manual.toggle() } } label: {
+                Label("Nhập tay", systemImage: manual ? "chevron.up" : "keyboard").font(.footnote)
+            }
+            .buttonStyle(.plain).foregroundStyle(Color.accentColor)
+            if manual {
+                HStack(spacing: 8) {
+                    coordField("Vĩ độ (lat)", placeholder: "Chưa có", name: "lat", keyPath: \.lat)
+                    coordField("Kinh độ (long)", placeholder: "Chưa có", name: "lng", keyPath: \.lng)
+                }
             }
             if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
         }
+    }
+
+    /// "10.776900, 106.700900 ±8 m"
+    private func resultText(_ g: GPSValue) -> String {
+        let base = String(format: "%.6f, %.6f", g.lat, g.lng)
+        return g.accuracy.map { "\(base) ±\(ValueFormatter.number($0, decimals: 0)) m" } ?? base
     }
 
     private func fetch() {

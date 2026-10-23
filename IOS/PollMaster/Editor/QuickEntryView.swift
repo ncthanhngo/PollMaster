@@ -38,6 +38,18 @@ struct QuickEntryView: View {
         return out.enumerated().sorted { (rank($0.element.field), $0.offset) < (rank($1.element.field), $1.offset) }.map(\.element)
     }
 
+    private var stopwatchRow: (table: TableDef, row: Row)? {
+        guard let sw = stopwatchTable, let row = model.rows(sw.id).first(where: { $0.id == rowId }) else { return nil }
+        return (sw, row)
+    }
+
+    private var nextButton: some View {
+        Button { next() } label: {
+            Label("Lượt tiếp theo", systemImage: "arrow.right.circle.fill").frame(maxWidth: .infinity, minHeight: max(36, theme.minTouch))
+        }
+        .buttonStyle(.borderedProminent)
+    }
+
     private var index: Int { model.rows(table.id).firstIndex { $0.id == rowId } ?? 0 }
 
     private func binding(_ e: Entry) -> Binding<FieldValue> {
@@ -46,25 +58,16 @@ struct QuickEntryView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                if model.isLocked { LockedBanner(model: model) }
-                if let sw = stopwatchTable, let row = model.rows(sw.id).first(where: { $0.id == rowId }), let def = sw.stopwatch {
-                    StopwatchBlock(model: model, table: sw, row: row, columns: def.columns)
-                }
-                ForEach(entries) { e in entryView(e) }
-                if !model.isLocked && !table.isFixed {
-                    Button { next() } label: {
-                        Label("Lượt tiếp theo", systemImage: "arrow.right.circle.fill").frame(maxWidth: .infinity, minHeight: 36)
-                    }
-                    .buttonStyle(.borderedProminent).padding(.top, 8)
-                }
-            }
-            .padding()
-            .frame(maxWidth: 760)
-            .frame(maxWidth: .infinity)
+        PinnedStopwatchScroll(model: model, stopwatch: stopwatchRow) {
+            if model.isLocked { LockedBanner(model: model) }
+            ForEach(entries) { e in entryView(e) }
+            if !model.isLocked && !table.isFixed && !theme.oneHand { nextButton.padding(.top, 8) }
         }
-        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom) {
+            if theme.oneHand && !model.isLocked && !table.isFixed {
+                nextButton.padding(.horizontal).padding(.vertical, 8).background(.bar)
+            }
+        }
         .background(theme.screenBackground)
         .navigationTitle("\(table.rowLabel ?? "Dòng") \(index + 1)")
         .navigationBarTitleDisplayMode(.inline)

@@ -27,7 +27,7 @@ xcodebuild -scheme PollMaster -destination 'generic/platform=iOS Simulator' buil
 ```
 
 Debug builds accept `-pmCreate <templateId> [-pmSection <n>]` launch arguments to open a fresh record directly
-(used for simulator screenshots). Tests can keep the generated sample PDF with `PM_EXPORT_DIR=<dir> swift test`.
+(used for simulator screenshots). More DEBUG-only aids (`-pmFocus`, `-pmPartial`, `-pmReviewDraft`, `-pmFillStep`, `-pmMap`, `-pmSites`, `-pmOneHand`, `-pmScrollDown`) are listed in `PollMaster/App/DebugLaunch.swift`. Tests can keep the generated sample PDF with `PM_EXPORT_DIR=<dir> swift test`.
 
 ## Data
 

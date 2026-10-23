@@ -20,8 +20,9 @@ struct SettingsView: View {
                     }
                     Toggle("Chế độ gọn", isOn: $settings.compactMode)
                     Toggle("Tương phản cao", isOn: $settings.highContrast)
+                    Toggle("Chế độ một tay / đeo găng", isOn: $settings.oneHand)
                 } header: { Text("Hiển thị") } footer: {
-                    Text("Gọn: trường ngắn có nhãn và ô nhập cùng một hàng. Tương phản cao: nền trắng/đen tinh, viền đậm, chữ lớn hơn, dùng ngoài trời.")
+                    Text("Gọn: trường ngắn có nhãn và ô nhập cùng một hàng. Tương phản cao: nền trắng/đen tinh, viền đậm, chữ lớn hơn, dùng ngoài trời. Một tay / đeo găng: vùng chạm lớn, chữ lớn hơn, thanh hành động ở cuối màn hình; nhấn giữ thẻ trường để mở menu.")
                 }
                 Section("Ảnh") {
                     Picker("Chất lượng ảnh", selection: $settings.photoQuality) {

@@ -6,6 +6,9 @@ import PollMasterCore
 struct PMTheme: Equatable {
     var highContrast = false
     var dark = false
+    /// One-hand / glove mode (ux-spec L17): touch targets of at least 56 pt.
+    var oneHand = false
+    var minTouch: CGFloat { oneHand ? 56 : 0 }
 
     var screenBackground: Color { highContrast ? (dark ? .black : .white) : Color(.systemGroupedBackground) }
     var cardBackground: Color { highContrast ? (dark ? .black : .white) : Color(.secondarySystemGroupedBackground) }
@@ -36,19 +39,20 @@ extension EnvironmentValues {
 /// Injects the theme (and, in high contrast, one larger Dynamic Type step ~ +10 %) below it.
 struct ThemeHost<Content: View>: View {
     let highContrast: Bool
+    var oneHand = false
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var size
 
     private var bumped: DynamicTypeSize {
         let all = DynamicTypeSize.allCases
-        guard highContrast, let i = all.firstIndex(of: size) else { return size }
+        guard highContrast || oneHand, let i = all.firstIndex(of: size) else { return size }
         return all[min(i + 1, all.count - 1)]
     }
 
     var body: some View {
         content
-            .environment(\.pmTheme, PMTheme(highContrast: highContrast, dark: scheme == .dark))
+            .environment(\.pmTheme, PMTheme(highContrast: highContrast, dark: scheme == .dark, oneHand: oneHand))
             .dynamicTypeSize(bumped)
     }
 }
@@ -98,6 +102,7 @@ private struct InputBox: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, 10).padding(.vertical, 8)
+            .frame(minHeight: theme.minTouch)
             .background(theme.inputBackground, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.border, lineWidth: theme.borderWidth))
     }

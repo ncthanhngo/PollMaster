@@ -17,15 +17,15 @@ struct ScalarInput: View {
         case .text:
             HStack(spacing: 6) {
                 if let p = field.prefix { Text(p).secondaryText().font(.subheadline).fixedSize() }
-                TextField(field.hint ?? "Nhập…", text: text)
+                TextField("Nhập…", text: text)
                     .textFieldStyle(.plain).submitLabel(.next).focusSlot(focus)
             }
             .inputBox()
         case .multiline:
-            TextField(field.hint ?? "Nhập…", text: text, axis: .vertical)
+            TextField("Nhập…", text: text, axis: .vertical)
                 .lineLimit(3...8).textFieldStyle(.plain).inputBox().focusSlot(focus)
         case .number, .integer:
-            NumberInput(placeholder: field.hint ?? "Nhập…", integer: field.type == .integer,
+            NumberInput(placeholder: "Nhập…", integer: field.type == .integer,
                         unit: showUnit ? field.unit : nil, value: $value, focus: focus)
         case .singleChoice: SingleChoiceInput(field: field, value: $value, other: $other, quick: quick)
         case .multiChoice: MultiChoiceInput(field: field, value: $value, other: $other)

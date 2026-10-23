@@ -37,7 +37,26 @@ struct CodeBadge: View {
     }
 }
 
+/// Actions of the field menu: ~ / KĐĐ, note, clear. Used by the ⋯ menu and, in one-hand mode, by the long-press menu.
+struct FieldMenuItems: View {
+    let field: Field
+    @Binding var fv: FieldValue
+    @Binding var editingNote: Bool
+
+    var body: some View {
+        if field.flagsEnabled {
+            Button(fv.flag == .estimate ? "Bỏ ước lượng (~)" : "Ước lượng (~)", systemImage: "tilde") { flip(.estimate) }
+            Button(fv.flag == .notMeasurable ? "Bỏ không đo được" : "Không đo được (KĐĐ)", systemImage: "nosign") { flip(.notMeasurable) }
+        }
+        Button("Thêm ghi chú", systemImage: "note.text") { editingNote = true }
+        Button("Xóa giá trị", systemImage: "trash", role: .destructive) { fv = FieldValue(note: fv.note, review: fv.review) }
+    }
+
+    private func flip(_ f: FieldFlag) { fv.flag = fv.flag == f ? nil : f }
+}
+
 /// Toggle chips "~" / "KĐĐ" (header row) and the ⋯ menu; in review mode a button for the checker note.
+/// One-hand mode drops both: the same actions live in the long-press menu of the card.
 struct FieldMenu: View {
     let field: Field
     @Binding var fv: FieldValue
@@ -54,20 +73,14 @@ struct FieldMenu: View {
                 Button { addingReview = true } label: { Image(systemName: "text.bubble").font(.title3) }
                     .accessibilityLabel("Thêm ghi chú kiểm tra")
             }
-        } else if !scope.locked {
+        } else if !scope.locked && !theme.oneHand {
             HStack(spacing: 6) {
                 if withChips && field.flagsEnabled {
                     toggle("~", .estimate)
                     toggle("KĐĐ", .notMeasurable)
                 }
-                Menu {
-                    if field.flagsEnabled {
-                        Button(fv.flag == .estimate ? "Bỏ ước lượng (~)" : "Ước lượng (~)", systemImage: "tilde") { flip(.estimate) }
-                        Button(fv.flag == .notMeasurable ? "Bỏ không đo được" : "Không đo được (KĐĐ)", systemImage: "nosign") { flip(.notMeasurable) }
-                    }
-                    Button("Thêm ghi chú", systemImage: "note.text") { editingNote = true }
-                    Button("Xóa giá trị", systemImage: "trash", role: .destructive) { fv = FieldValue(note: fv.note, review: fv.review) }
-                } label: { Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 28, minHeight: 28) }
+                Menu { FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote) }
+                label: { Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 28, minHeight: 28) }
             }
         }
     }
@@ -138,7 +151,8 @@ struct ComputedBlock: View {
     }
 }
 
-/// Sub-inputs: 2-column grid (3 on wide screens with >= 3 parts); label = name, unit sits inside the box.
+/// Sub-inputs: 2-column grid; 3 columns on wide screens with >= 3 parts, and on phones when >= 3 parts are all numbers
+/// (L x W x H in one row, ux-spec L12). In the 3-column row the unit moves into the label to keep the boxes wide enough.
 struct PartsBlock: View {
     let field: Field
     @Binding var fv: FieldValue
@@ -148,11 +162,12 @@ struct PartsBlock: View {
     var body: some View {
         let parts = PartVisibility.visibleParts(of: field, value: fv, lookup: scope.lookup)
         if !parts.isEmpty {
-            let cols = parts.count >= 3 && sizeClass == .regular ? 3 : 2
+            let numeric = parts.count >= 3 && parts.allSatisfy { $0.type == .number || $0.type == .integer }
+            let cols = parts.count >= 3 && (sizeClass == .regular || numeric) ? 3 : 2
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: cols), alignment: .leading, spacing: 8) {
                 ForEach(parts) { p in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(p.label).font(.caption2).secondaryText()
+                        Text(numeric && p.unit != nil ? "\(p.label) (\(p.unit!))" : p.label).font(.caption2).secondaryText().lineLimit(1)
                         ScalarInput(field: p.asField,
                                     value: Binding(get: { fv.parts?[p.id] }, set: { new in
                                         var d = fv.parts ?? [:]
@@ -161,7 +176,7 @@ struct PartsBlock: View {
                                     }),
                                     other: .constant(nil),
                                     focus: scope.focus.map { FocusSlot(state: $0, key: "\(field.id).\(p.id)") },
-                                    location: scope.location)
+                                    location: scope.location, showUnit: !numeric)
                     }
                 }
             }

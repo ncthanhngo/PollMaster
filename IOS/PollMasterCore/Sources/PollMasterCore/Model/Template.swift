@@ -5,12 +5,19 @@ public struct SignatureDef: Codable, Equatable, Sendable, Identifiable {
     public var label: String
 }
 
+/// `roundEntry` of a heading: its `samples` fields are entered round by round (`Lần 1..n`).
+public struct RoundEntry: Codable, Equatable, Sendable {
+    public var samples: Int
+    public var timeField: String?
+}
+
 public struct Heading: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var title: String
     public var note: String?
+    public var roundEntry: RoundEntry?
 
-    enum Keys: String, CodingKey { case kind, id, title, note }
+    enum Keys: String, CodingKey { case kind, id, title, note, roundEntry }
 }
 
 public struct FixedRow: Codable, Equatable, Sendable, Identifiable {
@@ -26,8 +33,18 @@ public struct FixedRow: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+/// Reminder shown when a stopwatch mark is recorded: `text` plus a button opening `field`.
+public struct StopwatchCue: Codable, Equatable, Sendable {
+    public var text: String
+    public var field: String
+}
+
 public struct StopwatchDef: Codable, Equatable, Sendable {
     public var columns: [String]
+    public var cues: [String: StopwatchCue]?
+
+    /// Cue attached to the mark stored in `column` (e.g. "T6").
+    public func cue(for column: String) -> StopwatchCue? { cues?[column] }
 }
 
 public struct TableDef: Codable, Equatable, Sendable, Identifiable {
@@ -42,9 +59,10 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
     public var columns: [Field]
     public var pairedWith: String?
     public var quickEntry: Bool = false
+    public var inline: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case kind, id, title, note, rowLabel, minRows, required, rows, stopwatch, columns, pairedWith, quickEntry
+        case kind, id, title, note, rowLabel, minRows, required, rows, stopwatch, columns, pairedWith, quickEntry, inline
     }
 
     public init(from decoder: Decoder) throws {
@@ -60,6 +78,7 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
         columns = try c.decode([Field].self, forKey: .columns)
         pairedWith = try c.decodeIfPresent(String.self, forKey: .pairedWith)
         quickEntry = try c.decodeIfPresent(Bool.self, forKey: .quickEntry) ?? false
+        inline = try c.decodeIfPresent(Bool.self, forKey: .inline) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -72,6 +91,7 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
         try c.encode(columns, forKey: .columns)
         try c.encodeIfPresent(pairedWith, forKey: .pairedWith)
         if quickEntry { try c.encode(true, forKey: .quickEntry) }
+        if inline { try c.encode(true, forKey: .inline) }
     }
 
     public var isFixed: Bool { rows != nil }
@@ -102,7 +122,8 @@ public enum Item: Codable, Equatable, Sendable, Identifiable {
             let c = try decoder.container(keyedBy: Heading.Keys.self)
             self = .heading(Heading(id: try c.decode(String.self, forKey: .id),
                                     title: try c.decode(String.self, forKey: .title),
-                                    note: try c.decodeIfPresent(String.self, forKey: .note)))
+                                    note: try c.decodeIfPresent(String.self, forKey: .note),
+                                    roundEntry: try c.decodeIfPresent(RoundEntry.self, forKey: .roundEntry)))
         case "table": self = .table(try TableDef(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(forKey: Kind.kind, in: container, debugDescription: "kind không hợp lệ: \(kind)")
@@ -116,6 +137,7 @@ public enum Item: Codable, Equatable, Sendable, Identifiable {
             var c = encoder.container(keyedBy: Heading.Keys.self)
             try c.encode("heading", forKey: .kind); try c.encode(h.id, forKey: .id)
             try c.encode(h.title, forKey: .title); try c.encodeIfPresent(h.note, forKey: .note)
+            try c.encodeIfPresent(h.roundEntry, forKey: .roundEntry)
         case .table(let t): try t.encode(to: encoder)
         }
     }

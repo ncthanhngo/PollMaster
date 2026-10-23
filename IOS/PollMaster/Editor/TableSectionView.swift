@@ -6,7 +6,6 @@ struct TableSectionView: View {
     let model: RecordEditorModel
     let table: TableDef
     let sectionId: String
-    @Environment(AppEnvironment.self) private var env
     @State private var deleting: Row?
 
     private var rows: [Row] { model.record.rows(of: table) }
@@ -16,14 +15,18 @@ struct TableSectionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(table.title).font(.headline).padding(.top, 8)
             if let n = table.note { Text(n).font(.footnote).secondaryText() }
-            if canAdd { addButton }
+            if canAdd { AddRowButton(model: model, table: table, sectionId: sectionId) }
             if rows.isEmpty {
-                Text(table.isFixed ? "Bảng chưa có dòng nào." : "Chưa có dòng nào — bấm \(table.quickEntry ? "Ghi lượt mới" : "Thêm dòng")")
+                Text(table.isFixed ? "Bảng chưa có dòng nào." : "Chưa có \(table.itemName) nào — bấm \(table.addTitle)")
                     .font(.subheadline).secondaryText().frame(maxWidth: .infinity).padding(.vertical, 14)
                     .cardBox()
             }
-            ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                RowCard(model: model, table: table, row: row, index: i, sectionId: sectionId, onDelete: { deleting = row })
+            if let layout = table.inlineLayout {
+                InlineTableView(model: model, table: table, layout: layout)
+            } else {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
+                    RowCard(model: model, table: table, row: row, index: i, sectionId: sectionId, onDelete: { deleting = row })
+                }
             }
             ForEach(model.issues.filter { $0.fieldId == table.id && $0.rowId == nil }) { issue in
                 if model.showAllErrors { Label(issue.message, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.red) }
@@ -35,14 +38,31 @@ struct TableSectionView: View {
         }
     }
 
-    private var addButton: some View {
+}
+
+extension TableDef {
+    /// Lower-case row noun: "lượt", "người", "dòng".
+    var itemName: String { quickEntry ? (rowLabel ?? "Lượt").lowercased() : "dòng" }
+    /// Text of the add button: "Ghi lượt mới" (quick entry) or "Thêm dòng".
+    var addTitle: String { quickEntry ? "Ghi \(itemName) mới" : "Thêm dòng" }
+}
+
+/// Adds a row and opens its form.
+struct AddRowButton: View {
+    let model: RecordEditorModel
+    let table: TableDef
+    let sectionId: String
+    @Environment(AppEnvironment.self) private var env
+    @Environment(\.pmTheme) private var theme
+
+    var body: some View {
         Button {
             let id = model.addRow(table.id)
             model.setPosition(section: sectionId, field: table.id)
             env.recordsPath.append(.row(record: model.record.id, table: table.id, row: id))
         } label: {
-            Label(table.quickEntry ? "Ghi lượt mới" : "Thêm dòng", systemImage: table.quickEntry ? "stopwatch" : "plus.circle.fill")
-                .frame(maxWidth: .infinity, minHeight: table.quickEntry ? 36 : 24)
+            Label(table.addTitle, systemImage: table.quickEntry ? "stopwatch" : "plus.circle.fill")
+                .frame(maxWidth: .infinity, minHeight: max(table.quickEntry ? 36 : 24, theme.minTouch))
         }
         .buttonStyle(.borderedProminent)
     }

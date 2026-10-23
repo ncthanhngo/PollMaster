@@ -91,6 +91,26 @@ public struct Lookup: Codable, Equatable, Sendable {
     }
 }
 
+/// `chipsRange` of an integer field: one-tap chips `min…max`, `max` read from `maxRef` ("fieldId" or "fieldId.partId").
+public struct ChipsRange: Codable, Equatable, Sendable {
+    public var min: Int
+    public var maxRef: String?
+    public var fallbackMax: Int
+
+    enum CodingKeys: String, CodingKey { case min, maxRef, fallbackMax }
+
+    public init(min: Int = 1, maxRef: String? = nil, fallbackMax: Int = 10) {
+        self.min = min; self.maxRef = maxRef; self.fallbackMax = fallbackMax
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        min = try c.decodeIfPresent(Int.self, forKey: .min) ?? 1
+        maxRef = try c.decodeIfPresent(String.self, forKey: .maxRef)
+        fallbackMax = try c.decodeIfPresent(Int.self, forKey: .fallbackMax) ?? 10
+    }
+}
+
 public struct Field: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var label: String
@@ -124,6 +144,9 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
     public var maxAccuracy: Double?
     public var lookup: Lookup?
     public var carryOver: Bool = false
+    public var short: Bool = false
+    public var stepper: Bool = false
+    public var chipsRange: ChipsRange?
 
     public init(id: String, label: String, type: FieldType) {
         self.id = id; self.label = label; self.type = type
@@ -132,7 +155,7 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, label, type, required, unit, method, hint, flags, samples, parts, `default`, readonly, role, prefix
         case attachPhoto, options, min, max, decimals, minCount, maxCount, labels, allowUnknown, minLabel, maxLabel, formula
-        case photoRef, warnMin, warnMax, maxAccuracy, lookup, carryOver
+        case photoRef, warnMin, warnMax, maxAccuracy, lookup, carryOver, short, stepper, chipsRange
     }
 
     public init(from decoder: Decoder) throws {
@@ -169,6 +192,9 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
         maxAccuracy = try c.decodeIfPresent(Double.self, forKey: .maxAccuracy)
         lookup = try c.decodeIfPresent(Lookup.self, forKey: .lookup)
         carryOver = try c.decodeIfPresent(Bool.self, forKey: .carryOver) ?? false
+        short = try c.decodeIfPresent(Bool.self, forKey: .short) ?? false
+        stepper = try c.decodeIfPresent(Bool.self, forKey: .stepper) ?? false
+        chipsRange = try c.decodeIfPresent(ChipsRange.self, forKey: .chipsRange)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -193,6 +219,9 @@ public struct Field: Codable, Equatable, Sendable, Identifiable {
         try c.encodeIfPresent(warnMin, forKey: .warnMin); try c.encodeIfPresent(warnMax, forKey: .warnMax)
         try c.encodeIfPresent(maxAccuracy, forKey: .maxAccuracy); try c.encodeIfPresent(lookup, forKey: .lookup)
         if carryOver { try c.encode(true, forKey: .carryOver) }
+        if short { try c.encode(true, forKey: .short) }
+        if stepper { try c.encode(true, forKey: .stepper) }
+        try c.encodeIfPresent(chipsRange, forKey: .chipsRange)
     }
 
     /// `~` / KĐĐ markers allowed? Default true for number, composite, text.

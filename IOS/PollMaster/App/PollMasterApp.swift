@@ -7,7 +7,7 @@ struct PollMasterApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ThemeHost(highContrast: env.settings.highContrast) { RootView() }
+            ThemeHost(highContrast: env.settings.highContrast, oneHand: env.settings.oneHand) { RootView() }
                 .appearance(env.settings.appearance)
                 .environment(env)
                 .task { env.applyDebugLaunchArguments() }

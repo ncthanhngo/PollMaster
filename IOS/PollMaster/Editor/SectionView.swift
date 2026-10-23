@@ -10,6 +10,8 @@ struct SectionView: View {
     @FocusState private var focused: String?
     @State private var askKDD = false
     @State private var askCopy = false
+    /// Selected round (0-based) per heading id with `roundEntry`.
+    @State private var rounds: [String: Int] = [:]
 
     private var title: String { model.sectionTitles[index].title }
     private var sectionId: String { model.sectionTitles[index].id }
@@ -32,7 +34,7 @@ struct SectionView: View {
                             ForEach(results) { itemView($0) }
                         }
                     }
-                    navigation
+                    if !theme.oneHand { navigation }
                 }
                 .padding()
                 .frame(maxWidth: 760)
@@ -61,10 +63,12 @@ struct SectionView: View {
             }
             .task {
                 guard let focus else { return }
+                selectFirstEmptyRound(for: focus)
                 try? await Task.sleep(for: .milliseconds(150))
                 withAnimation { proxy.scrollTo(focus, anchor: .top) }
             }
         }
+        .safeAreaInset(edge: .bottom) { if theme.oneHand { oneHandBar } }
         .modifier(WarnOnLeave(model: model, focused: $focused) { key in
             guard let f = fields.first(where: { $0.id == FocusOrder.baseId(key) }) else { return nil }
             return (f, model.record.values[f.id], f.id)
@@ -79,16 +83,68 @@ struct SectionView: View {
     @ViewBuilder private func itemView(_ item: Item) -> some View {
         switch item {
         case .field(let f):
-            FieldCard(field: f, fv: model.binding(f.id), scope: model.scope(focus: $focused, sectionId: sectionId))
+            if let h = RoundEntryRules.heading(owning: f.id, in: items), let entry = h.roundEntry, f.samples != nil {
+                let round = min(rounds[h.id] ?? 0, entry.samples - 1)
+                FieldCard(field: f, fv: roundBinding(f, entry, round), scope: model.scope(focus: $focused, sectionId: sectionId), round: round)
+            } else {
+                FieldCard(field: f, fv: model.binding(f.id), scope: model.scope(focus: $focused, sectionId: sectionId))
+            }
         case .heading(let h):
-            VStack(alignment: .leading, spacing: 2) {
-                Text(h.title).font(.headline)
-                if let n = h.note { Text(n).font(.footnote).secondaryText() }
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(h.title).font(.headline)
+                    if let n = h.note { Text(n).font(.footnote).secondaryText() }
+                }
+                if let entry = h.roundEntry {
+                    Picker("Lần đo", selection: Binding(get: { rounds[h.id] ?? 0 }, set: { rounds[h.id] = $0 })) {
+                        ForEach(0..<entry.samples, id: \.self) { Text("Lần \($0 + 1)").tag($0) }
+                    }
+                    .pickerStyle(.segmented).controlSize(theme.oneHand ? .large : .regular)
+                }
             }
             .padding(.top, 8)
         case .table(let t):
             TableSectionView(model: model, table: t, sectionId: sectionId).id(t.id)
         }
+    }
+
+    /// Edits go to the model as usual; the first value of a round also stamps the current time into the entry's `timeField`.
+    private func roundBinding(_ f: Field, _ entry: RoundEntry, _ round: Int) -> Binding<FieldValue> {
+        Binding(get: { model.record.value(f.id) }, set: { new in
+            model.setValue(f.id, new)
+            guard let time = RoundEntryRules.timeToFill(entry, round: round, editedFieldId: f.id, editedHasValue: !new.sample(round).isBlank,
+                                                        time: model.record.values[entry.timeField ?? ""]),
+                  let timeField = entry.timeField else { return }
+            var tv = model.record.value(timeField)
+            tv.setSample(round, count: entry.samples, to: .string(time))
+            model.setValue(timeField, tv)
+        })
+    }
+
+    /// Opened from a stopwatch cue: land on the first round of the target field that is still empty.
+    private func selectFirstEmptyRound(for fieldId: String) {
+        guard let h = RoundEntryRules.heading(owning: fieldId, in: items), let entry = h.roundEntry else { return }
+        rounds[h.id] = RoundEntryRules.firstEmptyRound(samples: entry.samples, value: model.record.values[fieldId])
+    }
+
+    /// Bottom action bar of one-hand mode: previous / check / next, plus the section's add-row button.
+    private var oneHandBar: some View {
+        VStack(spacing: 8) {
+            if !model.isLocked, let t = items.compactMap({ item -> TableDef? in if case .table(let t) = item, !t.isFixed { return t } else { return nil } }).first {
+                AddRowButton(model: model, table: t, sectionId: sectionId)
+            }
+            HStack(spacing: 8) {
+                Button { go(index - 1) } label: { Text("‹ Mục trước").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36) }.disabled(index == 0)
+                Button {
+                    model.showAllErrors = true
+                    env.recordsPath.append(.review(record: model.record.id))
+                } label: { Text("Kiểm tra").lineLimit(1).frame(maxWidth: .infinity, minHeight: 36) }
+                Button { go(index + 1) } label: { Text("Mục sau ›").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36) }.disabled(index >= model.sectionTitles.count - 1)
+            }
+            .buttonStyle(.bordered).controlSize(.large)
+        }
+        .padding(.horizontal).padding(.vertical, 8)
+        .background(.bar)
     }
 
     private var navigation: some View {

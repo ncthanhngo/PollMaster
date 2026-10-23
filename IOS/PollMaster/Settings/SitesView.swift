@@ -38,14 +38,7 @@ struct SitesView: View {
         .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText, .text]) { result in
             switch result {
             case .success(let url):
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                do {
-                    let sites = try SitesCSV.parse(Data(contentsOf: url))
-                    try env.siteStore.save(sites)
-                    env.reloadSites()
-                    message = "Đã nhập \(sites.count) điểm."
-                } catch { message = error.localizedDescription }
+                do { message = "Đã nhập \(try env.importSites(from: url)) điểm." } catch { message = error.localizedDescription }
             case .failure(let e): message = e.localizedDescription
             }
         }

@@ -14,7 +14,7 @@ import Foundation
     // MARK: template
 
     @Test func templateParsesExtensions() throws {
-        #expect(t.version == "1.1")
+        #expect(t.version == "1.2")
         #expect(t.field("A-01")?.lookup == Lookup(source: "sites", fill: ["A-03": "address"], gps: "A-04"))
         #expect(t.field("A-04")?.maxAccuracy == 15)
         #expect(t.allFields.contains { $0.photoRef == "P08" })
@@ -336,8 +336,8 @@ import Foundation
         old["version"] = "1.0"
         try store.install(JSONSerialization.data(withJSONObject: old))
         try store.install(Fixtures.templateData())
-        #expect(store.list().map(\.version).sorted() == ["1.0", "1.1"])
-        #expect(TemplateVersion.newest(store.list()).map(\.version) == ["1.1"])
+        #expect(store.list().map(\.version).sorted() == ["1.0", "1.2"])
+        #expect(TemplateVersion.newest(store.list()).map(\.version) == ["1.2"])
         // a record keeps resolving its own version
         #expect(store.load(id: "BB-TDP-01", version: "1.0")?.version == "1.0")
     }

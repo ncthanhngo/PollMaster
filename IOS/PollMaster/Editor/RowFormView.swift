@@ -27,26 +27,17 @@ struct RowFormView: View {
     private func form(_ table: TableDef, _ row: Row) -> some View {
         let summary = TableRowSummary.make(table: table, row: row, index: rowIndex)
         let editable = table.columns.filter { !$0.readonly }
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                if model.isLocked { LockedBanner(model: model) }
-                if let sw = table.stopwatch {
-                    StopwatchBlock(model: model, table: table, row: row, columns: sw.columns)
-                }
-                ForEach(table.columns) { col in
-                    if col.readonly, let fixed = fixedText(table, col) {
-                        FixedValueCard(field: col, text: fixed)
-                    } else {
-                        FieldCard(field: col, fv: model.rowBinding(table: tableId, row: rowId, column: col.id),
-                                  scope: model.scope(table: table, row: row, focus: $focused), showCode: false)
-                    }
+        return PinnedStopwatchScroll(model: model, stopwatch: table.stopwatch == nil ? nil : (table, row)) {
+            if model.isLocked { LockedBanner(model: model) }
+            ForEach(table.columns) { col in
+                if col.readonly, let fixed = fixedText(table, col) {
+                    FixedValueCard(field: col, text: fixed)
+                } else {
+                    FieldCard(field: col, fv: model.rowBinding(table: tableId, row: rowId, column: col.id),
+                              scope: model.scope(table: table, row: row, focus: $focused), showCode: false)
                 }
             }
-            .padding()
-            .frame(maxWidth: 760)
-            .frame(maxWidth: .infinity)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(theme.screenBackground)
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)

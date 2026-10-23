@@ -20,6 +20,7 @@ struct RouteDestination: View {
             case .section(_, let index, let focus): SectionView(model: model, index: index, focus: focus)
             case .row(_, let table, let row): RowFormView(model: model, tableId: table, rowId: row)
             case .review: ReviewView(model: model)
+            case .fill: FillOneByOneView(model: model)
             }
         } else {
             ContentUnavailableView("Không mở được phiếu", systemImage: "exclamationmark.triangle",
@@ -58,7 +59,10 @@ struct EditorRootView: View {
                 ForEach(Array(model.sectionTitles.enumerated()), id: \.offset) { i, s in
                     NavigationLink(value: Route.section(record: model.record.id, index: i, focus: nil)) {
                         HStack {
-                            Text(s.title)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(s.title)
+                                statsLine(s.id)
+                            }
                             Spacer()
                             sectionBadge(s.id)
                         }
@@ -132,15 +136,25 @@ struct EditorRootView: View {
         return "\(model.progress.done)/\(model.progress.total) bắt buộc\(saved)"
     }
 
-    /// Grey "đã điền/bắt buộc", green check when complete; red numbers only after the first "Kiểm tra".
+    /// Sub-line of every section: required x/y · rows of repeat tables · photos/videos; 📷 while a required photo is missing (L14).
+    @ViewBuilder private func statsLine(_ id: String) -> some View {
+        if let st = model.sectionStats[id], !st.line.isEmpty || st.missingPhoto {
+            HStack(spacing: 4) {
+                if !st.line.isEmpty { Text(st.line).monospacedDigit() }
+                if st.missingPhoto { Image(systemName: "camera.fill").foregroundStyle(theme.warning).accessibilityLabel("Còn thiếu ảnh bắt buộc") }
+            }
+            .font(.caption).secondaryText()
+        }
+    }
+
+    /// Green check when the section's required items are complete; red count only after the first "Kiểm tra".
     @ViewBuilder private func sectionBadge(_ id: String) -> some View {
         let missing = model.issueCount(section: id)
         if model.showAllErrors && missing > 0 {
             Text("\(missing)").font(.caption.bold()).foregroundStyle(.white)
                 .padding(.horizontal, 8).padding(.vertical, 2).background(Color.red, in: Capsule())
-        } else if let p = model.sectionProgress[id], p.total > 0 {
-            if p.done == p.total { Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(theme.success) }
-            else { Text("\(p.done)/\(p.total)").font(.footnote.monospacedDigit()).secondaryText() }
+        } else if let p = model.sectionProgress[id], p.total > 0, p.done == p.total {
+            Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(theme.success)
         }
     }
 }

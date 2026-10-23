@@ -88,21 +88,46 @@ struct MonthInput: View {
     private func set(_ y: Int, _ m: Int) { value = .string(String(format: "%04d-%02d", y, m)) }
 }
 
-/// Start / end of the session, both editable.
+/// One line "18:41 → …" with ✎ opening a sheet to edit start and end (ux-spec L11).
 struct SessionTimeInput: View {
     @Binding var value: JSONValue?
+    @State private var editing = false
 
     var body: some View {
         let st = SessionTime(value) ?? SessionTime(start: Date())
-        VStack(alignment: .leading, spacing: 6) {
-            DatePicker("Bắt đầu", selection: Binding(get: { st.start }, set: { var n = st; n.start = $0; value = n.json }))
-            if let end = st.end {
-                DatePicker("Kết thúc", selection: Binding(get: { end }, set: { var n = st; n.end = $0; value = n.json }))
-                Button("Xóa giờ kết thúc", role: .destructive) { var n = st; n.end = nil; value = n.json }.font(.caption)
-            } else {
-                Text("Kết thúc: tự ghi khi bấm Hoàn thành").font(.caption).secondaryText()
-            }
+        HStack(spacing: 8) {
+            Image(systemName: "clock").secondaryText()
+            Text("\(ISODate.format(st.start, "HH:mm")) → \(st.end.map { ISODate.format($0, "HH:mm") } ?? "…")")
+                .font(.body.monospacedDigit().weight(.medium))
+            Spacer()
+            Button { editing = true } label: { Image(systemName: "pencil").frame(minWidth: 32, minHeight: 32) }
+                .buttonStyle(.bordered).accessibilityLabel("Sửa giờ")
         }
+        .sheet(isPresented: $editing) { SessionTimeSheet(value: $value) }
+    }
+}
+
+private struct SessionTimeSheet: View {
+    @Binding var value: JSONValue?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let st = SessionTime(value) ?? SessionTime(start: Date())
+        NavigationStack {
+            Form {
+                DatePicker("Bắt đầu", selection: Binding(get: { st.start }, set: { var n = st; n.start = $0; value = n.json }))
+                if let end = st.end {
+                    DatePicker("Kết thúc", selection: Binding(get: { end }, set: { var n = st; n.end = $0; value = n.json }))
+                    Button("Xóa giờ kết thúc", role: .destructive) { var n = st; n.end = nil; value = n.json }
+                } else {
+                    Text("Kết thúc: tự ghi khi bấm Hoàn thành").font(.footnote).secondaryText()
+                }
+            }
+            .navigationTitle("Giờ khảo sát")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } } }
+        }
+        .presentationDetents([.medium])
     }
 }
 

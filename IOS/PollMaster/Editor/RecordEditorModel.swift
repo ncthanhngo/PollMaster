@@ -12,6 +12,7 @@ final class RecordEditorModel {
     private(set) var issues: [ValidationIssue] = []
     private(set) var progress = RequiredProgress(done: 0, total: 0)
     private(set) var sectionProgress: [String: RequiredProgress] = [:]
+    private(set) var sectionStats: [String: SectionStats] = [:]
     private(set) var warnings: [ReviewFinding] = []
     private(set) var reviewNotes: [ReviewFinding] = []
     /// Red error marks stay hidden until the user pressed "Kiểm tra" for the first time (this session).
@@ -60,6 +61,12 @@ final class RecordEditorModel {
     func issueCount(section id: String) -> Int { issues.filter { $0.sectionId == id }.count }
 
     func sectionIndex(of id: String) -> Int? { sectionTitles.firstIndex { $0.id == id } }
+
+    /// Index of the section (0 = header) holding the field or table `id`.
+    func sectionIndex(containing id: String) -> Int? {
+        if template.header.contains(where: { $0.id == id }) { return 0 }
+        return template.sections.firstIndex { $0.items.contains { $0.id == id } }.map { $0 + 1 }
+    }
 
     /// "Tiếp tục" target: the last position if it still exists in the template.
     var resumeTarget: (index: Int, fieldId: String, label: String)? {
@@ -233,6 +240,9 @@ final class RecordEditorModel {
         issues = Validator.validate(template, record)
         progress = Validator.progress(template, record)
         sectionProgress = Validator.sectionProgress(template, record)
+        sectionStats = Dictionary(uniqueKeysWithValues: sectionTitles.map {
+            ($0.id, OutlineStats.compute(template, record, sectionId: $0.id, progress: sectionProgress[$0.id]))
+        })
         warnings = Warnings.all(template, record, sites: sites())
         reviewNotes = Warnings.reviewNotes(template, record)
     }

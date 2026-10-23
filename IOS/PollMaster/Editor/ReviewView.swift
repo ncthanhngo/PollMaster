@@ -7,6 +7,9 @@ struct ReviewView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.pmTheme) private var theme
     @State private var confirmReturn = false
+    /// Expanded group keys ("kind/sectionId"); nil = default (first group of each kind open).
+    @State private var expanded: Set<String>?
+    private var missingCount: Int { FillQueue.steps(model.template, model.record).count }
 
     private typealias Group = (id: String, title: String, items: [(fieldId: String, rowId: String?, sectionId: String, label: String, message: String)])
 
@@ -30,6 +33,18 @@ struct ReviewView: View {
             Section { ProgressRow(progress: model.progress) }
             if model.issues.isEmpty {
                 Section { Label("Không còn lỗi", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success) }
+            } else if !model.isLocked {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Còn \(missingCount) mục bắt buộc").font(.title3.weight(.semibold))
+                        Button { env.recordsPath.append(.fill(record: model.record.id)) } label: {
+                            Label("Điền lần lượt", systemImage: "arrow.right.circle.fill").font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: max(36, theme.minTouch))
+                        }
+                        .buttonStyle(.borderedProminent).controlSize(.large)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             groupSections("Lỗi", color: theme.alert, icon: "xmark.octagon.fill", errorGroups)
             groupSections("Cần xem lại", color: theme.warning, icon: "exclamationmark.triangle.fill", warningGroups)
@@ -48,7 +63,7 @@ struct ReviewView: View {
                     .buttonStyle(.borderedProminent).controlSize(.large)
                     .disabled(!model.issues.isEmpty || model.isLocked)
             } footer: {
-                if !model.issues.isEmpty { Text("Cần xử lý hết lỗi để hoàn thành.") }
+                if !model.issues.isEmpty && !model.isLocked { Text("Còn \(missingCount) mục bắt buộc") }
             }
         }
         .navigationTitle("Kiểm tra & hoàn thành")
@@ -61,18 +76,37 @@ struct ReviewView: View {
         .onDisappear { model.flush() }
     }
 
+    private func isOpen(_ key: String, first: Bool) -> Bool { expanded.map { $0.contains(key) } ?? first }
+
+    private func toggle(_ key: String, _ open: Bool, defaults: [String]) {
+        var s = expanded ?? Set(defaults)
+        if open { s.insert(key) } else { s.remove(key) }
+        expanded = s
+    }
+
+    /// One collapsible group per section; the first group of each kind starts open.
     @ViewBuilder private func groupSections(_ name: String, color: Color, icon: String, _ groups: [Group]) -> some View {
-        ForEach(groups, id: \.id) { g in
+        let defaults = groups.prefix(1).map { "\(name)/\($0.id)" }
+        ForEach(Array(groups.enumerated()), id: \.element.id) { n, g in
+            let key = "\(name)/\(g.id)"
             Section {
-                ForEach(Array(g.items.enumerated()), id: \.offset) { _, item in
-                    Button { jump(item.fieldId, item.rowId, item.sectionId) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(item.fieldId)\(item.rowId == nil ? "" : " · dòng")  \(item.label)").font(.subheadline).foregroundStyle(.primary)
-                            Label(item.message, systemImage: icon).font(.caption).foregroundStyle(color)
+                DisclosureGroup(isExpanded: Binding(get: { isOpen(key, first: n == 0) }, set: { toggle(key, $0, defaults: defaults) })) {
+                    ForEach(Array(g.items.enumerated()), id: \.offset) { _, item in
+                        Button { jump(item.fieldId, item.rowId, item.sectionId) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(item.fieldId)\(item.rowId == nil ? "" : " · dòng")  \(item.label)").font(.subheadline).foregroundStyle(.primary)
+                                Label(item.message, systemImage: icon).font(.caption).foregroundStyle(color)
+                            }
                         }
                     }
+                } label: {
+                    HStack {
+                        Text(g.title).font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text("\(g.items.count)").font(.caption.bold()).foregroundStyle(color)
+                    }
                 }
-            } header: { Text("\(name) · \(g.title)") }
+            } header: { if n == 0 { Text(name) } }
         }
     }
 

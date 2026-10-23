@@ -13,9 +13,13 @@ struct RecordSummary: Identifiable, Equatable {
     var returned = false
     var needsBackup = false
     var thumbnail: URL?
+    /// First `gps` field holding a value (map pin).
+    var coordinate: GPSCoordinate?
     /// Set when record.json could not be read ("Lỗi đọc"); such entries can only be deleted.
     var loadError: String?
 }
+
+struct GPSCoordinate: Equatable { var lat: Double; var lng: Double }
 
 enum ImportOutcome { case installed(Template), needsOverwrite(Template, Data) }
 
@@ -32,9 +36,15 @@ final class AppEnvironment {
     var templates: [Template] = []
     var sites: [Site] = []
     var summaries: [RecordSummary] = []
+    /// Codes of planned sites that already have a record (a lookup field holds the code).
+    private(set) var visitedSiteCodes: Set<String> = []
     var selectedTab: AppTab = .records
     var recordsPath: [Route] = []
     var errorMessage: String?
+    /// Set while the one-time "Tên người khảo sát" question is open (ux-spec L9).
+    var askSurveyorFor: Template?
+    /// Records tab shows the map instead of the list.
+    var recordsShowMap = false
     @ObservationIgnored private var editors: [String: RecordEditorModel] = [:]
 
     init() {
@@ -68,6 +78,7 @@ final class AppEnvironment {
         editors.values.forEach { $0.flush() }
         templates = templateStore.list()
         let byKey = Dictionary(templates.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
+        var visited = Set<String>()
         summaries = recordStore.listItems().map { item in
             guard let r = item.record else {
                 return RecordSummary(id: item.id, title: item.id, subtitle: item.error ?? "", updatedAt: item.modifiedAt,
@@ -78,16 +89,30 @@ final class AppEnvironment {
                                      subtitle: "\(r.templateId) (thiếu mẫu)", updatedAt: r.updatedAt, status: r.status,
                                      progress: RequiredProgress(done: 0, total: 0), returned: r.returned, needsBackup: r.needsBackup)
             }
+            for f in t.allFields where f.lookup != nil { if let code = r.values[f.id]?.v?.string, !code.isEmpty { visited.insert(code) } }
+            let gps = t.allFields.filter { $0.type == .gps }.compactMap { GPSValue(r.values[$0.id]?.v) }.first
             return RecordSummary(id: r.id, title: RecordNaming.title(t, r), subtitle: RecordInfo.subtitle(t, r), updatedAt: r.updatedAt,
                                  status: r.status, progress: Validator.progress(t, r), returned: r.returned, needsBackup: r.needsBackup,
-                                 thumbnail: RecordInfo.firstPhoto(t, r).map { recordStore.fileURL(r.id, $0.file) })
+                                 thumbnail: RecordInfo.firstPhoto(t, r).map { recordStore.fileURL(r.id, $0.file) },
+                                 coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) })
         }
+        visitedSiteCodes = visited
     }
 
     /// Newest version of each template: what new records are created from.
     var newestTemplates: [Template] { TemplateVersion.newest(templates) }
 
     func reloadSites() { sites = siteStore.load() }
+
+    /// Replaces the planned-site list with a CSV picked by the user (security-scoped URL). Returns the number of sites.
+    func importSites(from url: URL) throws -> Int {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let list = try SitesCSV.parse(Data(contentsOf: url))
+        try siteStore.save(list)
+        reloadSites()
+        return list.count
+    }
 
     // MARK: backup
 
@@ -148,8 +173,27 @@ final class AppEnvironment {
 
     // MARK: records
 
+    /// Entry point of every "create record" button: asks for the surveyor name once when Cài đặt has none, then creates.
+    func startCreate(from t: Template) {
+        if settings.surveyorName.isEmpty, !settings.surveyorAsked, t.field("HD-surveyor") != nil { askSurveyorFor = t }
+        else { createRecord(from: t) }
+    }
+
+    func answerSurveyor(_ name: String) {
+        guard let t = askSurveyorFor else { return }
+        askSurveyorFor = nil
+        settings.surveyorAsked = true
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { settings.surveyorName = trimmed }
+        createRecord(from: t)
+    }
+
     func createRecord(from t: Template) {
-        let r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
+        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
+        if let code = t.recordCodeField, r.values[code.id]?.v?.isBlank != false,
+           let proposed = RecordCodeProposal.propose(for: t, among: recordStore.list()) {
+            r.values[code.id] = FieldValue(v: .string(proposed))
+        }
         do {
             try recordStore.save(r)
             reload()

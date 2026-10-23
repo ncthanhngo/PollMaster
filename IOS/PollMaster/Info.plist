@@ -30,6 +30,8 @@
 	<string>PollMaster cần micro để ghi âm bản ghi và quay video khảo sát.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PollMaster cần truy cập thư viện ảnh để đính kèm ảnh và video vào phiếu khảo sát.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>PollMaster dùng nhận dạng giọng nói để chuyển lời nói thành chữ khi bạn ghi chú trong phiếu khảo sát.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchScreen</key>

@@ -7,11 +7,13 @@ struct FieldCard: View {
     @Binding var fv: FieldValue
     let scope: FieldScope
     var showCode = true
+    /// roundEntry: show only this 0-based round of a `samples` field.
+    var round: Int?
+    /// "Điền lần lượt" shows the full card, never the one-row layout.
+    var allowCompact = true
     @State private var showFormula = false
     @State private var editingNote = false
     @State private var addingReview = false
-    @State private var pickingSite = false
-    @State private var pendingSite: Site?
     @Environment(\.pmTheme) private var theme
 
     private var notMeasurable: Bool { fv.flag == .notMeasurable }
@@ -19,10 +21,11 @@ struct FieldCard: View {
     private var error: String? { scope.errorText(field) }
     private var showsReview: Bool { scope.tableId == nil && (fv.review != nil || addingReview) }
 
-    /// Short single-value fields share one row: label left, input right (~40 %).
+    /// Short single-value fields share one row: label left, input right (~30 %). Only number / integer and `short` text (ux-spec L3).
     private var compactRow: Bool {
-        scope.compact && [.number, .integer, .text].contains(field.type) && field.samples == nil && (field.parts ?? []).isEmpty
-            && !field.attachPhoto && field.lookup == nil && field.prefix == nil && !notMeasurable
+        let shortKind = field.type == .number || (field.type == .integer && !field.stepper && field.chipsRange == nil) || (field.type == .text && field.short)
+        return allowCompact && scope.compact && shortKind && field.samples == nil && (field.parts ?? []).isEmpty
+            && !field.attachPhoto && field.lookup == nil && field.prefix == nil && !notMeasurable && field.photoRef == nil
     }
 
     var body: some View {
@@ -43,6 +46,7 @@ struct FieldCard: View {
                                 if let m = field.method { Text(m).font(.caption).secondaryText().lineLimit(1) }
                             }
                         }
+                        hintLine
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     input.containerRelativeFrame(.horizontal) { w, _ in min(w * 0.30, 200) }
@@ -54,11 +58,13 @@ struct FieldCard: View {
                     FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope, withChips: true)
                 }
                 if let m = field.method { Text(m).font(.caption).secondaryText() }
+                hintLine
                 if field.isComputed {
-                    ComputedBlock(field: field, value: scope.computedValue(field.id), showFormula: $showFormula)
+                    ComputedBlock(field: field, value: computedValue, showFormula: $showFormula)
                 } else {
                     input
-                    lookupButton
+                    LookupButton(field: field, fv: $fv, scope: scope)
+                    assistButtons
                 }
             }
             if notMeasurable {
@@ -76,22 +82,20 @@ struct FieldCard: View {
             if let e = error { Label(e, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(theme.alert) }
         }
         .cardBox(stroke: error != nil ? theme.alert.opacity(0.7) : (showsReview ? .orange : nil), padding: compactRow ? 8 : 12)
+        .contextMenu {
+            if theme.oneHand && !scope.locked && !scope.reviewMode && !field.isComputed && !field.readonly {
+                FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote)
+            }
+        }
         .id(field.id)
         .simultaneousGesture(TapGesture().onEnded { scope.visit(field) })
         .onDisappear { scope.touch(field) }
-        .sheet(isPresented: $pickingSite) { SitePicker(sites: scope.sites, onPick: choose) }
-        .confirmationDialog(conflictTitle, isPresented: Binding(get: { pendingSite != nil }, set: { if !$0 { pendingSite = nil } }),
-                            titleVisibility: .visible) {
-            Button("Ghi đè") { fill(overwrite: true) }
-            Button("Chỉ điền ô trống") { fill(overwrite: false) }
-            Button("Hủy", role: .cancel) {}
-        }
     }
 
     @ViewBuilder private var input: some View {
         if !field.isComputed {
             Group {
-                FieldInput(field: field, fv: $fv, scope: scope)
+                FieldInput(field: field, fv: $fv, scope: scope, round: round)
                 PartsBlock(field: field, fv: $fv, scope: scope)
                 if field.attachPhoto { MediaInput(field: field, video: false, fieldValue: $fv, scope: scope) }
             }
@@ -100,12 +104,29 @@ struct FieldCard: View {
         }
     }
 
-    @ViewBuilder private var lookupButton: some View {
-        if field.lookup != nil, !scope.locked, !field.isComputed {
-            Button { pickingSite = true } label: {
-                Label("Chọn từ danh sách", systemImage: "list.bullet.rectangle")
+    /// Hint under the label, once (never as a placeholder: boxes can be narrow).
+    @ViewBuilder private var hintLine: some View {
+        if let h = field.hint, !h.isEmpty { Text(h).font(.caption).secondaryText().fixedSize(horizontal: false, vertical: true) }
+    }
+
+    /// Computed field with samples inside a round group shows the value of the selected round only.
+    private var computedValue: JSONValue? {
+        let v = scope.computedValue(field.id)
+        guard let round, case .array(let a)? = v else { return v }
+        return round < a.count ? a[round] : .null
+    }
+
+    /// OCR (text / multiline with photoRef) and dictation (multiline).
+    @ViewBuilder private var assistButtons: some View {
+        if !notMeasurable, !field.readonly, !scope.locked, field.type == .text || field.type == .multiline {
+            let ocr = field.photoRef != nil
+            let mic = field.type == .multiline
+            if ocr || mic {
+                HStack(spacing: 8) {
+                    if ocr { OCRButton(field: field, fv: $fv, scope: scope) }
+                    if mic { DictationButton(fv: $fv) }
+                }
             }
-            .buttonStyle(.bordered)
         }
     }
 
@@ -120,22 +141,6 @@ struct FieldCard: View {
 
     /// Reference media is named after the referenced record field, not after a table column.
     private var refScope: FieldScope { var s = scope; s.tableId = nil; return s }
-
-    private var conflictTitle: String {
-        guard let site = pendingSite, let lk = field.lookup else { return "" }
-        return "Ghi đè \(scope.lookupConflicts(lk, site).joined(separator: ", "))?"
-    }
-
-    private func choose(_ site: Site) {
-        fv.v = .string(site.code)
-        guard let lk = field.lookup else { return }
-        if scope.lookupConflicts(lk, site).isEmpty { scope.applyLookup(lk, site, true) } else { pendingSite = site }
-    }
-
-    private func fill(overwrite: Bool) {
-        if let site = pendingSite, let lk = field.lookup { scope.applyLookup(lk, site, overwrite) }
-        pendingSite = nil
-    }
 }
 
 /// Main input of a field, dispatching on type and samples.
@@ -143,6 +148,7 @@ struct FieldInput: View {
     let field: Field
     @Binding var fv: FieldValue
     let scope: FieldScope
+    var round: Int?
 
     private func slot(_ key: String) -> FocusSlot? { scope.focus.map { FocusSlot(state: $0, key: key) } }
     private var v: Binding<JSONValue?> { Binding(get: { fv.v }, set: { fv.v = $0 }) }
@@ -160,6 +166,10 @@ struct FieldInput: View {
             Text("Ký tại màn Kiểm tra & hoàn thành.").font(.footnote).secondaryText()
         default:
             if let n = field.samples { samples(n) }
+            else if field.type == .integer, let cr = field.chipsRange {
+                ChipsRangeInput(field: field, numbers: cr.values(scope.lookup), value: v, focus: slot(field.id))
+            }
+            else if field.type == .integer, field.stepper { StepperInput(field: field, value: v, focus: slot(field.id)) }
             else {
                 ScalarInput(field: field, value: v, other: other, focus: slot(field.id), location: scope.location)
             }
@@ -168,18 +178,18 @@ struct FieldInput: View {
 
     @ViewBuilder private func samples(_ n: Int) -> some View {
         let horizontal = [.number, .integer, .time, .text, .elapsed, .compass].contains(field.type)
-        let cells = ForEach(0..<n, id: \.self) { i in
+        let rounds = round.map { [$0] } ?? Array(0..<n)
+        let cells = ForEach(rounds, id: \.self) { i in
             VStack(alignment: .leading, spacing: 2) {
-                Text("Lần \(i + 1)").font(.caption2).secondaryText()
+                if round == nil { Text("Lần \(i + 1)").font(.caption2).secondaryText() }
                 ScalarInput(field: field, value: Binding(get: { fv.sample(i).isNull ? nil : fv.sample(i) },
                                                          set: { fv.setSample(i, count: n, to: $0) }),
-                            other: other, focus: slot("\(field.id)#\(i)"), location: scope.location, showUnit: false)
+                            other: other, focus: slot("\(field.id)#\(i)"), location: scope.location)
             }
             .frame(maxWidth: .infinity)
         }
         if horizontal {
             HStack(alignment: .top, spacing: 8) { cells }
-            if let u = field.unit { Text(u).font(.caption).secondaryText() }
         } else {
             VStack(alignment: .leading, spacing: 8) { cells }
         }
