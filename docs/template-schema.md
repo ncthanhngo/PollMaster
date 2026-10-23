@@ -337,3 +337,66 @@ Hiển thị/xuất: `review` xuất vào export.json (`fields.<id>.review`) và
   màn Kiểm tra liệt kê riêng nhóm "Cần xem lại" (màu vàng). Thông điệp: `Ngoài khoảng thường gặp {warnMin}–{warnMax} {unit}` ·
   `Độ chính xác GPS kém (±{n} m)` · `Cách điểm kế hoạch {n} m`.
 - Field có `review` chưa được xử lý không chặn hoàn thành nhưng liệt kê nhóm "Ghi chú kiểm tra".
+
+## 8. Nhập nhanh (schemaVersion vẫn 1 — mọi key mới optional)
+
+| Nơi | Khóa | Ý nghĩa |
+|---|---|---|
+| field `text` | `short: true` | Giá trị ngắn (mã, serial) → được hiển thị dạng hàng gọn. Text không có `short` luôn hiển thị ô rộng. |
+| field `integer` | `stepper: true` | Nút `−  n  +` (bước 1, tôn trọng min/max), vẫn chạm vào số để gõ. |
+| field `integer` | `chipsRange: { "min": 1, "maxRef": "B-06.rows", "fallbackMax": 10 }` | Hiển thị chip `min…max` một chạm; `max` lấy từ field/part `maxRef` (số nguyên > 0), không có → `fallbackMax`. Có chip "Khác" để gõ số ngoài khoảng. |
+| heading | `roundEntry: { "samples": 3, "timeField": "G-20" }` | Các field có `samples` nằm sau heading này (đến heading/hết mục) được nhập **theo lần đo**: thanh chọn `Lần 1 · Lần 2 · Lần 3` ở đầu nhóm, mỗi field chỉ hiện 1 ô của lần đang chọn. Khi nhập giá trị đầu tiên của một lần mà `timeField` (kiểu time, có samples) của lần đó còn trống → tự điền giờ hiện tại. Computed có samples hiện giá trị của lần đang chọn. |
+| table (dòng cố định) | `inline: true` | Trả lời ngay trên danh sách: mỗi dòng hiện cột readonly làm nhãn + điều khiển của **cột chọn đầu tiên** (yesNo/singleChoice ≤ 4 lựa chọn) dạng nút; cột còn lại mở bằng nút ✎ (sheet nhỏ). |
+| table `stopwatch` | `cues: { "T6": { "text": "Đo nhiệt pin đầy ngay", "field": "G-32" } }` | Khi ghi mốc đó: hiện thanh nhắc (snackbar/banner 8 s) với nút "Mở G-32" (mở mục chứa field, cuộn tới field; với field samples + roundEntry thì chọn lần đầu còn trống). |
+
+**Mã phiếu tự đề xuất** (field `role: "recordCode"`): khi tạo phiếu, nếu field trống → đề xuất `max(phần số cuối của mã các phiếu cùng template) + 1`,
+giữ độ dài số 0 đứng đầu (001 → 002; chưa có phiếu → `001`). Người dùng sửa được.
+
+## 9. Dự án (project)
+
+Mỗi phiếu thuộc **đúng 1 dự án**. Mẫu nằm trong **thư viện chung** (`templates/<id>@<version>.json`); dự án tham chiếu mẫu theo id+version.
+
+### 9.1 Project — `<AppData>/projects/<projectId>/project.json`
+```jsonc
+{
+  "schemaVersion": 1,
+  "id": "uuid",
+  "code": "VGREEN-HN",            // in hoa, A-Z 0-9 -, duy nhất trên máy; dùng trong tên tệp
+  "name": "Khảo sát tủ đổi pin Hà Nội",
+  "client": "V-Green",             // optional
+  "description": "…",              // optional
+  "color": "#1B6B5A",              // optional, màu nhận diện
+  "templates": [ { "id": "BB-TDP-01", "version": "1.2" } ],
+  "archived": false,
+  "createdAt": ISO, "updatedAt": ISO
+}
+```
+- Danh sách điểm của dự án: `<AppData>/projects/<projectId>/sites.json` (định dạng §7.3). Bỏ `sites.json` toàn cục.
+- Record thêm khóa `"projectId"` (bắt buộc khi ghi; đọc thiếu → dự án "Chung").
+- Tạo phiếu chỉ được chọn trong `templates` của dự án. Khi thư viện có bản mới hơn của mẫu đang dùng → dự án hiện gợi ý
+  "Có bản v1.3 — dùng cho phiếu mới?"; phiếu cũ giữ bản của nó.
+- Xóa mẫu khỏi dự án: được, phiếu cũ vẫn mở được (mẫu vẫn còn trong thư viện). Xóa mẫu khỏi thư viện: chặn khi còn phiếu hoặc dự án dùng.
+
+### 9.2 Di chuyển dữ liệu cũ (lần đầu chạy bản có dự án)
+Tạo dự án `{"code":"CHUNG","name":"Chung"}` chứa mọi mẫu đã cài (bản mới nhất mỗi id) + `sites.json` toàn cục cũ; gán mọi phiếu chưa có
+`projectId` vào dự án này. Idempotent.
+
+### 9.3 Gói dự án `.pmproject` (zip)
+```
+project.json          // như 9.1 (id giữ nguyên để cập nhật lại được)
+templates/<id>@<version>.json   // mọi mẫu dự án tham chiếu
+sites.csv             // code,address,lat,lng (UTF-8 BOM) — có thể vắng
+```
+Nhập: dự án cùng `id` đã có → hỏi "Cập nhật dự án <name>?" (cập nhật tên/mẫu/điểm, không đụng phiếu); `code` trùng dự án khác → tự thêm hậu tố `-2`.
+Mẫu: cài như import thường (cùng id+version đã có và nội dung khác → hỏi ghi đè). Lỗi → danh sách lỗi + "Sao chép lỗi".
+MIME: `application/zip`; iOS khai báo UTType `com.ncthanhngo.pollmaster.project` (đuôi `pmproject`) để mở trực tiếp từ Zalo/Mail/Tệp;
+Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/zip` + `application/octet-stream`.
+
+### 9.4 Xuất & sao lưu theo dự án
+- Tên tệp xuất/sao lưu: `{projectCode}_{recordCode|recordId}_{yyyyMMdd-HHmm}`; thư mục sao lưu `…/PollMaster Backup/{projectCode}/` (Android `Download/PollMaster/{projectCode}/`).
+- `export.json` thêm `"project": { "id", "code", "name" }`; PDF/DOCX ghi "Dự án: {name} ({code})" dưới tiêu đề; sheet `Thông tin` thêm dòng đầu `Dự án`.
+- **Xuất tổng hợp dự án** (`{projectCode}_tong-hop_{yyyyMMdd-HHmm}.xlsx`): mỗi mẫu 1 sheet (tên = id mẫu), **mỗi phiếu 1 hàng**:
+  cột cố định `Mã phiếu, Tiêu đề, Trạng thái, Tạo lúc, Cập nhật lúc, Hoàn thành lúc` rồi mỗi field header/mục (theo thứ tự mẫu, giá trị
+  hiển thị §6.5, computed gồm cả) một cột; hàng 1 = mã trường, hàng 2 = nhãn. Mỗi bảng của mẫu thêm sheet `{templateId}-{tableId}`
+  (cột `Mã phiếu` + các cột bảng, mỗi dòng bảng 1 hàng). Tùy chọn kèm: zip "JSON + media" của mọi phiếu (`{projectCode}_phieu_{…}.zip`).
+  Lọc: tất cả / chỉ Hoàn thành.

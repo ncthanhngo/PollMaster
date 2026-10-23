@@ -69,6 +69,8 @@ dạng JSON** đúng tuyệt đối theo đặc tả bên dưới để nhập v
 { "id": "A", "title": "A. Thông tin chung", "note": "Ghi chú hiện ở đầu mục (tùy chọn)", "items": [ /* Field | Heading | Table */ ] }
 ```
 - `id` mục: `A`, `B`, `C`… (duy nhất). `title` nên có tiền tố chữ mục.
+- **Đo nhiều lần theo vòng**: heading có `"roundEntry": { "samples": 3, "timeField": "G-20" }` → các trường `samples: 3` sau heading
+  được nhập theo từng lần đo (chọn Lần 1/2/3), `timeField` (kiểu `time`, `samples: 3`) tự ghi giờ của mỗi lần. Dùng khi mỗi lần đo là một vòng đo nhiều điểm.
 - **Heading** (tiêu đề nhóm trong mục): `{ "kind": "heading", "id": "B1", "title": "B1. Kích thước", "note": "…" }`
 
 ## 3. Field (trường)
@@ -106,6 +108,9 @@ dạng JSON** đúng tuyệt đối theo đặc tả bên dưới để nhập v
 | `minCount`, `maxCount` | photo, video, audio | Số tệp tối thiểu/tối đa |
 | `maxAccuracy` | gps | Sai số GPS chấp nhận (m), mặc định 15 |
 | `formula` ✔ | computed | Xem mục 5 |
+| `short` | text | `true` cho giá trị ngắn (mã, serial) → hiển thị gọn 1 hàng |
+| `stepper` | integer | `true` → nút − n + (đếm nhỏ: số lần, số người) |
+| `chipsRange` | integer | `{ "min": 1, "maxRef": "B-06.rows", "fallbackMax": 10 }` → chip chọn nhanh 1…N; `maxRef` là mã trường/ô phụ số nguyên chứa N (tùy chọn) |
 
 ### 3.1 Kiểu trường (`type`) — chỉ dùng các giá trị sau
 
@@ -181,6 +186,8 @@ Dùng khi cùng một bộ cột lặp nhiều lần (từng người được p
              { "id": "ok", "label": "Đạt", "type": "yesNo" }, { "id": "note", "label": "Ghi chú", "type": "text" } ]
 ```
 - **Bấm giờ theo mốc**: `"stopwatch": { "columns": ["t1","t2","t3"] }` — các cột đó phải là kiểu `elapsed`; app có đồng hồ ghi lần lượt từng mốc.
+- **Trả lời ngay trên danh sách** (bảng dòng cố định dạng checklist): thêm `"inline": true` — cột chọn đầu tiên (yesNo hoặc singleChoice ≤ 4 lựa chọn) hiện nút ngay trên mỗi dòng.
+- **Nhắc theo mốc giờ**: trong `stopwatch` thêm `"cues": { "t3": { "text": "Đo nhiệt độ ngay", "field": "G-05" } }` — khi ghi mốc đó app nhắc và mở nhanh trường liên quan.
 - **Ghép 2 bảng cùng dòng** (nhật ký + bấm giờ của cùng một lượt): đặt `"pairedWith": "<id bảng kia>"` ở **cả hai** bảng.
 
 ## 5. Trường tính toán (`computed`)

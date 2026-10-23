@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "BB-TDP-01",
-  "version": "1.1",
+  "version": "1.2",
   "title": "Biên bản khảo sát thông số kỹ thuật",
   "subtitle": "Tủ đổi pin xe máy điện VinFast (V-Green) – dùng cho 01 điểm khảo sát / 01 tủ",
   "instructions": "• Mỗi dòng có Mã trường (A-01, C-07...) dùng làm tên trường; giữ nguyên mã khi xuất dữ liệu.\n• Ảnh ghi tên file theo quy tắc KS-TDP-01 Mục 7.3. Thang 1–5: 1 = rất kém/rất khó, 5 = rất tốt/rất dễ.\n• Trường đánh dấu * là bắt buộc. Không đo được → chọn \"KĐĐ\" và ghi lý do; giá trị ước lượng qua ảnh → đánh dấu \"~\".\n• An toàn: không đưa thước kim loại/thước cặp vào trong khoang tủ; kích thước trong khoang đo qua ảnh có thước tham chiếu hoặc camera nội soi.",
@@ -15,7 +15,8 @@
       "required": true,
       "prefix": "BB-TDP-01 / ",
       "role": "recordCode",
-      "flags": false
+      "flags": false,
+      "short": true
     },
     {
       "id": "HD-plan",
@@ -139,7 +140,8 @@
           "type": "text",
           "required": true,
           "method": "Nhãn tủ (ảnh P08)",
-          "photoRef": "P08"
+          "photoRef": "P08",
+          "short": true
         },
         {
           "id": "A-08",
@@ -1513,14 +1515,19 @@
             {
               "id": "slotRow",
               "label": "Hàng khoang",
-              "type": "text",
-              "flags": false
+              "type": "integer",
+              "chipsRange": {
+                "min": 1,
+                "maxRef": "B-06.rows",
+                "fallbackMax": 10
+              }
             },
             {
               "id": "attempts",
               "label": "Số lần đút",
               "type": "integer",
-              "min": 0
+              "min": 0,
+              "stepper": true
             },
             {
               "id": "result",
@@ -1702,7 +1709,8 @@
               "type": "multiline",
               "hint": "Tự trượt vào / cấn / kẹt / tủ báo lỗi; S09: điểm dừng (C-09); S12: phản ứng của tủ"
             }
-          ]
+          ],
+          "inline": true
         },
         {
           "id": "E-01",
@@ -1756,7 +1764,17 @@
               "T6",
               "T7",
               "T8"
-            ]
+            ],
+            "cues": {
+              "T1": {
+                "text": "Đo nhiệt pin cũ vừa tháo ngay",
+                "field": "G-33"
+              },
+              "T6": {
+                "text": "Đo nhiệt pin đầy vừa lấy ra ngay",
+                "field": "G-32"
+              }
+            }
           },
           "columns": [
             {
@@ -2139,7 +2157,11 @@
           "kind": "heading",
           "id": "G2",
           "title": "G2. Đo nhiệt – ẩm",
-          "note": "Camera nhiệt đặt ε = 0,95; chỉ đọc trên bề mặt sơn/nhựa nhám; đối chiếu thermocouple tại ít nhất 1 điểm. T_dp tính theo Magnus (KS-TDP-01 Mục 8.2). ΔT_min = T bề mặt thấp nhất − T_dp."
+          "note": "Camera nhiệt đặt ε = 0,95; chỉ đọc trên bề mặt sơn/nhựa nhám; đối chiếu thermocouple tại ít nhất 1 điểm. T_dp tính theo Magnus (KS-TDP-01 Mục 8.2). ΔT_min = T bề mặt thấp nhất − T_dp.",
+          "roundEntry": {
+            "samples": 3,
+            "timeField": "G-20"
+          }
         },
         {
           "id": "G-20",
