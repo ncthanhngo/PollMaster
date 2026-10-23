@@ -64,9 +64,6 @@ xcodebuild \
 	-destination 'generic/platform=iOS' \
 	-archivePath "$ARCHIVE" \
 	DEVELOPMENT_TEAM="$TEAM_ID" \
-	CODE_SIGN_STYLE=Manual \
-	PROVISIONING_PROFILE_SPECIFIER="$PROFILE" \
-	CODE_SIGN_IDENTITY="Apple Distribution" \
 	CURRENT_PROJECT_VERSION="$build_number" \
 	archive
 

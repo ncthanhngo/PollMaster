@@ -78,6 +78,13 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_CFBundleDisplayName: PollMaster
+      # Release signs manually with the API-created profile (scripts/asc-setup.py). Set here, on the app target
+      # only: passed on the xcodebuild command line it would also hit the SPM resource bundles, which refuse profiles.
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: PollMaster App Store
 schemes:
   PollMaster:
     build:
