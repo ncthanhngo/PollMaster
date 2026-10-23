@@ -6,19 +6,37 @@ struct AITemplateCard: View {
     let onPaste: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Tạo mẫu bằng AI", systemImage: "sparkles").font(.headline)
-            Text("Gửi file hướng dẫn cho Claude/ChatGPT kèm mô tả khảo sát, rồi dán kết quả JSON vào đây").font(.subheadline).secondaryText()
-            HStack {
-                if let url = Bundle.main.url(forResource: "huong-dan-tao-mau-bang-ai", withExtension: "md") {
-                    ShareLink(item: url) { Label("Chia sẻ file hướng dẫn", systemImage: "square.and.arrow.up") }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                IconBadge(systemImage: "sparkles", size: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Tạo mẫu bằng AI").font(.headline)
+                    Text("Claude, ChatGPT…").font(.caption).secondaryText()
                 }
-                Spacer()
-                Button(action: onPaste) { Label("Dán JSON", systemImage: "doc.on.clipboard") }
             }
-            .buttonStyle(.bordered).font(.subheadline)
+            VStack(alignment: .leading, spacing: 6) {
+                step(1, "Gửi file hướng dẫn cho AI kèm mô tả khảo sát")
+                step(2, "Dán kết quả JSON vào app")
+            }
+            VStack(spacing: 8) {
+                if let url = Bundle.main.url(forResource: "huong-dan-tao-mau-bang-ai", withExtension: "md") {
+                    ShareLink(item: url) { Label("Chia sẻ file hướng dẫn", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }
+                        .buttonStyle(.bordered)
+                }
+                Button(action: onPaste) { Label("Dán JSON", systemImage: "doc.on.clipboard").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent)
+            }
+            .controlSize(.large).font(.subheadline.weight(.semibold))
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+    }
+
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(n)").font(.caption.weight(.bold)).foregroundStyle(.white)
+                .frame(width: 20, height: 20).background(Color.accentColor, in: Circle())
+            Text(text).font(.subheadline).secondaryText()
+        }
     }
 }
 

@@ -12,42 +12,52 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Tên người khảo sát mặc định", text: $settings.surveyorName)
+                    HStack(spacing: 12) { badge("person.fill", .blue); TextField("Tên người khảo sát mặc định", text: $settings.surveyorName) }
                 } header: { Text("Người khảo sát") } footer: { Text("Tự điền vào trường HD-surveyor khi tạo phiếu mới.") }
                 Section {
-                    Picker("Giao diện", selection: $settings.appearance) {
+                    Picker(selection: $settings.appearance) {
                         ForEach(AppearanceMode.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    Toggle("Chế độ gọn", isOn: $settings.compactMode)
-                    Toggle("Tương phản cao", isOn: $settings.highContrast)
-                    Toggle("Chế độ một tay / đeo găng", isOn: $settings.oneHand)
+                    } label: { row("Giao diện", "circle.lefthalf.filled", .indigo) }
+                    Toggle(isOn: $settings.compactMode) { row("Chế độ gọn", "rectangle.compress.vertical", .teal) }
+                    Toggle(isOn: $settings.highContrast) { row("Tương phản cao", "sun.max.fill", .orange) }
+                    Toggle(isOn: $settings.oneHand) { row("Chế độ một tay / đeo găng", "hand.raised.fill", .pink) }
                 } header: { Text("Hiển thị") } footer: {
                     Text("Gọn: trường ngắn có nhãn và ô nhập cùng một hàng. Tương phản cao: nền trắng/đen tinh, viền đậm, chữ lớn hơn, dùng ngoài trời. Một tay / đeo găng: vùng chạm lớn, chữ lớn hơn, thanh hành động ở cuối màn hình; nhấn giữ thẻ trường để mở menu.")
                 }
                 Section("Ảnh") {
-                    Picker("Chất lượng ảnh", selection: $settings.photoQuality) {
+                    Picker(selection: $settings.photoQuality) {
                         ForEach(PhotoQuality.allCases) { Text($0.title).tag($0) }
-                    }
+                    } label: { row("Chất lượng ảnh", "photo.fill", .purple) }
                 }
                 Section {
-                    Toggle("Tự động sao lưu", isOn: $settings.autoBackup)
-                    LabeledContent("Thư mục", value: "Tệp > PollMaster > PollMaster Backup > mã dự án")
+                    Toggle(isOn: $settings.autoBackup) { row("Tự động sao lưu", "arrow.triangle.2.circlepath", .green) }
+                    LabeledContent { Text("Tệp > PollMaster > PollMaster Backup > mã dự án") } label: { row("Thư mục", "folder.fill", .blue) }
                     Button { runBackup() } label: {
-                        HStack { Text("Sao lưu tất cả ngay"); if backingUp { Spacer(); ProgressView() } }
+                        HStack { row("Sao lưu tất cả ngay", "externaldrive.fill.badge.checkmark", .accentColor); if backingUp { Spacer(); ProgressView() } }
                     }
                     .disabled(backingUp)
                 } header: { Text("Sao lưu") } footer: {
                     Text(backupMessage ?? "Mỗi phiếu có một tệp .zip (JSON + media) trong thư mục của dự án, xem được trong app Tệp.")
                 }
                 Section("Thông tin") {
-                    LabeledContent("Dung lượng đã dùng", value: ByteCountFormatter.string(fromByteCount: used, countStyle: .file))
-                    LabeledContent("Phiên bản", value: version)
+                    LabeledContent { Text(ByteCountFormatter.string(fromByteCount: used, countStyle: .file)) } label: { row("Dung lượng đã dùng", "internaldrive.fill", .gray) }
+                    LabeledContent { Text(version) } label: { row("Phiên bản", "info.circle.fill", .gray) }
                 }
             }
             .navigationTitle("Cài đặt")
             .toolbar { ToolbarItem(placement: .primaryAction) { AppearanceToggleButton() } }
             .task { used = env.usedStorage() }
         }
+    }
+
+    private func badge(_ icon: String, _ tint: Color) -> some View {
+        Image(systemName: icon).font(.footnote.weight(.semibold)).foregroundStyle(.white)
+            .frame(width: 28, height: 28).background(tint, in: RoundedRectangle(cornerRadius: 7)).accessibilityHidden(true)
+    }
+
+    /// Settings-app style row label: coloured icon square + title.
+    private func row(_ title: String, _ icon: String, _ tint: Color) -> some View {
+        HStack(spacing: 12) { badge(icon, tint); Text(title).foregroundStyle(Color.primary) }
     }
 
     private func runBackup() {

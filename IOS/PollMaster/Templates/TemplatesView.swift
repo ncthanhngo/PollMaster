@@ -4,6 +4,7 @@ import PollMasterCore
 
 struct TemplatesView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.pmTheme) private var theme
     @State private var pickingFile = false
     @State private var askingURL = false
     @State private var urlText = ""
@@ -21,12 +22,21 @@ struct TemplatesView: View {
     var body: some View {
         NavigationStack {
             List {
-                AITemplateCard { sheet = .paste }
-                ForEach(env.templates) { t in
-                    NavigationLink(value: t.key) { templateRow(t) }
-                        .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
-                }
+                Section { AITemplateCard { sheet = .paste } }
+                    .listRowBackground(LinearGradient(colors: [Color.accentColor.opacity(0.14), theme.cardBackground],
+                                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+                Section {
+                    if env.templates.isEmpty {
+                        ContentUnavailableView("Chưa có mẫu", systemImage: "doc.text",
+                                               description: Text("Nhấn + để nhập mẫu từ tệp, URL hoặc dán JSON."))
+                    }
+                    ForEach(env.templates) { t in
+                        NavigationLink(value: t.key) { templateRow(t) }
+                            .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
+                    }
+                } header: { Text("Mẫu trên máy (\(env.templates.count))") }
             }
+            .listSectionSpacing(20)
             .overlay { loadingOverlay }
             .navigationTitle("Mẫu")
             .navigationDestination(for: String.self) { key in
@@ -76,12 +86,28 @@ struct TemplatesView: View {
     }
 
     private func templateRow(_ t: Template) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(t.title).font(.headline)
-            Text("\(t.id) · v\(t.version) · \(fieldCount(t)) trường").font(.caption).secondaryText()
-            let used = env.projects(using: t)
-            if !used.isEmpty { Text("Dùng trong: " + used.map(\.code).joined(separator: ", ")).font(.caption).secondaryText() }
+        let old = !env.newestTemplates.contains { $0.key == t.key }
+        return HStack(alignment: .top, spacing: 12) {
+            IconBadge(systemImage: "doc.text.fill", tint: old ? theme.secondaryText : .accentColor)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(t.title).font(.headline).lineLimit(2)
+                HStack(spacing: 6) {
+                    Text(t.id).font(.caption.weight(.medium)).secondaryText()
+                    StatusPill(text: "v\(t.version)", color: .accentColor)
+                    StatusPill(text: "\(t.displayFieldCount) trường", neutral: true)
+                    if old { StatusPill(text: "Bản cũ", color: theme.warning) }
+                }
+                let used = env.projects(using: t)
+                if !used.isEmpty {
+                    HStack(spacing: 6) {
+                        HStack(spacing: -3) { ForEach(used.prefix(4)) { ProjectDot(project: $0, size: 10) } }
+                        Text("Dùng trong: " + used.map(\.code).joined(separator: ", ")).lineLimit(1).truncationMode(.tail)
+                    }
+                    .font(.caption).secondaryText()
+                }
+            }
         }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder private var loadingOverlay: some View {
@@ -90,7 +116,6 @@ struct TemplatesView: View {
         }
     }
 
-    private func fieldCount(_ t: Template) -> Int { t.allFields.count + t.allTables.reduce(0) { $0 + $1.columns.count } }
 
     private func handle(_ data: Data) throws {
         switch try env.importTemplate(data) {

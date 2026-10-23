@@ -39,6 +39,7 @@ struct ProjectsView: View {
                     }
                 }
             }
+            .listRowSpacing(10)
             .navigationTitle("Dự án")
             .navigationDestination(for: ProjectRoute.self) { ProjectDetailView(projectId: $0.id) }
             .toolbar {
@@ -64,17 +65,22 @@ struct ProjectCard: View {
     var body: some View {
         let stats = env.stats(of: project)
         HStack(alignment: .top, spacing: 12) {
-            ProjectDot(project: project, size: 14).padding(.top, 5)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(project.name).font(.headline).lineLimit(2)
-                Text(project.code).font(.caption.monospaced().weight(.semibold)).secondaryText()
-                if let c = project.client { Text(c).font(.subheadline).secondaryText() }
-                Text("\(project.templates.count) mẫu · \(env.sites(forProject: project.id).count) điểm").font(.caption).secondaryText()
+            RoundedRectangle(cornerRadius: 2).fill(project.tint).frame(width: 4).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(project.name).font(.headline).lineLimit(2)
+                    Text([project.code, project.client].compactMap { $0 }.joined(separator: " · ")).font(.subheadline).secondaryText().lineLimit(1)
+                }
+                HStack(spacing: 6) {
+                    StatusPill(text: "\(project.templates.count) mẫu", neutral: true)
+                    StatusPill(text: "\(env.sites(forProject: project.id).count) điểm", neutral: true)
+                    if project.archived { StatusPill(text: "Đã lưu trữ", neutral: true) }
+                }
                 ProjectCounts(stats: stats)
                 Text(stats.latestText).font(.caption2).secondaryText()
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .opacity(project.archived ? 0.7 : 1)
     }
 }

@@ -150,6 +150,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   Sáng/Tối cụ thể). Trong màn soạn phiếu: mục "Giao diện tối" / "Giao diện sáng" trong menu ⋯.
 - "Tương phản cao" vẫn là công tắc riêng, áp lên cả Sáng và Tối.
 - Android: **tắt dynamic color** (Material You theo hình nền) — dùng bảng màu thương hiệu cố định cho cả Sáng và Tối để 2 app đồng nhất.
+- iOS: `AccentColor` = màu chính thương hiệu `#1B6B5A`; tối `#34A88E` (đậm hơn Android `#6FD6BE` vì nút iOS luôn chữ trắng).
 
 ## L. Bản sửa sau review 3 (hiện trường + UI/UX)
 1. **Stopwatch ghim**: trong form Ghi lượt / form dòng có stopwatch, khối đồng hồ dính đầu màn; khi cuộn thu thành dải mảnh

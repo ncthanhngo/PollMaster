@@ -65,6 +65,7 @@ struct RecordsListView: View {
                                 }
                         }
                     }
+                    .listRowSpacing(10)
                 }
             }
             .navigationTitle("Phiếu khảo sát")
@@ -145,31 +146,28 @@ struct RecordRow: View {
                         Text("\(summary.progress.done)/\(summary.progress.total)").monospacedDigit()
                     }
                     .font(.caption).secondaryText()
-                    ProgressView(value: summary.progress.fraction)
+                    ProgressView(value: summary.progress.fraction).tint(summary.status == .draft ? Color.accentColor : theme.success)
                 }
                 FlowLayout(spacing: 6) {
-                    ForEach(chips, id: \.text) { c in
-                        Text(c.text).font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(c.color.opacity(0.18), in: Capsule())
-                            .overlay(Capsule().stroke(c.color.opacity(theme.highContrast ? 1 : 0.35), lineWidth: 1))
-                            .foregroundStyle(c.text == "Nháp" ? theme.secondaryText : c.color)
-                    }
+                    ForEach(chips, id: \.text) { c in StatusPill(text: c.text, color: c.color, neutral: c.text == "Nháp") }
                 }
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder private var thumbnail: some View {
         if let url = summary.thumbnail {
             Thumbnail(url: url, video: false, size: 48)
         } else {
-            Image(systemName: summary.loadError == nil ? "doc.text" : "exclamationmark.triangle")
-                .font(.title3).secondaryText()
-                .frame(width: 48, height: 48)
-                .background(theme.inputBackground, in: RoundedRectangle(cornerRadius: 8))
+            IconBadge(systemImage: statusIcon.name, tint: statusIcon.tint, size: 48)
         }
+    }
+
+    private var statusIcon: (name: String, tint: Color) {
+        if summary.loadError != nil { return ("exclamationmark.triangle.fill", theme.alert) }
+        if summary.returned && summary.status == .draft { return ("arrow.uturn.backward.circle.fill", .orange) }
+        return summary.status == .draft ? ("doc.text", theme.secondaryText) : ("checkmark.seal.fill", theme.success)
     }
 
     private var chips: [(text: String, color: Color)] {
