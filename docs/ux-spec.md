@@ -58,3 +58,86 @@ Tab gốc (iOS TabView / Android NavigationBar): **Phiếu khảo sát** · **M�
 
 ## Quyền
 Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chuỗi mô tả quyền tiếng Việt.
+
+---
+
+# Bản sửa sau review hiện trường + UI/UX (bắt buộc cả 2 app, ưu tiên hơn phần trên nếu mâu thuẫn)
+
+## A. Dữ liệu an toàn
+- **Sao lưu tự động**: ghi file zip "JSON + media" (định dạng §5.1) của phiếu vào thư mục người dùng thấy được:
+  iOS `Documents/PollMaster Backup/` (bật `UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace` để hiện trong app Tệp);
+  Android `Download/PollMaster/` qua MediaStore. Tên `{base}_backup.zip` (ghi đè bản cũ của cùng phiếu).
+  Khi nào: rời một mục mà có thay đổi, mỗi 15 phút khi đang soạn và có thay đổi, khi Hoàn thành, khi app vào nền. Chạy nền, không chặn UI.
+  Lưu `record.backupAt`. Cài đặt: công tắc "Tự động sao lưu" (mặc định bật), hiển thị thư mục, nút "Sao lưu tất cả ngay".
+- Danh sách phiếu: badge vàng **"Chưa sao lưu"** khi `updatedAt > backupAt`.
+- Thanh trên màn soạn: chữ nhỏ **"Đã lưu HH:mm"** (cập nhật sau mỗi autosave).
+
+## B. Danh sách phiếu
+- Tiêu đề = `recordTitle` (BB-TDP-01: `{A-01} · {A-03}`), rỗng → "Phiếu mới · dd/MM/yyyy HH:mm".
+- Dòng phụ = `{template.id} · {mã biên bản nếu có}` (không lặp tiêu đề mẫu). Dòng 3: "Cập nhật dd/MM HH:mm" + tiến độ "x/y".
+- Thumbnail 48×48 bên trái = ảnh đầu tiên của field photo đầu tiên có ảnh; không có → icon mẫu.
+- Chip trạng thái: Nháp (xám) · Hoàn thành (xanh) · **Cần sửa** (cam, khi `returned`) · Lỗi đọc (đỏ) · Chưa sao lưu (vàng).
+
+## C. Màn soạn phiếu
+- **iOS ẩn tab bar** trong toàn bộ luồng soạn phiếu (`.toolbar(.hidden, for: .tabBar)`), giống Android.
+- Tiêu đề thanh trên = tiêu đề phiếu ngắn (1 dòng, cắt cuối); dòng phụ "x/y bắt buộc · Đã lưu HH:mm".
+- Nút **Kiểm tra** là nút phụ (iOS: nút chữ thường; Android: TextButton/OutlinedButton), có số lỗi khi đã từng kiểm tra.
+- Mục lục: mỗi mục hiện **tiến độ trung tính** "đã điền/bắt buộc" màu xám → đủ thì "✓" xanh. **Không dùng màu đỏ trước khi người dùng
+  bấm Kiểm tra lần đầu** (lưu cờ này theo phiếu trong phiên). Sau khi kiểm tra: mục còn thiếu hiển thị số đỏ.
+- Đầu mục lục: nút **"Tiếp tục: {fieldId} {label}"** nhảy tới `lastPosition` (cập nhật khi focus/chạm field).
+- Điều hướng cuối mục: "‹ Mục trước · n/N · Mục sau ›" (cả 2 app).
+- Menu mục (⋯ trên thanh): **"Đánh dấu KĐĐ các trường còn trống"** (nhập 1 lý do chung, áp cho mọi field có `flags` còn trống trong mục,
+  có xác nhận số lượng) · **"Lấy dữ liệu mục này từ phiếu khác"** (chọn phiếu cùng mẫu → chép values + tables của mục, không chép media, hỏi ghi đè).
+
+## D. Thẻ field (thiết kế chung)
+- Nền thẻ **trắng** (dark: xám tối `secondarySystemGroupedBackground` / Material surfaceContainer), viền 1 px màu outlineVariant,
+  nền màn hình xám nhạt. Khoảng cách giữa thẻ 8 dp/pt, padding 12.
+- Hàng tiêu đề: badge mã **nhỏ, nhạt** (chữ 11, màu secondary, nền rất nhạt) · nhãn (đậm vừa) · `*` đỏ **ngay sau nhãn** · menu ⋯.
+- `method` hiển thị chung dòng dưới nhãn, chữ nhỏ màu secondary **đủ tương phản** (≥ 4.5:1).
+- **Chế độ gọn** (mặc định bật, tắt trong Cài đặt): field number/integer/text ngắn không có parts → nhãn và ô nhập cùng một hàng
+  (ô rộng ~40%, đơn vị ở đuôi ô). Mục tiêu ≥ 6 field/màn điện thoại 6".
+- **Parts**: lưới 2 cột (3 cột nếu ≥ 3 part và màn ≥ 600 dp), nhãn part = tên (không kèm đơn vị), đơn vị ở đuôi ô.
+- Ô trống trông trống: placeholder là chữ hướng dẫn ("Nhập…", "Chọn tháng", "Chưa lấy vị trí"), **không bao giờ** hiển thị số 0 giả
+  hoặc ngày mặc định khi chưa có giá trị (GPS, month, date, time, datetime).
+- Field có `flags`: nút nhỏ **"KĐĐ"** và **"~"** ngay trên hàng tiêu đề (dạng toggle chip nhỏ), ngoài ra vẫn có trong menu ⋯.
+- singleChoice/yesNo: chip **chọn = tô đặc màu chính + ✓**, chưa chọn = viền. singleChoice > 6 lựa chọn mà nhãn ngắn (≤ 4 ký tự) →
+  **lưới nút** (5 cột) thay vì dropdown; còn lại > 6 lựa chọn → dropdown/menu.
+- Bàn phím số: số thập phân dùng bàn phím có dấu "." (iOS `.decimalPad`; Android `KeyboardType.Decimal`), cho nhập số âm chỉ khi `min` < 0
+  hoặc `warnMin` < 0 (Android `NumberSigned` / iOS nút ± trên toolbar bàn phím).
+- `photoRef`: dưới ô nhập, hàng thumbnail ảnh của field tham chiếu + nút "📷 Chụp P08".
+- Cảnh báo (warn) màu vàng/cam dưới ô; lỗi màu đỏ.
+- `review` (ghi chú kiểm tra) hiển thị khung cam "Kiểm tra: …" trên đầu thẻ.
+
+## E. Bảng
+- Bảng trống: chữ "Chưa có dòng nào — bấm Thêm dòng" + nút.
+- Field computed của mục đặt dưới bảng trong khối **"Kết quả"** (tiêu đề nhỏ), không xen giữa nút và danh sách dòng.
+- `pairedWith` + `quickEntry` (E1↔F1): nút "Ghi lượt mới" mở form **Ghi lượt**: trên cùng đồng hồ T0…T8 (to, nút ghi mốc lớn ≥ 56 pt),
+  dưới là lưới nút một chạm cho các cột chọn (Mã KB dạng lưới 5×3, O/T, Giới tính, Chiều cao, Nhóm, Tay, Kết quả), rồi số lần đút,
+  hàng khoang, ghi chú, nút "🎥 Quay video lượt này". Cột `carryOver` được điền sẵn từ lượt trước. Nút "Lượt tiếp theo" lưu và mở lượt mới.
+- Danh sách dòng của bảng ghép đôi hiển thị ở cả 2 mục E và F (cùng dữ liệu).
+
+## F. Media & âm thanh
+- Field `audio`: nút tròn ghi âm (đỏ khi đang ghi, hiển thị thời gian), danh sách bản ghi có phát/xóa. Cần quyền micro (Android `RECORD_AUDIO`).
+- Field photo được tham chiếu hiển thị "Dùng cho: B-01, A-07, B-20, B-21".
+
+## G. Kiểm tra & người kiểm tra
+- Màn Kiểm tra có 3 nhóm: **Lỗi** (đỏ, chặn Hoàn thành) · **Cần xem lại** (cảnh báo, vàng) · **Ghi chú kiểm tra** (cam).
+- Phiếu đã hoàn thành: menu "Chế độ kiểm tra" → xem chỉ đọc, chạm thẻ để thêm/sửa ghi chú kiểm tra (`review`), nút **"Trả lại để sửa"**
+  (status draft + `returned`). Người khảo sát sửa xong có thể xóa ghi chú kiểm tra (nút "Đã xử lý" trên khung cam).
+
+## H. Danh sách điểm & GPS
+- Cài đặt → "Danh sách điểm": nhập CSV, xem số điểm, xóa.
+- Field có `lookup`: ô nhập + nút "Chọn từ danh sách" (sheet tìm kiếm theo mã/địa chỉ).
+- GPS: hiển thị ±m với màu (xanh ≤ maxAccuracy, cam nếu kém), nút "Lấy lại"; nếu có điểm kế hoạch thì "Cách điểm kế hoạch N m".
+
+## I. Hiển thị ngoài trời
+- Cài đặt → **"Tương phản cao"** (mặc định tắt): nền trắng tinh/đen tinh, chữ phụ cùng màu chữ chính, viền 2 px, cỡ chữ +10 %, chip chọn
+  tương phản tối đa.
+- Màu chữ phụ mặc định phải đạt WCAG AA trên nền thẻ ở cả light/dark. iOS dark: ô nhập có nền phân biệt với thẻ (không đen tuyền trên xám).
+
+## J. Quy ước đã chốt khi triển khai bản sửa
+- Tên file sao lưu: `{recordCode đã làm sạch}_{8 ký tự đầu record id}_backup.zip`; không có mã → `{recordId}_backup.zip`.
+- Ghi chú kiểm tra (`review`) chỉ cho field header/mục, không cho ô trong bảng.
+- Chế độ gọn: hàng gọn không có chip ~/KĐĐ (chỉ menu ⋯ + badge khi đang bật); thẻ thường có chip trên hàng tiêu đề.
+- Mẫu nhiều phiên bản: tab Mẫu vẫn liệt kê bản cũ (ghi chú "Bản cũ", tắt "Tạo phiếu mới"); hộp chọn mẫu khi tạo phiếu chỉ có bản mới nhất.
+- "Lấy dữ liệu mục từ phiếu khác": chỉ chép giá trị không rỗng, chép kèm dòng của bảng ghép đôi để giữ id đồng bộ.

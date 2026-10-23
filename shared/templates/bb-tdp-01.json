@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "BB-TDP-01",
-  "version": "1.0",
+  "version": "1.1",
   "title": "Biên bản khảo sát thông số kỹ thuật",
   "subtitle": "Tủ đổi pin xe máy điện VinFast (V-Green) – dùng cho 01 điểm khảo sát / 01 tủ",
   "instructions": "• Mỗi dòng có Mã trường (A-01, C-07...) dùng làm tên trường; giữ nguyên mã khi xuất dữ liệu.\n• Ảnh ghi tên file theo quy tắc KS-TDP-01 Mục 7.3. Thang 1–5: 1 = rất kém/rất khó, 5 = rất tốt/rất dễ.\n• Trường đánh dấu * là bắt buộc. Không đo được → chọn \"KĐĐ\" và ghi lý do; giá trị ước lượng qua ảnh → đánh dấu \"~\".\n• An toàn: không đưa thước kim loại/thước cặp vào trong khoang tủ; kích thước trong khoang đo qua ảnh có thước tham chiếu hoặc camera nội soi.",
-  "recordTitle": "BB-TDP-01 / {HD-code} – {A-01}",
+  "recordTitle": "{A-01} · {A-03}",
   "mediaNamePattern": "{recordCode}_{fieldId}_{seq}",
   "header": [
     {
@@ -57,7 +57,14 @@
           "type": "text",
           "required": true,
           "method": "Theo danh sách điểm",
-          "flags": false
+          "flags": false,
+          "lookup": {
+            "source": "sites",
+            "fill": {
+              "A-03": "address"
+            },
+            "gps": "A-04"
+          }
         },
         {
           "id": "A-02",
@@ -79,7 +86,8 @@
           "type": "gps",
           "required": true,
           "unit": "Lat, Long",
-          "method": "App / GPS logger"
+          "method": "App / GPS logger",
+          "maxAccuracy": 15
         },
         {
           "id": "A-05",
@@ -121,14 +129,17 @@
           "type": "integer",
           "required": true,
           "method": "Đếm",
-          "min": 0
+          "min": 0,
+          "warnMin": 1,
+          "warnMax": 10
         },
         {
           "id": "A-07",
           "label": "Số thứ tự tủ được khảo sát / serial",
           "type": "text",
           "required": true,
-          "method": "Nhãn tủ (ảnh P08)"
+          "method": "Nhãn tủ (ảnh P08)",
+          "photoRef": "P08"
         },
         {
           "id": "A-08",
@@ -165,7 +176,9 @@
           "type": "number",
           "unit": "lượt/giờ",
           "method": "Đếm trong 30 phút × 2",
-          "min": 0
+          "min": 0,
+          "warnMin": 0,
+          "warnMax": 120
         }
       ]
     },
@@ -178,7 +191,8 @@
           "label": "Model / thế hệ tủ (theo nhãn)",
           "type": "text",
           "required": true,
-          "method": "Ảnh P08"
+          "method": "Ảnh P08",
+          "photoRef": "P08"
         },
         {
           "id": "B-02",
@@ -187,7 +201,9 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn",
-          "min": 0
+          "min": 0,
+          "warnMin": 1000,
+          "warnMax": 2500
         },
         {
           "id": "B-03",
@@ -196,7 +212,9 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn",
-          "min": 0
+          "min": 0,
+          "warnMin": 400,
+          "warnMax": 2500
         },
         {
           "id": "B-04",
@@ -205,7 +223,9 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn",
-          "min": 0
+          "min": 0,
+          "warnMin": 300,
+          "warnMax": 1200
         },
         {
           "id": "B-05",
@@ -213,7 +233,9 @@
           "type": "integer",
           "required": true,
           "method": "Đếm",
-          "min": 0
+          "min": 0,
+          "warnMin": 4,
+          "warnMax": 40
         },
         {
           "id": "B-06",
@@ -270,7 +292,9 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn",
-          "min": 0
+          "min": 0,
+          "warnMin": 200,
+          "warnMax": 1200
         },
         {
           "id": "B-09",
@@ -279,7 +303,9 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn",
-          "min": 0
+          "min": 0,
+          "warnMin": 800,
+          "warnMax": 2000
         },
         {
           "id": "B-10",
@@ -414,7 +440,10 @@
           "required": true,
           "unit": "mm",
           "method": "Thước cuộn (ảnh P09)",
-          "min": 0
+          "min": 0,
+          "photoRef": "P09",
+          "warnMin": 0,
+          "warnMax": 300
         },
         {
           "id": "B-16",
@@ -503,13 +532,15 @@
           "id": "B-20",
           "label": "Thông số điện trên nhãn (V, A, kW, số pha)",
           "type": "text",
-          "method": "Ảnh P08"
+          "method": "Ảnh P08",
+          "photoRef": "P08"
         },
         {
           "id": "B-21",
           "label": "Cấp IP / IK ghi trên nhãn",
           "type": "text",
-          "method": "Ảnh P08"
+          "method": "Ảnh P08",
+          "photoRef": "P08"
         },
         {
           "id": "B-22",
@@ -689,7 +720,8 @@
                 "equals": true
               }
             }
-          ]
+          ],
+          "photoRef": "P11"
         },
         {
           "id": "C-07",
@@ -697,7 +729,8 @@
           "type": "multiline",
           "required": true,
           "method": "Nội soi (P12)",
-          "attachPhoto": true
+          "attachPhoto": true,
+          "photoRef": "P12"
         },
         {
           "id": "C-08",
@@ -873,7 +906,9 @@
           "type": "number",
           "required": true,
           "unit": "mm",
-          "method": "Đánh dấu trên pin"
+          "method": "Đánh dấu trên pin",
+          "warnMin": 5,
+          "warnMax": 150
         },
         {
           "id": "C-17",
@@ -927,7 +962,8 @@
               "label": "Không có cửa"
             }
           ],
-          "method": "Quan sát (video P13)"
+          "method": "Quan sát (video P13)",
+          "photoRef": "P13"
         },
         {
           "id": "C-19",
@@ -955,7 +991,9 @@
           "label": "Góc mở cửa",
           "type": "number",
           "unit": "°",
-          "method": "Thước góc"
+          "method": "Thước góc",
+          "warnMin": 45,
+          "warnMax": 180
         },
         {
           "id": "C-21",
@@ -964,7 +1002,9 @@
           "required": true,
           "unit": "s",
           "method": "Bấm giờ",
-          "min": 0
+          "min": 0,
+          "warnMin": 5,
+          "warnMax": 120
         },
         {
           "id": "C-22",
@@ -1084,7 +1124,8 @@
           "label": "Mã/nhãn pin; điện áp danh định; dung lượng",
           "type": "text",
           "required": true,
-          "method": "Ảnh nhãn (P14)"
+          "method": "Ảnh nhãn (P14)",
+          "photoRef": "P14-15"
         },
         {
           "id": "D-02",
@@ -1140,7 +1181,9 @@
           "required": true,
           "unit": "kg",
           "method": "Cân treo",
-          "min": 0
+          "min": 0,
+          "warnMin": 5,
+          "warnMax": 20
         },
         {
           "id": "D-05",
@@ -1206,7 +1249,8 @@
               "label": "Có nắp che",
               "type": "yesNo"
             }
-          ]
+          ],
+          "photoRef": "P14-15"
         },
         {
           "id": "D-08",
@@ -1238,7 +1282,8 @@
           "id": "D-09",
           "label": "Cấp IP, tiêu chuẩn ghi trên nhãn",
           "type": "text",
-          "method": "Ảnh nhãn"
+          "method": "Ảnh nhãn",
+          "photoRef": "P14-15"
         },
         {
           "id": "D-10",
@@ -1274,7 +1319,8 @@
           "label": "Khoang trên xe: hướng đặt pin, cơ cấu dẫn hướng, khóa, quai giữ",
           "type": "multiline",
           "method": "Ảnh P15",
-          "attachPhoto": true
+          "attachPhoto": true,
+          "photoRef": "P14-15"
         },
         {
           "id": "D-13",
@@ -1374,7 +1420,8 @@
                   "value": "S15",
                   "label": "S15"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "mode",
@@ -1389,7 +1436,8 @@
                   "value": "T",
                   "label": "T – tự thử"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "gender",
@@ -1404,7 +1452,8 @@
                   "value": "F",
                   "label": "Nữ"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "height",
@@ -1423,7 +1472,8 @@
                   "value": "tall",
                   "label": "Cao >175"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "group",
@@ -1438,7 +1488,8 @@
                   "value": "CN",
                   "label": "CN – cá nhân"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "hand",
@@ -1504,7 +1555,9 @@
               "label": "Video",
               "type": "video"
             }
-          ]
+          ],
+          "pairedWith": "F1",
+          "quickEntry": true
         },
         {
           "kind": "table",
@@ -1719,7 +1772,8 @@
                   "value": "T",
                   "label": "T – tự thử"
                 }
-              ]
+              ],
+              "carryOver": true
             },
             {
               "id": "batteries",
@@ -1773,7 +1827,9 @@
               "type": "text",
               "flags": false
             }
-          ]
+          ],
+          "pairedWith": "E1",
+          "quickEntry": true
         },
         {
           "id": "F-01",
@@ -1884,7 +1940,9 @@
           "type": "number",
           "required": true,
           "unit": "mm",
-          "method": "Thước cuộn"
+          "method": "Thước cuộn",
+          "warnMin": -200,
+          "warnMax": 500
         },
         {
           "id": "G-06",
@@ -1892,7 +1950,9 @@
           "type": "number",
           "required": true,
           "unit": "mm",
-          "method": "Thước cuộn"
+          "method": "Thước cuộn",
+          "warnMin": 100,
+          "warnMax": 1200
         },
         {
           "id": "G-07",
@@ -1920,7 +1980,9 @@
           "label": "Mực ngập lớn nhất theo lời kể (so với nền đặt tủ)",
           "type": "number",
           "unit": "mm",
-          "method": "Phỏng vấn"
+          "method": "Phỏng vấn",
+          "warnMin": 0,
+          "warnMax": 1000
         },
         {
           "id": "G-09",
@@ -1976,7 +2038,8 @@
           "max": 5,
           "minLabel": "Rất kém/rất khó",
           "maxLabel": "Rất tốt/rất dễ",
-          "method": "Ảnh cận"
+          "method": "Ảnh cận",
+          "photoRef": "P06-07"
         },
         {
           "id": "G-13",
@@ -2098,7 +2161,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 45
         },
         {
           "id": "G-23",
@@ -2108,7 +2173,9 @@
           "unit": "%",
           "samples": 3,
           "min": 0,
-          "max": 100
+          "max": 100,
+          "warnMin": 30,
+          "warnMax": 100
         },
         {
           "id": "G-24",
@@ -2125,7 +2192,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-26",
@@ -2133,14 +2202,18 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-27",
           "label": "T mặt bên / mặt sau",
           "type": "number",
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-28",
@@ -2148,7 +2221,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-29",
@@ -2156,7 +2231,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-30",
@@ -2164,7 +2241,9 @@
           "type": "number",
           "unit": "°C",
           "samples": 3,
-          "hint": "Đo bằng thermocouple"
+          "hint": "Đo bằng thermocouple",
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-31",
@@ -2178,7 +2257,9 @@
               "label": "Vị trí",
               "type": "text"
             }
-          ]
+          ],
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-32",
@@ -2186,7 +2267,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-33",
@@ -2194,7 +2277,9 @@
           "type": "number",
           "required": true,
           "unit": "°C",
-          "samples": 3
+          "samples": 3,
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-34",
@@ -2208,7 +2293,9 @@
               "label": "Vị trí",
               "type": "text"
             }
-          ]
+          ],
+          "warnMin": 15,
+          "warnMax": 80
         },
         {
           "id": "G-35",
@@ -2297,6 +2384,11 @@
               "type": "multiline"
             },
             {
+              "id": "audio",
+              "label": "Ghi âm",
+              "type": "audio"
+            },
+            {
               "id": "consent",
               "label": "Đồng thuận",
               "type": "singleChoice",
@@ -2315,7 +2407,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "quickEntry": true
         },
         {
           "kind": "heading",

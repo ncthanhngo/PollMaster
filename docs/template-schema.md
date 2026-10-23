@@ -292,7 +292,7 @@ Hiển thị giá trị trong mọi định dạng: cờ estimate thêm tiền t
 | gps | `10.500000, 106.250000 (±5 m)` (6 chữ số; không có accuracy thì bỏ ngoặc) |
 | elapsed | `mm:ss` (≥ 1 giờ: `h:mm:ss`) |
 | photo/video/signature | danh sách tên file (không có `media/`), nối `, ` |
-- `recordTitle`: thay placeholder; sau đó cắt các ký tự ` –-/·` thừa ở đầu/cuối; nếu mọi placeholder rỗng → `template.title`.
+- `recordTitle`: thay placeholder; sau đó cắt các ký tự ` –-/·` thừa ở đầu/cuối; nếu mọi placeholder rỗng (hoặc không có `recordTitle`) → `Phiếu mới · {createdAt dd/MM/yyyy HH:mm}`.
 - xlsx: ô số chỉ khi giá trị là số thuần (number/integer/computed/rating giữ text `4/5`), giá trị = số **đã làm tròn** như hiển thị.
   Tên sheet: ký tự `[ ] : * ? / \` → `_`, cắt 31 ký tự, trùng thì thêm ` (2)`, ` (3)`.
 - export.json: `value` rỗng → `null` (kể cả photo rỗng); thời điểm record copy nguyên chuỗi đã lưu; bảng cố định xuất đủ
@@ -302,3 +302,38 @@ Hiển thị giá trị trong mọi định dạng: cờ estimate thêm tiền t
 ### 6.6 Import template
 - singleChoice/multiChoice không có `options` → từ chối. `rows[].fixed` thiếu → `{}`. `part.type` thiếu → `text`;
   `part.label` thiếu → từ chối. Lỗi import báo đường dẫn JSON (VD `sections[2].items[5].options`).
+
+## 7. Mở rộng cho hiện trường (schemaVersion vẫn 1 — mọi key mới đều optional)
+
+### 7.1 Thuộc tính field mới
+| Thuộc tính | Ý nghĩa |
+|---|---|
+| `photoRef` | id field photo/video ở mục khác làm bằng chứng (VD `"P08"`). Thẻ field hiện thumbnail của field đó + nút "Chụp P08" (ảnh lưu vào field được tham chiếu, không vào field hiện tại). Thẻ field photo được tham chiếu hiện "Dùng cho: B-01, A-07…". |
+| `warnMin`, `warnMax` | Khoảng hợp lý: ngoài khoảng → **cảnh báo** vàng dưới ô ("Ngoài khoảng thường gặp 1000–2500 mm — kiểm tra lại") và một lần hỏi xác nhận khi rời ô. Không chặn hoàn thành. Áp cho number/integer, cả samples và parts number (part cũng có thể có warnMin/warnMax). |
+| `maxAccuracy` | (gps) mét, mặc định 15. Độ chính xác kém hơn → cảnh báo + nút "Lấy lại". |
+| `lookup` | `{ "source": "sites", "fill": { "A-03": "address" }, "gps": "A-04" }` — field text chọn từ **danh sách điểm** (§7.3); chọn xong điền các field trong `fill` (chỉ `address`/`code`; **không** điền GPS — tọa độ kế hoạch chỉ dùng để tính khoảng cách, GPS phải đo thật). `gps` = id field GPS để so khoảng cách với tọa độ kế hoạch (chỉ điền khi field đích đang trống, hoặc hỏi ghi đè). Vẫn cho gõ tay. |
+| `carryOver` | (cột bảng) dòng mới tự lấy giá trị cột này từ dòng trước. |
+
+Kiểu mới **`audio`**: nút ghi âm / dừng, danh sách bản ghi (thời lượng, phát lại, xóa). `v` = Media[] (`.m4a`), tên file theo `mediaNamePattern`. Hiển thị = tên file.
+
+### 7.2 Thuộc tính table mới
+- `pairedWith: "<tableId>"` — hai bảng lặp ghép đôi: thêm dòng ở bảng này tạo dòng **cùng id** ở bảng kia và ngược lại; xóa/nhân bản áp cả hai. Form dòng ("Ghi lượt") hiển thị cột của cả hai bảng (bảng có stopwatch đặt trên cùng). Lưu và xuất vẫn là 2 bảng riêng.
+- `quickEntry: true` — form dòng dạng gọn: singleChoice/yesNo hiển thị lưới nút một chạm (không dropdown), nhãn trên cùng hàng.
+
+### 7.3 Danh sách điểm (sites)
+Cài đặt → "Danh sách điểm" → nhập CSV UTF-8 (có hoặc không BOM), header: `code,address,lat,lng` (thêm cột khác bị bỏ qua).
+Lưu `<AppData>/sites.json` = `[{ "code", "address", "lat", "lng" }]`. Chọn điểm có tọa độ + đã lấy GPS → hiện
+"Cách điểm kế hoạch N m" (cảnh báo nếu > 100 m).
+
+### 7.4 Record — key mới
+- `FieldValue.review`: ghi chú của người kiểm tra (string).
+- `record.returned: true` khi người kiểm tra trả lại (status về `draft`). Bỏ khi hoàn thành lại.
+- `record.lastPosition: { "section": "<sectionId>", "field": "<fieldId>" }` — vị trí soạn gần nhất.
+- `record.backupAt`: ISO — lần sao lưu tự động gần nhất.
+Hiển thị/xuất: `review` xuất vào export.json (`fields.<id>.review`) và cột "Kiểm tra" trong sheet `Thông tin`.
+
+### 7.5 Validation bổ sung
+- Cảnh báo (`warnMin/warnMax`, GPS accuracy, cách điểm kế hoạch) là **warning**, không tính vào lỗi/tiến độ;
+  màn Kiểm tra liệt kê riêng nhóm "Cần xem lại" (màu vàng). Thông điệp: `Ngoài khoảng thường gặp {warnMin}–{warnMax} {unit}` ·
+  `Độ chính xác GPS kém (±{n} m)` · `Cách điểm kế hoạch {n} m`.
+- Field có `review` chưa được xử lý không chặn hoàn thành nhưng liệt kê nhóm "Ghi chú kiểm tra".
