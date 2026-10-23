@@ -3,6 +3,7 @@ import PollMasterCore
 
 /// "Xuất tổng hợp": one xlsx for the whole project, optionally with a zip of every record.
 struct ProjectSummarySheet: View {
+    @Environment(\.pmTheme) private var theme
     let project: Project
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
@@ -27,7 +28,7 @@ struct ProjectSummarySheet: View {
                 } footer: { Text("Excel: mỗi mẫu một sheet, mỗi phiếu một hàng, thêm sheet cho từng bảng.") }
                 if working { Section { HStack { ProgressView(); Text("Đang tạo tệp…").padding(.leading, 8) } } }
                 if let note { Section { Text(note).font(.footnote) } }
-                if let error { Section { Text(error).foregroundStyle(.red) } }
+                if let error { Section { Text(error).foregroundStyle(theme.alert) } }
             }
             .navigationTitle("Xuất tổng hợp").navigationBarTitleDisplayMode(.inline)
             .toolbar {

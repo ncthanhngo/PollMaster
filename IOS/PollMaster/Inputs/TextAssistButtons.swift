@@ -6,6 +6,7 @@ struct OCRButton: View {
     let field: Field
     @Binding var fv: FieldValue
     let scope: FieldScope
+    @Environment(\.pmTheme) private var theme
     @State private var capture = false
     @State private var busy = false
     @State private var lines: [String]?
@@ -18,7 +19,7 @@ struct OCRButton: View {
                     if busy { ProgressView() } else { Label("Đọc chữ từ ảnh", systemImage: "text.viewfinder") }
                 }
                 .buttonStyle(.bordered).disabled(busy)
-                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
             }
             .sheet(isPresented: Binding(get: { lines != nil }, set: { if !$0 { lines = nil } })) {
                 OCRResultSheet(lines: lines ?? []) { use($0) }
@@ -83,6 +84,7 @@ private struct OCRResultSheet: View {
 /// 🎤 on multiline fields (ux-spec L16): dictate Vietnamese, appended to the end of the text. Hidden without a recogniser.
 struct DictationButton: View {
     @Binding var fv: FieldValue
+    @Environment(\.pmTheme) private var theme
     @State private var service = DictationService()
     @State private var base = ""
 
@@ -94,7 +96,7 @@ struct DictationButton: View {
                         .foregroundStyle(service.listening ? Color.red : Color.accentColor)
                 }
                 .buttonStyle(.bordered)
-                if let e = service.error { Text(e).font(.caption).foregroundStyle(.red) }
+                if let e = service.error { Text(e).font(.caption).foregroundStyle(theme.alert) }
             }
             .onDisappear { service.stop() }
         }

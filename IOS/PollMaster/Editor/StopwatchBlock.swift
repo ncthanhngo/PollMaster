@@ -41,8 +41,8 @@ struct StopwatchBlock: View {
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil).accessibilityLabel("Hoàn tác mốc")
         }
         .padding(.horizontal, 12).padding(.vertical, 6)
-        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(theme.border, lineWidth: theme.borderWidth))
+        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: PMRadius.m))
+        .overlay(RoundedRectangle(cornerRadius: PMRadius.m).stroke(theme.highContrast ? theme.border : .clear, lineWidth: theme.borderWidth))
         .disabled(model.isLocked)
         .modifier(KeepAwake(running: running))
     }
@@ -66,8 +66,8 @@ struct StopwatchBlock: View {
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil)
         }
         .padding(14)
-        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.border, lineWidth: theme.borderWidth))
+        .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: PMRadius.m))
+        .overlay(RoundedRectangle(cornerRadius: PMRadius.m).stroke(theme.highContrast ? theme.border : .clear, lineWidth: theme.borderWidth))
         .disabled(model.isLocked)
         .modifier(KeepAwake(running: running))
     }

@@ -23,8 +23,8 @@ struct Chip: View {
             .overlay(alignment: .topTrailing) {
                 if selected && fillWidth { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).padding(4) }
             }
-            .background(selected ? Color.accentColor : theme.unselectedChip, in: RoundedRectangle(cornerRadius: 9))
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(selected ? Color.clear : theme.border, lineWidth: theme.borderWidth))
+            .background(selected ? Color.accentColor : theme.unselectedChip, in: RoundedRectangle(cornerRadius: PMRadius.s))
+            .overlay(RoundedRectangle(cornerRadius: PMRadius.s).stroke(selected || !theme.highContrast ? Color.clear : theme.border, lineWidth: theme.borderWidth))
             .foregroundStyle(selected ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
@@ -177,7 +177,7 @@ struct RatingInput: View {
                     Button { value = on ? nil : .int(n) } label: {
                         Text("\(n)").font(.headline).frame(width: 40, height: 40)
                             .background(on ? Color.accentColor : theme.unselectedChip, in: Circle())
-                            .overlay(Circle().stroke(on ? Color.clear : theme.border, lineWidth: theme.borderWidth))
+                            .overlay(Circle().stroke(on || !theme.highContrast ? Color.clear : theme.border, lineWidth: theme.borderWidth))
                             .foregroundStyle(on ? Color.white : Color.primary)
                     }
                     .buttonStyle(.plain)

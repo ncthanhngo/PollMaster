@@ -3,6 +3,7 @@ import PollMasterCore
 
 /// A table inside a section: row cards + add button (or "Ghi lượt mới" for quick-entry tables).
 struct TableSectionView: View {
+    @Environment(\.pmTheme) private var theme
     let model: RecordEditorModel
     let table: TableDef
     let sectionId: String
@@ -29,7 +30,7 @@ struct TableSectionView: View {
                 }
             }
             ForEach(model.issues.filter { $0.fieldId == table.id && $0.rowId == nil }) { issue in
-                if model.showAllErrors { Label(issue.message, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.red) }
+                if model.showAllErrors { Label(issue.message, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(theme.alert) }
             }
         }
         .confirmationDialog(table.pairedWith == nil ? "Xóa dòng này?" : "Xóa lượt này ở cả hai bảng?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),

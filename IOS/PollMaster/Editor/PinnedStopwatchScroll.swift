@@ -83,14 +83,14 @@ struct PinnedStopwatchScroll<Content: View>: View {
 
     private func banner(_ c: ActiveCue) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "bell.badge.fill").foregroundStyle(.orange)
+            Image(systemName: "bell.badge.fill").foregroundStyle(theme.attention)
             Text(c.text).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
             Button("Mở \(c.field)") { open(c) }.buttonStyle(.borderedProminent).controlSize(.small)
             Button { withAnimation { cue = nil } } label: { Image(systemName: "xmark") }.buttonStyle(.plain).accessibilityLabel("Đóng")
         }
         .padding(10)
-        .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange, lineWidth: 1))
+        .background(theme.attention.opacity(0.14), in: RoundedRectangle(cornerRadius: PMRadius.m))
+        .overlay(RoundedRectangle(cornerRadius: PMRadius.m).stroke(theme.attention, lineWidth: 1))
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 

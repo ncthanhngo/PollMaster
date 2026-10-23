@@ -25,6 +25,23 @@ struct PMTheme: Equatable {
     var warning: Color { dark ? Color(red: 1, green: 0.8, blue: 0.3) : Color(red: 0.62, green: 0.38, blue: 0) }
     var success: Color { dark ? Color(red: 0.4, green: 0.85, blue: 0.5) : Color(red: 0.1, green: 0.5, blue: 0.2) }
     var alert: Color { dark ? Color(red: 1, green: 0.45, blue: 0.4) : Color(red: 0.75, green: 0.1, blue: 0.1) }
+    /// "Cần sửa" and checker notes: orange that still reads as text (>= 4.5:1) on the card.
+    var attention: Color { dark ? Color(red: 1, green: 0.66, blue: 0.35) : Color(red: 0.7, green: 0.33, blue: 0) }
+}
+
+/// The only corner radii of the app: small (inputs, chips, badges), medium (cards, buttons), large (sheets, hero blocks).
+enum PMRadius {
+    static let s: CGFloat = 8
+    static let m: CGFloat = 12
+    static let l: CGFloat = 16
+}
+
+/// Spacing scale (4 pt grid).
+enum PMSpace {
+    static let xs: CGFloat = 4
+    static let s: CGFloat = 8
+    static let m: CGFloat = 16
+    static let l: CGFloat = 24
 }
 
 private struct ThemeKey: EnvironmentKey { static let defaultValue = PMTheme() }
@@ -103,8 +120,8 @@ private struct InputBox: ViewModifier {
         content
             .padding(.horizontal, 10).padding(.vertical, 8)
             .frame(minHeight: theme.minTouch)
-            .background(theme.inputBackground, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.border, lineWidth: theme.borderWidth))
+            .background(theme.inputBackground, in: RoundedRectangle(cornerRadius: PMRadius.s))
+            .overlay(RoundedRectangle(cornerRadius: PMRadius.s).stroke(theme.highContrast ? theme.border : .clear, lineWidth: theme.borderWidth))
     }
 }
 
@@ -116,8 +133,13 @@ private struct CardBox: ViewModifier {
         content
             .padding(.horizontal, 12).padding(.vertical, padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(stroke ?? theme.border, lineWidth: theme.borderWidth))
+            .background(theme.cardBackground, in: RoundedRectangle(cornerRadius: PMRadius.m))
+            // flat: the white card on the grey screen is the separation; an outline only for state or high contrast
+            .overlay {
+                if stroke != nil || theme.highContrast {
+                    RoundedRectangle(cornerRadius: PMRadius.m).stroke(stroke ?? theme.border, lineWidth: theme.borderWidth)
+                }
+            }
     }
 }
 

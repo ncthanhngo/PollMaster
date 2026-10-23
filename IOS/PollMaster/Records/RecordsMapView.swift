@@ -45,7 +45,7 @@ struct RecordsMapView: View {
     }
 
     private func color(_ s: RecordSummary) -> Color {
-        if s.returned && s.status == .draft { return .orange }
+        if s.returned && s.status == .draft { return theme.attention }
         return s.status == .completed ? theme.success : .gray
     }
 
@@ -73,12 +73,12 @@ struct RecordsMapView: View {
     private var legend: some View {
         VStack(alignment: .leading, spacing: 4) {
             legendRow("mappin.circle.fill", .gray, "Nháp")
-            legendRow("arrow.uturn.backward.circle.fill", .orange, "Cần sửa")
+            legendRow("arrow.uturn.backward.circle.fill", theme.attention, "Cần sửa")
             legendRow("checkmark.circle.fill", theme.success, "Hoàn thành")
             if !unvisited.isEmpty { legendRow("mappin.circle", .gray, "Chưa có phiếu") }
         }
         .font(.caption2)
-        .padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: PMRadius.m))
     }
 
     private func legendRow(_ icon: String, _ color: Color, _ text: String) -> some View {
@@ -99,7 +99,7 @@ struct RecordsMapView: View {
                     Text("\(statusText(s)) · \(s.progress.done)/\(s.progress.total) bắt buộc").font(.caption).foregroundStyle(color(s))
                     Button { env.open(s.id) } label: { Text("Mở phiếu").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
                 }
-                .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: PMRadius.l))
             }
         case .site(let code)?:
             if let site = env.sites.first(where: { $0.code == code }) {
@@ -112,7 +112,7 @@ struct RecordsMapView: View {
                     if !site.address.isEmpty { Text(site.address).font(.subheadline).secondaryText() }
                     Text("Điểm kế hoạch · chưa có phiếu").font(.caption).secondaryText()
                 }
-                .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: PMRadius.l))
             }
         case nil: EmptyView()
         }

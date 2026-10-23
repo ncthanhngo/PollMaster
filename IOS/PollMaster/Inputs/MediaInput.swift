@@ -16,6 +16,7 @@ private struct PickedMovie: Transferable {
 
 /// Thumbnail grid with "Chụp" / "Thư viện" for photo, video and attachPhoto fields.
 struct MediaInput: View {
+    @Environment(\.pmTheme) private var theme
     let field: Field
     let video: Bool
     @Binding var fieldValue: FieldValue
@@ -68,7 +69,7 @@ struct MediaInput: View {
                 if let n = field.minCount { Text("\(list.count)/\(n)").font(.caption).secondaryText() }
             }
             .disabled(remaining == 0)
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
         }
         .fullScreenCover(item: $capture, content: { kind in
             CameraPicker(kind: kind, onImage: { add(image: $0) }, onVideo: { add(videoURL: $0, camera: true) }).ignoresSafeArea()

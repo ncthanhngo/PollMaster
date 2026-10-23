@@ -12,6 +12,7 @@ struct ActivityView: UIViewControllerRepresentable {
 
 /// Choose formats, build files off the main thread, then present the share sheet.
 struct ExportSheet: View {
+    @Environment(\.pmTheme) private var theme
     let recordId: String
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
@@ -31,7 +32,7 @@ struct ExportSheet: View {
                     }
                 }
                 if working { Section { HStack { ProgressView(); Text("Đang tạo tệp…").padding(.leading, 8) } } }
-                if let error { Section { Text(error).foregroundStyle(.red) } }
+                if let error { Section { Text(error).foregroundStyle(theme.alert) } }
             }
             .navigationTitle("Xuất")
             .navigationBarTitleDisplayMode(.inline)

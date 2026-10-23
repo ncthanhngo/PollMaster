@@ -28,7 +28,7 @@ struct Thumbnail: View {
             if video { Image(systemName: "play.circle.fill").font(.title).foregroundStyle(.white).shadow(radius: 2) }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: PMRadius.s))
         .task(id: url) { image = await ThumbnailLoader.load(url: url, video: video) }
     }
 }

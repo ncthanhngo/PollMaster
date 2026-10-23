@@ -35,23 +35,25 @@ struct FieldCard: View {
                           editable: scope.reviewMode, canResolve: !scope.locked) { addingReview = false }
             }
             if compactRow {
-                HStack(alignment: .center, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        // same title row as the full card (code badge first), so codes line up down the section
-                        FieldTitle(field: field, fv: fv, showCode: showCode)
-                        if let m = field.method { Text(m).font(.caption).secondaryText().lineLimit(2) }
-                        hintLine
+                // label and input share the first line; the meta line runs full width below so the label keeps its room
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .center, spacing: 8) {
+                        FieldTitle(field: field, fv: fv).frame(maxWidth: .infinity, alignment: .leading)
+                        input.frame(width: 132)
+                        FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    input.containerRelativeFrame(.horizontal) { w, _ in min(w * 0.30, 200) }
-                    FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope)
+                    metaLine
+                    hintLine
                 }
             } else {
-                HStack(alignment: .center, spacing: 6) {
-                    FieldTitle(field: field, fv: fv, showCode: showCode).frame(maxWidth: .infinity, alignment: .leading)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        FieldTitle(field: field, fv: fv)
+                        metaLine
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     FieldMenu(field: field, fv: $fv, editingNote: $editingNote, addingReview: $addingReview, scope: scope)
                 }
-                if let m = field.method { Text(m).font(.caption).secondaryText() }
                 hintLine
                 if field.isComputed {
                     ComputedBlock(field: field, value: computedValue, showFormula: $showFormula)
@@ -75,7 +77,7 @@ struct FieldCard: View {
             }
             if let e = error { Label(e, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(theme.alert) }
         }
-        .cardBox(stroke: error != nil ? theme.alert.opacity(0.7) : (showsReview ? .orange : nil), padding: compactRow ? 8 : 12)
+        .fieldContainer(stroke: error != nil ? theme.alert : (showsReview ? theme.attention : nil), compact: compactRow)
         .contextMenu {
             if theme.oneHand && !scope.locked && !scope.reviewMode && !field.isComputed && !field.readonly {
                 FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote)
@@ -98,10 +100,20 @@ struct FieldCard: View {
         }
     }
 
-    /// Hint under the label, once (never as a placeholder: boxes can be narrow), then the usual range of a number.
+    /// One secondary line under the label: code · method · usual range (was up to three grey lines).
+    @ViewBuilder private var metaLine: some View {
+        let text = [field.method, usualRange].compactMap { $0 }.joined(separator: " · ")
+        if showCode || !text.isEmpty {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if showCode { CodeBadge(id: field.id) }
+                if !text.isEmpty { Text(text).font(.footnote).secondaryText().lineLimit(2) }
+            }
+        }
+    }
+
+    /// Hint under the label, once (never as a placeholder: boxes can be narrow).
     @ViewBuilder private var hintLine: some View {
-        if let h = field.hint, !h.isEmpty { Text(h).font(.caption).secondaryText().fixedSize(horizontal: false, vertical: true) }
-        if let r = usualRange { Text(r).font(.caption).secondaryText() }
+        if let h = field.hint, !h.isEmpty { Text(h).font(.footnote).secondaryText().fixedSize(horizontal: false, vertical: true) }
     }
 
     /// "Thường 1000–2500 mm" from warnMin/warnMax (typical values, falling back to min/max): the expected magnitude at a glance.

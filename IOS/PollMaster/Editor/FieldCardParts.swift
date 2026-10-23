@@ -5,14 +5,12 @@ import PollMasterCore
 struct FieldTitle: View {
     let field: Field
     let fv: FieldValue
-    let showCode: Bool
     @Environment(\.pmTheme) private var theme
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            if showCode { CodeBadge(id: field.id) }
-            (Text(field.label).fontWeight(.medium) + (field.required ? Text(" *").foregroundColor(.red) : Text("")))
-                .font(.subheadline)
+            (Text(field.label).fontWeight(.semibold) + (field.required ? Text(" *").foregroundColor(theme.alert) : Text("")))
+                .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
             if field.isComputed { Image(systemName: "function").secondaryText() }
             if fv.flag == .estimate { badge("~ Ước lượng") }
@@ -32,7 +30,7 @@ struct CodeBadge: View {
     var body: some View {
         Text(id).font(.system(size: 11, design: .monospaced)).secondaryText()
             .padding(.horizontal, 5).padding(.vertical, 1)
-            .background(theme.inputBackground.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+            .background(theme.inputBackground.opacity(0.7), in: RoundedRectangle(cornerRadius: PMRadius.s))
     }
 }
 
@@ -74,8 +72,8 @@ struct FieldMenu: View {
         } else if !scope.locked && !theme.oneHand {
             Menu { FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote) }
             label: {
-                Image(systemName: "ellipsis.circle").font(.title3)
-                    .frame(minWidth: 36, minHeight: 44).contentShape(Rectangle())
+                Image(systemName: "ellipsis").font(.body.weight(.semibold)).foregroundStyle(theme.secondaryText)
+                    .frame(minWidth: 36, minHeight: 36).contentShape(Rectangle())
             }
             .accessibilityLabel("Tùy chọn trường: ước lượng, không đo được, ghi chú")
         }
@@ -103,8 +101,8 @@ struct ReviewBox: View {
             }
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange, lineWidth: 1))
+        .background(theme.attention.opacity(0.14), in: RoundedRectangle(cornerRadius: PMRadius.s))
+        .overlay(RoundedRectangle(cornerRadius: PMRadius.s).stroke(theme.attention, lineWidth: 1))
     }
 }
 
@@ -122,7 +120,7 @@ struct ComputedBlock: View {
                 Text(text.isEmpty ? "—" : text).font(.body.monospacedDigit())
                 Spacer()
             }
-            .padding(10).background(theme.inputBackground, in: RoundedRectangle(cornerRadius: 8))
+            .padding(10).background(theme.inputBackground, in: RoundedRectangle(cornerRadius: PMRadius.s))
             .contentShape(Rectangle())
             .onTapGesture { showFormula.toggle() }
             if showFormula, let f = field.formula {

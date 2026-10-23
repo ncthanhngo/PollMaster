@@ -3,6 +3,7 @@ import PollMasterCore
 
 /// Create (project == nil) or edit a project. The code follows the name until the user edits it.
 struct ProjectFormView: View {
+    @Environment(\.pmTheme) private var theme
     let project: Project?
     var onSaved: (Project) -> Void = { _ in }
     @Environment(AppEnvironment.self) private var env
@@ -40,7 +41,7 @@ struct ProjectFormView: View {
                             if old != new && new != ProjectCode.generate(from: name, taken: taken) { codeEdited = true }
                         }
                 } header: { Text("Mã") } footer: {
-                    if let p = codeProblem, !code.isEmpty { Text(p).foregroundStyle(.red) }
+                    if let p = codeProblem, !code.isEmpty { Text(p).foregroundStyle(theme.alert) }
                     else { Text("Tự sinh từ tên, dùng trong tên tệp xuất và thư mục sao lưu.") }
                 }
                 Section("Thông tin thêm") {

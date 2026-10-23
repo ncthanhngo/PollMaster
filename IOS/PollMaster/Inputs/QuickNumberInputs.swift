@@ -33,8 +33,8 @@ struct StepperInput: View {
         Button(action: action) {
             Image(systemName: icon).font(.title3.weight(.semibold))
                 .frame(width: Swift.max(48, theme.minTouch), height: Swift.max(44, theme.minTouch))
-                .background(theme.unselectedChip, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(theme.border, lineWidth: theme.borderWidth))
+                .background(theme.unselectedChip, in: RoundedRectangle(cornerRadius: PMRadius.s))
+                .overlay(RoundedRectangle(cornerRadius: PMRadius.s).stroke(theme.highContrast ? theme.border : .clear, lineWidth: theme.borderWidth))
         }
         .buttonStyle(.plain).disabled(!enabled)
         .accessibilityLabel(icon == "plus" ? "Tăng" : "Giảm")

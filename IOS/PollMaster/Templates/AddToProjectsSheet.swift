@@ -17,7 +17,7 @@ struct AddToProjectsSheet: View {
                         Button { if !picked.insert(p.id).inserted { picked.remove(p.id) } } label: {
                             HStack(spacing: 10) {
                                 ProjectDot(project: p)
-                                VStack(alignment: .leading) { Text(p.name).font(.headline); Text(p.code).font(.caption.monospaced()).secondaryText() }
+                                VStack(alignment: .leading) { Text(p.name).font(.headline); Text(p.code).font(.footnote).secondaryText() }
                                 Spacer()
                                 if has { Text("Đã có").font(.caption).secondaryText() }
                                 else { Image(systemName: picked.contains(p.id) ? "checkmark.circle.fill" : "circle") }

@@ -29,7 +29,7 @@ struct RowFormView: View {
         let editable = table.columns.filter { !$0.readonly }
         return PinnedStopwatchScroll(model: model, stopwatch: table.stopwatch == nil ? nil : (table, row)) {
             if model.isLocked { LockedBanner(model: model) }
-            ForEach(table.columns) { col in
+            FieldGroupCard(data: table.columns) { col in
                 if col.readonly, let fixed = fixedText(table, col) {
                     FixedValueCard(field: col, text: fixed)
                 } else {
@@ -80,6 +80,6 @@ struct FixedValueCard: View {
             Spacer()
             Text(text).font(.subheadline.weight(.semibold))
         }
-        .cardBox()
+        .fieldContainer()
     }
 }

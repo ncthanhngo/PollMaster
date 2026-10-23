@@ -58,7 +58,7 @@ struct ReviewView: View {
             groupSections("Lỗi", color: theme.alert, icon: "xmark.octagon.fill", errorGroups)
             groupSections("Còn thiếu", color: theme.secondaryText, icon: "circle.dashed", missingGroups)
             groupSections("Cần xem lại", color: theme.warning, icon: "exclamationmark.triangle.fill", warningGroups)
-            groupSections("Ghi chú kiểm tra", color: .orange, icon: "text.bubble.fill", noteGroups)
+            groupSections("Ghi chú kiểm tra", color: theme.attention, icon: "text.bubble.fill", noteGroups)
             if !model.template.signatures.isEmpty {
                 Section("Chữ ký") {
                     ForEach(model.template.signatures) { SignatureRow(model: model, def: $0) }
@@ -67,7 +67,7 @@ struct ReviewView: View {
             Section {
                 if model.isLocked && model.reviewMode {
                     Button { confirmReturn = true } label: { Label("Trả lại để sửa", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
-                        .buttonStyle(.borderedProminent).controlSize(.large).tint(.orange)
+                        .buttonStyle(.borderedProminent).controlSize(.large).tint(theme.attention)
                 }
                 Button { model.complete() } label: { Text("Hoàn thành").frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent).controlSize(.large)
@@ -133,6 +133,7 @@ struct ReviewView: View {
 private struct SignatureRow: View {
     let model: RecordEditorModel
     let def: SignatureDef
+    @Environment(\.pmTheme) private var theme
     @State private var name = ""
     @State private var error: String?
 
@@ -147,7 +148,7 @@ private struct SignatureRow: View {
                 }
             if let e = entry, let img = UIImage(contentsOfFile: model.store.fileURL(model.record.id, e.file).path) {
                 Image(uiImage: img).resizable().scaledToFit().frame(height: 120)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: PMRadius.s))
                 if !model.isLocked {
                     Button("Xóa chữ ký", role: .destructive) {
                         try? FileManager.default.removeItem(at: model.store.fileURL(model.record.id, e.file))
@@ -162,7 +163,7 @@ private struct SignatureRow: View {
                     } catch { self.error = error.localizedDescription }
                 }
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
         }
         .padding(.vertical, 4)
         .onAppear { name = entry?.name ?? "" }

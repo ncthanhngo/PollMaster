@@ -3,6 +3,7 @@ import PollMasterCore
 
 /// Compass bearing 0-359 with a button that reads the device heading.
 struct CompassInput: View {
+    @Environment(\.pmTheme) private var theme
     var unit: String?
     @Binding var value: JSONValue?
     var focus: FocusSlot?
@@ -26,7 +27,7 @@ struct CompassInput: View {
                         .buttonStyle(.bordered).disabled(busy)
                 }
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
         }
     }
 }

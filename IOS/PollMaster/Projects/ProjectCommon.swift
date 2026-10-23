@@ -25,10 +25,16 @@ struct ProjectDot: View {
 struct ProjectCounts: View {
     let stats: ProjectStats
     var body: some View {
-        HStack(spacing: 10) {
-            Label("\(stats.draft) Nháp", systemImage: "pencil")
-            if stats.returned > 0 { Label("\(stats.returned) Cần sửa", systemImage: "arrow.uturn.backward") }
-            Label("\(stats.completed) Hoàn thành", systemImage: "checkmark.circle")
+        // narrow rows (switcher sheet) fall back to one short line instead of wrapping a label mid-word
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                Label("\(stats.draft) Nháp", systemImage: "pencil")
+                if stats.returned > 0 { Label("\(stats.returned) Cần sửa", systemImage: "arrow.uturn.backward") }
+                Label("\(stats.completed) Hoàn thành", systemImage: "checkmark.circle")
+            }
+            .fixedSize()
+            Text("\(stats.draft) nháp" + (stats.returned > 0 ? " · \(stats.returned) cần sửa" : "") + " · \(stats.completed) xong")
+                .lineLimit(1)
         }
         .font(.caption).secondaryText().labelStyle(.titleAndIcon)
     }

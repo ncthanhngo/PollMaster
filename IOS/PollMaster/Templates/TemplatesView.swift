@@ -112,7 +112,7 @@ struct TemplatesView: View {
 
     @ViewBuilder private var loadingOverlay: some View {
         if loadingURL {
-            ProgressView("Đang tải…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            ProgressView("Đang tải…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: PMRadius.m))
         }
     }
 

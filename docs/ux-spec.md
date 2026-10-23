@@ -90,12 +90,16 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   có xác nhận số lượng) · **"Lấy dữ liệu mục này từ phiếu khác"** (chọn phiếu cùng mẫu → chép values + tables của mục, không chép media, hỏi ghi đè).
 
 ## D. Thẻ field (thiết kế chung)
-- Nền thẻ **trắng** (dark: xám tối `secondarySystemGroupedBackground` / Material surfaceContainer), viền 1 px màu outlineVariant,
-  nền màn hình xám nhạt. Khoảng cách giữa thẻ 8 dp/pt, padding 12.
-- Hàng tiêu đề: badge mã **nhỏ, nhạt** (chữ 11, màu secondary, nền rất nhạt) · nhãn (đậm vừa) · `*` đỏ **ngay sau nhãn** · menu ⋯.
-- `method` hiển thị chung dòng dưới nhãn, chữ nhỏ màu secondary **đủ tương phản** (≥ 4.5:1).
+- **Form kiểu nhóm (phẳng)**: các field liên tiếp dưới một heading nằm chung **một khối trắng** (dark: `secondarySystemGroupedBackground`),
+  ngăn bằng đường mảnh; heading là tiêu đề nhóm (title3 đậm) phía trên khối. Không viền (chỉ có viền khi Tương phản cao); field lỗi /
+  có ghi chú kiểm tra: vạch màu 3 pt bên trái + nền rất nhạt. Bảng đứng riêng ngoài khối.
+- Quy chuẩn iOS: bo góc chỉ 8 / 12 / 16 (`PMRadius`), khoảng cách 4 / 8 / 16 / 24 (`PMSpace`), màu chỉ lấy từ theme
+  (`alert`, `warning`, `attention`, `success`, `secondaryText`).
+- Hàng tiêu đề: nhãn **17 pt đậm** · `*` đỏ **ngay sau nhãn** · menu ⋯ màu xám trung tính.
+- **Một dòng phụ** dưới nhãn: badge mã (nhỏ, nhạt) · `method` · khoảng thường gặp, chữ footnote màu secondary **đủ tương phản** (≥ 4.5:1).
+- Nút phụ (Đọc chữ từ ảnh, Chụp, Chọn từ danh sách, điều hướng mục): nền màu nhấn nhạt + chữ màu nhấn, không dùng nền xám.
 - **Chế độ gọn** (mặc định bật, tắt trong Cài đặt): field number/integer/text ngắn không có parts → nhãn và ô nhập cùng một hàng
-  (ô rộng ~40%, đơn vị ở đuôi ô). Mục tiêu ≥ 6 field/màn điện thoại 6".
+  (ô rộng cố định ~132 pt, đơn vị ở đuôi ô; dòng phụ chạy hết chiều ngang bên dưới). Mục tiêu ≥ 6 field/màn điện thoại 6".
 - **Parts**: lưới 2 cột (3 cột nếu ≥ 3 part và màn ≥ 600 dp), nhãn part = tên (không kèm đơn vị), đơn vị ở đuôi ô.
 - Ô trống trông trống: placeholder là chữ hướng dẫn ("Nhập…", "Chọn tháng", "Chưa lấy vị trí"), **không bao giờ** hiển thị số 0 giả
   hoặc ngày mặc định khi chưa có giá trị (GPS, month, date, time, datetime).

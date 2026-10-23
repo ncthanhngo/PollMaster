@@ -23,15 +23,15 @@ struct SectionView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: PMSpace.m) {
                     if model.isLocked { LockedBanner(model: model) }
                     if let note = model.sectionNote(index) { Text(note).font(.footnote).secondaryText().padding(.bottom, 4) }
-                    ForEach(hasTable ? items.filter { !isComputed($0) } : items) { item in itemView(item) }
+                    ForEach(segments(hasTable ? items.filter { !isComputed($0) } : items)) { segmentView($0) }
                     if hasTable {
                         let results = items.filter(isComputed)
                         if !results.isEmpty {
                             Text("Kết quả").font(.footnote.weight(.semibold)).secondaryText().textCase(.uppercase).padding(.top, 10)
-                            ForEach(results) { itemView($0) }
+                            FieldGroupCard(data: results) { itemView($0) }
                         }
                     }
                 }
@@ -79,6 +79,37 @@ struct SectionView: View {
         .onDisappear { model.flush(); Task { await model.backup() } }
     }
 
+    /// A heading with the fields after it (one grouped block), or a table on its own.
+    private struct Segment: Identifiable {
+        let id: String
+        var heading: Item?
+        var fields: [Item] = []
+        var table: Item?
+    }
+
+    private func segments(_ list: [Item]) -> [Segment] {
+        var out: [Segment] = []
+        for item in list {
+            switch item {
+            case .heading: out.append(Segment(id: item.id, heading: item))
+            case .table: out.append(Segment(id: item.id, table: item))
+            case .field:
+                if let last = out.last, last.table == nil { out[out.count - 1].fields.append(item) }
+                else { out.append(Segment(id: "g-" + item.id, fields: [item])) }
+            }
+        }
+        return out
+    }
+
+    @ViewBuilder private func segmentView(_ seg: Segment) -> some View {
+        VStack(alignment: .leading, spacing: PMSpace.s) {
+            if let h = seg.heading { itemView(h) }
+            if !seg.fields.isEmpty { FieldGroupCard(data: seg.fields) { itemView($0) } }
+            if let t = seg.table { itemView(t) }
+        }
+        .padding(.top, seg.heading == nil ? 0 : PMSpace.s)
+    }
+
     @ViewBuilder private func itemView(_ item: Item) -> some View {
         switch item {
         case .field(let f):
@@ -91,9 +122,10 @@ struct SectionView: View {
         case .heading(let h):
             VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(h.title).font(.headline)
+                    Text(h.title).font(.title3.weight(.bold))
                     if let n = h.note { Text(n).font(.footnote).secondaryText() }
                 }
+                .padding(.horizontal, PMSpace.xs)
                 if let entry = h.roundEntry {
                     Picker("Lần đo", selection: Binding(get: { rounds[h.id] ?? 0 }, set: { rounds[h.id] = $0 })) {
                         ForEach(0..<entry.samples, id: \.self) { Text("Lần \($0 + 1)").tag($0) }
@@ -101,7 +133,6 @@ struct SectionView: View {
                     .pickerStyle(.segmented).controlSize(theme.oneHand ? .large : .regular)
                 }
             }
-            .padding(.top, 8)
         case .table(let t):
             TableSectionView(model: model, table: t, sectionId: sectionId).id(t.id)
         }

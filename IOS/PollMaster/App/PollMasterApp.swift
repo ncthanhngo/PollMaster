@@ -9,6 +9,8 @@ struct PollMasterApp: App {
     var body: some Scene {
         WindowGroup {
             ThemeHost(highContrast: env.settings.highContrast, oneHand: env.settings.oneHand) { RootView() }
+                // an explicit tint turns every .bordered button into a light brand fill instead of grey
+                .tint(Color.accentColor)
                 .appearance(env.settings.appearance)
                 .environment(env)
                 .task { env.applyDebugLaunchArguments() }

@@ -60,7 +60,7 @@ struct QuickEntryView: View {
     var body: some View {
         PinnedStopwatchScroll(model: model, stopwatch: stopwatchRow) {
             if model.isLocked { LockedBanner(model: model) }
-            ForEach(entries) { e in entryView(e) }
+            FieldGroupCard(data: entries) { e in entryView(e) }
             if !model.isLocked && !table.isFixed && !theme.oneHand { nextButton.padding(.top, 8) }
         }
         .safeAreaInset(edge: .bottom) {
@@ -84,17 +84,17 @@ struct QuickEntryView: View {
         switch e.field.type {
         case .singleChoice, .yesNo:
             VStack(alignment: .leading, spacing: 6) {
-                (Text(e.field.label).fontWeight(.semibold) + (e.field.required ? Text(" *").foregroundColor(.red) : Text(""))).font(.subheadline)
+                (Text(e.field.label).fontWeight(.semibold) + (e.field.required ? Text(" *").foregroundColor(theme.alert) : Text(""))).font(.body)
                 ScalarInput(field: e.field, value: Binding(get: { b.wrappedValue.v }, set: { b.wrappedValue.v = $0 }),
                             other: Binding(get: { b.wrappedValue.other }, set: { b.wrappedValue.other = $0 }), quick: true)
                     .disabled(model.isLocked)
             }
-            .cardBox()
+            .fieldContainer()
         case .video:
             VStack(alignment: .leading, spacing: 6) {
                 MediaInput(field: e.field, video: true, fieldValue: b, scope: scope, captureTitle: "Quay video lượt này").disabled(model.isLocked)
             }
-            .cardBox()
+            .fieldContainer()
         default:
             FieldCard(field: e.field, fv: b, scope: scope, showCode: false)
         }

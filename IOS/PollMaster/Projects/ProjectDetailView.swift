@@ -2,6 +2,7 @@ import SwiftUI
 import PollMasterCore
 
 struct ProjectDetailView: View {
+    @Environment(\.pmTheme) private var theme
     let projectId: String
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
@@ -32,12 +33,12 @@ struct ProjectDetailView: View {
                     ProjectDot(project: p, size: 16)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(p.name).font(.title3.bold())
-                        Text(p.code).font(.subheadline.monospaced()).secondaryText()
+                        Text(p.code).font(.footnote).secondaryText()
                     }
                 }
                 if let c = p.client { LabeledContent("Khách hàng", value: c) }
                 if let d = p.description { Text(d).font(.subheadline) }
-                if p.archived { Label("Đã lưu trữ", systemImage: "archivebox").foregroundStyle(.orange).font(.subheadline) }
+                if p.archived { Label("Đã lưu trữ", systemImage: "archivebox").foregroundStyle(theme.attention).font(.subheadline) }
             }
             Section {
                 HStack(spacing: 10) {

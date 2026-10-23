@@ -122,6 +122,7 @@ struct ProjectTitleButton: View {
             }
             .foregroundStyle(.primary)
         }
+        .tint(.primary)
         .accessibilityLabel("Dự án hiện tại: \(env.currentProject?.name ?? "Tất cả dự án")")
     }
 }
@@ -135,18 +136,14 @@ struct RecordRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             thumbnail
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(summary.title).font(.headline).lineLimit(1)
-                Text(summary.subtitle).font(.subheadline).secondaryText().lineLimit(summary.loadError == nil ? 1 : 3)
-                if let code = projectCode { Label(code, systemImage: "folder").font(.caption2.weight(.semibold)).secondaryText() }
+                Text(metaText).font(.footnote).secondaryText().lineLimit(summary.loadError == nil ? 1 : 3)
                 if summary.loadError == nil {
-                    HStack {
-                        Text("Cập nhật \(ISODate.format(summary.updatedAt, "dd/MM HH:mm"))")
-                        Spacer()
-                        Text("\(summary.progress.done)/\(summary.progress.total)").monospacedDigit()
+                    HStack(spacing: 8) {
+                        ProgressView(value: summary.progress.fraction)
+                        Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption).monospacedDigit().secondaryText()
                     }
-                    .font(.caption).secondaryText()
-                    ProgressView(value: summary.progress.fraction).tint(summary.status == .draft ? Color.accentColor : theme.success)
                 }
                 FlowLayout(spacing: 6) {
                     ForEach(chips, id: \.text) { c in StatusPill(text: c.text, color: c.color, neutral: c.text == "Nháp") }
@@ -154,6 +151,12 @@ struct RecordRow: View {
             }
         }
         .padding(.vertical, 6)
+    }
+
+    /// "BB-TDP-01 · 001/A · 23/10 22:13" (+ project code when the list spans all projects): one secondary line.
+    private var metaText: String {
+        guard summary.loadError == nil else { return summary.subtitle }
+        return ([projectCode, summary.subtitle, ISODate.format(summary.updatedAt, "dd/MM HH:mm")].compactMap { $0 }).joined(separator: " · ")
     }
 
     @ViewBuilder private var thumbnail: some View {
@@ -166,14 +169,14 @@ struct RecordRow: View {
 
     private var statusIcon: (name: String, tint: Color) {
         if summary.loadError != nil { return ("exclamationmark.triangle.fill", theme.alert) }
-        if summary.returned && summary.status == .draft { return ("arrow.uturn.backward.circle.fill", .orange) }
+        if summary.returned && summary.status == .draft { return ("arrow.uturn.backward.circle.fill", theme.attention) }
         return summary.status == .draft ? ("doc.text", theme.secondaryText) : ("checkmark.seal.fill", theme.success)
     }
 
     private var chips: [(text: String, color: Color)] {
         if summary.loadError != nil { return [("Lỗi đọc", theme.alert)] }
         var out: [(String, Color)] = []
-        if summary.returned && summary.status == .draft { out.append(("Cần sửa", .orange)) }
+        if summary.returned && summary.status == .draft { out.append(("Cần sửa", theme.attention)) }
         else { out.append(summary.status == .draft ? ("Nháp", .gray) : ("Hoàn thành", theme.success)) }
         if summary.needsBackup { out.append(("Chưa sao lưu", theme.warning)) }
         return out

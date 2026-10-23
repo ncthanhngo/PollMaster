@@ -17,8 +17,8 @@ struct SignaturePad: View {
                 }
             }
             .frame(height: 160)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.5)))
+            .background(Color.white, in: RoundedRectangle(cornerRadius: PMRadius.s))
+            .overlay(RoundedRectangle(cornerRadius: PMRadius.s).stroke(Color.secondary.opacity(0.5)))
             .overlay(alignment: .topLeading) {
                 if strokes.isEmpty && current.isEmpty { Text("Ký vào đây").font(.caption).foregroundStyle(.gray).padding(8) }
             }

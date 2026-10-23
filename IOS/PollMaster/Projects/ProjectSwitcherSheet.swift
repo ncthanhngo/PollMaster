@@ -49,7 +49,7 @@ struct ProjectSwitcherSheet: View {
             icon
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.headline)
-                if let subtitle { Text(subtitle).font(.caption.monospaced()).secondaryText() }
+                if let subtitle { Text(subtitle).font(.footnote).secondaryText() }
                 ProjectCounts(stats: stats)
             }
             Spacer()

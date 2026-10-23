@@ -52,7 +52,7 @@ struct SettingsView: View {
 
     private func badge(_ icon: String, _ tint: Color) -> some View {
         Image(systemName: icon).font(.footnote.weight(.semibold)).foregroundStyle(.white)
-            .frame(width: 28, height: 28).background(tint, in: RoundedRectangle(cornerRadius: 7)).accessibilityHidden(true)
+            .frame(width: 28, height: 28).background(tint, in: RoundedRectangle(cornerRadius: PMRadius.s)).accessibilityHidden(true)
     }
 
     /// Settings-app style row label: coloured icon square + title.
