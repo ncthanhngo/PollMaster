@@ -109,7 +109,10 @@ trap 'rm -rf "$unpacked"' EXIT
 unzip -q "$IPA" -d "$unpacked"
 app="$unpacked/Payload/PollMaster.app"
 
-codesign -dv --verbose=2 "$app" 2>&1 | grep -q "Authority=Apple Distribution" || {
+# Captured first: piping codesign into `grep -q` lets grep exit early, codesign takes SIGPIPE, and pipefail
+# reports a correctly signed app as unsigned.
+signature=$(codesign -dv --verbose=2 "$app" 2>&1) || true
+grep -q "Authority=Apple Distribution" <<<"$signature" || {
 	echo "not signed with an Apple Distribution certificate — not uploading" >&2; exit 1; }
 [[ "$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")" == "$BUNDLE_ID" ]] || {
 	echo "bundle id is not $BUNDLE_ID — not uploading" >&2; exit 1; }
