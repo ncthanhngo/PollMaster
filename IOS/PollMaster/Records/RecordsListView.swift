@@ -45,11 +45,11 @@ struct RecordsListView: View {
                 } else {
                     List(shown) { s in
                         if s.loadError != nil {
-                            RecordRow(summary: s, projectCode: nil)
+                            RecordRow(summary: s, project: nil)
                                 .swipeActions(edge: .trailing) { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                                 .contextMenu { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                         } else {
-                            NavigationLink(value: Route.editor(s.id)) { RecordRow(summary: s, projectCode: env.currentProjectId == nil ? env.project(id: s.projectId)?.code : nil) }
+                            NavigationLink(value: Route.editor(s.id)) { RecordRow(summary: s, project: env.project(id: s.projectId)) }
                                 .swipeActions(edge: .trailing) {
                                     Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s }
                                     Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }.tint(.blue)
@@ -116,7 +116,7 @@ struct ProjectTitleButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let p = env.currentProject { ProjectDot(project: p) } else { Image(systemName: "square.stack.3d.up").font(.footnote) }
+                if let p = env.currentProject { ProjectAvatar(project: p, size: 24) } else { Image(systemName: "square.stack.3d.up").font(.footnote) }
                 Text(env.currentProject?.name ?? "Tất cả dự án").font(.headline).lineLimit(1)
                 Image(systemName: "chevron.down").font(.caption2.weight(.bold))
             }
@@ -129,8 +129,8 @@ struct ProjectTitleButton: View {
 
 struct RecordRow: View {
     let summary: RecordSummary
-    /// Project code label, shown when the list spans all projects.
-    var projectCode: String?
+    /// The project the record belongs to: shown on every row, so it is always clear what the survey is for.
+    var project: Project?
     @Environment(\.pmTheme) private var theme
 
     var body: some View {
@@ -138,6 +138,13 @@ struct RecordRow: View {
             thumbnail
             VStack(alignment: .leading, spacing: 4) {
                 Text(summary.title).font(.headline).lineLimit(1)
+                if let p = project {
+                    HStack(spacing: 6) {
+                        ProjectAvatar(project: p, size: 18)
+                        Text(p.name).font(.footnote.weight(.semibold)).lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine).accessibilityLabel("Dự án \(p.name)")
+                }
                 Text(metaText).font(.footnote).secondaryText().lineLimit(summary.loadError == nil ? 1 : 3)
                 if summary.loadError == nil {
                     HStack(spacing: 8) {
@@ -153,10 +160,10 @@ struct RecordRow: View {
         .padding(.vertical, 6)
     }
 
-    /// "BB-TDP-01 · 001/A · 23/10 22:13" (+ project code when the list spans all projects): one secondary line.
+    /// "BB-TDP-01 · 001/A · 23/10 22:13": one secondary line.
     private var metaText: String {
         guard summary.loadError == nil else { return summary.subtitle }
-        return ([projectCode, summary.subtitle, ISODate.format(summary.updatedAt, "dd/MM HH:mm")].compactMap { $0 }).joined(separator: " · ")
+        return [summary.subtitle, ISODate.format(summary.updatedAt, "dd/MM HH:mm")].joined(separator: " · ")
     }
 
     @ViewBuilder private var thumbnail: some View {

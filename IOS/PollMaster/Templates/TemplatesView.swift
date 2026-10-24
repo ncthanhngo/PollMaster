@@ -15,26 +15,27 @@ struct TemplatesView: View {
     @State private var loadingURL = false
 
     private enum ImportSheet: Identifiable {
-        case paste, errors([String])
-        var id: String { if case .errors = self { return "errors" } else { return "paste" } }
+        case ai, paste, errors([String])
+        var id: String {
+            switch self { case .ai: "ai"; case .paste: "paste"; case .errors: "errors" }
+        }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                Section { AITemplateCard { sheet = .paste } }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
                 Section {
                     if env.templates.isEmpty {
                         ContentUnavailableView("Chưa có mẫu", systemImage: "doc.text",
-                                               description: Text("Nhấn + để nhập mẫu từ tệp, URL hoặc dán JSON."))
+                                               description: Text("Nhấn + để nhập mẫu, hoặc tạo mẫu bằng AI bên dưới."))
                     }
                     ForEach(env.templates) { t in
                         NavigationLink(value: t.key) { templateRow(t) }
                             .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
                     }
                 } header: { Text("Mẫu trên máy (\(env.templates.count))") }
+                // the AI flow stays one tap away but no longer pushes the templates down
+                Section { aiRow }
             }
             .listSectionSpacing(20)
             .overlay { loadingOverlay }
@@ -49,6 +50,7 @@ struct TemplatesView: View {
                         Button("Nhập từ tệp", systemImage: "doc") { pickingFile = true }
                         Button("Nhập từ URL", systemImage: "link") { urlText = ""; askingURL = true }
                         Button("Dán JSON", systemImage: "doc.on.clipboard") { sheet = .paste }
+                        Button("Tạo mẫu bằng AI", systemImage: "sparkles") { sheet = .ai }
                     } label: { Image(systemName: "plus") }
                 }
             }
@@ -63,6 +65,7 @@ struct TemplatesView: View {
             }
             .sheet(item: $sheet) { s in
                 switch s {
+                case .ai: AIGuideSheet { sheet = .paste }
                 case .paste: PasteTemplateSheet { importPasted($0) }
                 case .errors(let lines): ImportErrorsSheet(lines: lines)
                 }
@@ -81,6 +84,20 @@ struct TemplatesView: View {
             } message: { Text(message ?? "") }
             .confirmationDialog("Xóa mẫu này?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
                 Button("Xóa", role: .destructive) { if let d = deleting { env.deleteTemplate(d) }; deleting = nil }
+            }
+        }
+    }
+
+    private var aiRow: some View {
+        Button { sheet = .ai } label: {
+            HStack(spacing: 12) {
+                IconBadge(systemImage: "sparkles", size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Tạo mẫu bằng AI").font(.body.weight(.semibold)).foregroundStyle(Color.primary)
+                    Text("Claude hoặc ChatGPT viết mẫu từ mô tả của bạn").font(.footnote).secondaryText()
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).secondaryText()
             }
         }
     }

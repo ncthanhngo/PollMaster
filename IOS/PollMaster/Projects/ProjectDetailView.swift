@@ -30,7 +30,7 @@ struct ProjectDetailView: View {
         return List {
             Section {
                 HStack(spacing: 10) {
-                    ProjectDot(project: p, size: 16)
+                    ProjectAvatar(project: p, size: 56)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(p.name).font(.title3.bold())
                         Text(p.code).font(.footnote).secondaryText()

@@ -15,7 +15,22 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
     public static let generalId = "chung"
     public static let generalCode = "CHUNG"
     public static let generalName = "Chung"
-    public static let palette = ["#1B6B5A", "#1F5FA8", "#7B4FA3", "#C2571A", "#B8312F", "#5F6B73"]
+    /// Identity colours, all dark enough for white initials (>= 4.5:1). The first six are the original set.
+    public static let palette = ["#1B6B5A", "#1F5FA8", "#7B4FA3", "#C2571A", "#B8312F", "#5F6B73",
+                                 "#0E7490", "#A3367A", "#8A6D0B", "#3F4BA8"]
+
+    /// Colour for a new project: the first palette colour no project uses yet, else the least used one.
+    public static func nextColor(used: [String]) -> String {
+        let counts = used.reduce(into: [String: Int]()) { $0[$1.uppercased(), default: 0] += 1 }
+        return palette.min { counts[$0.uppercased(), default: 0] < counts[$1.uppercased(), default: 0] } ?? palette[0]
+    }
+
+    /// Up to two initials for the avatar: first letters of the first two words ("Khảo sát…" → "KS").
+    public static func initials(of name: String) -> String {
+        let words = name.split(whereSeparator: { $0.isWhitespace })
+        let letters = words.prefix(2).compactMap(\.first).map { String($0).uppercased() }
+        return letters.isEmpty ? "?" : letters.joined()
+    }
 
     public var schemaVersion = 1
     public var id: String

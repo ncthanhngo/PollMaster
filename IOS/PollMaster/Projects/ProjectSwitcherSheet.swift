@@ -18,13 +18,13 @@ struct ProjectSwitcherSheet: View {
             List {
                 if query.isEmpty {
                     Button { pick(nil) } label: {
-                        row(icon: AnyView(Image(systemName: "square.stack.3d.up").frame(width: 12)), title: "Tất cả dự án", subtitle: nil,
+                        row(icon: AnyView(IconBadge(systemImage: "square.stack.3d.up", tint: .gray, size: 36)), title: "Tất cả dự án", subtitle: nil,
                             stats: env.summaries.reduce(into: ProjectStats()) { s, r in s.addSummary(r) }, selected: env.currentProjectId == nil)
                     }
                 }
                 ForEach(shown) { p in
                     Button { pick(p.id) } label: {
-                        row(icon: AnyView(ProjectDot(project: p)), title: p.name, subtitle: p.code, stats: env.stats(of: p), selected: env.currentProjectId == p.id)
+                        row(icon: AnyView(ProjectAvatar(project: p, size: 36)), title: p.name, subtitle: p.code, stats: env.stats(of: p), selected: env.currentProjectId == p.id)
                     }
                 }
                 Section {

@@ -193,16 +193,18 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - **Tab**: `Phiếu khảo sát · Dự án · Mẫu · Cài đặt`.
 - **Dự án hiện tại**: tiêu đề tab Phiếu khảo sát = tên dự án (chấm màu dự án) + ▾. Chạm → sheet chọn dự án (tìm kiếm, mỗi dòng: tên, mã,
   số phiếu Nháp/Hoàn thành), mục "Tất cả dự án", nút "+ Dự án mới", "Nhập gói dự án". Lựa chọn được nhớ. Danh sách phiếu, bản đồ, nút +
-  đều theo dự án hiện tại ("Tất cả dự án": phiếu có nhãn mã dự án; nút + hỏi dự án trước).
+  đều theo dự án hiện tại (nút + hỏi dự án khi đang xem "Tất cả dự án"). **Mỗi phiếu luôn hiện avatar + tên dự án** (danh sách và đầu màn mục lục).
 - **Tab Dự án**: danh sách dự án (đang hoạt động trước, "Đã lưu trữ" thu gọn cuối), mỗi thẻ: chấm màu, tên, mã, khách hàng, số mẫu,
   số phiếu Nháp/Hoàn thành, hoạt động gần nhất. Nút + "Dự án mới" / "Nhập gói dự án".
 - **Tạo/Sửa dự án**: Tên (bắt buộc), Mã (tự sinh từ tên: bỏ dấu, in hoa, khoảng trắng → `-`, tối đa 16 ký tự; sửa được; kiểm trùng),
-  Khách hàng, Mô tả, Màu (6 màu chọn sẵn).
+  Khách hàng, Mô tả, Màu (10 màu chọn sẵn; dự án mới tự nhận màu chưa dự án nào dùng), **Ảnh đại diện** (iOS: chọn từ thư viện ảnh,
+  cắt vuông 256 px, lưu `avatar.jpg` cạnh project.json, không đi kèm gói dự án; không có ảnh → chữ cái đầu trên nền màu dự án).
 - **Chi tiết dự án**: thống kê (Nháp/Hoàn thành/Cần sửa, phiếu gần nhất) · **Mẫu của dự án** (thêm từ thư viện, gỡ, gợi ý bản mới) ·
   **Danh sách điểm** (nạp CSV, số điểm, xem/tìm, xóa; số điểm đã có phiếu / chưa) · Hành động: **Chia sẻ gói dự án**, **Xuất tổng hợp
   (Excel)** (+ tùy chọn kèm zip phiếu, lọc Hoàn thành), **Mở danh sách phiếu**, **Lưu trữ / Bỏ lưu trữ**, **Xóa dự án** (chỉ khi không còn
   phiếu; còn phiếu → gợi ý chuyển phiếu sang dự án khác hoặc lưu trữ).
 - **Chuyển phiếu sang dự án khác**: menu phiếu → "Chuyển dự án" (chỉ tới dự án có cùng mẫu; nếu không có → báo).
-- **Mẫu (thư viện)**: thêm dòng "Dùng trong: VGREEN-HN, CHUNG" mỗi mẫu; sau khi nhập/dán mẫu mới → hỏi "Thêm vào dự án …?" (chọn nhiều).
+- **Mẫu (thư viện)**: danh sách mẫu đứng đầu tab; "Tạo mẫu bằng AI" thu gọn thành 1 hàng bên dưới (chạm → sheet 2 bước Gửi / Dán);
+  dòng "Dùng trong VGREEN-HN, CHUNG" mỗi mẫu (không đủ chỗ → "Dùng trong N dự án"); sau khi nhập/dán mẫu mới → hỏi "Thêm vào dự án …?" (chọn nhiều).
 - Settings "Danh sách điểm" chuyển vào chi tiết dự án (Cài đặt bỏ mục này).
 - Mở tệp `.pmproject` từ app khác → mở app, hiện xem trước (tên, mã, số mẫu, số điểm) + nút Nhập.

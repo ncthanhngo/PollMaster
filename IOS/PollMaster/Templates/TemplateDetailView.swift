@@ -47,7 +47,7 @@ struct TemplateDetailView: View {
                 Section("Dùng trong dự án") {
                     ForEach(projects) { p in
                         HStack(spacing: 10) {
-                            ProjectDot(project: p)
+                            ProjectAvatar(project: p, size: 28)
                             Text(p.name)
                             Spacer()
                             Text(p.code).font(.caption).secondaryText()

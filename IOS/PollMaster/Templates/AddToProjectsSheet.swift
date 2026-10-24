@@ -16,7 +16,7 @@ struct AddToProjectsSheet: View {
                         let has = p.templates.contains(TemplateRef(template))
                         Button { if !picked.insert(p.id).inserted { picked.remove(p.id) } } label: {
                             HStack(spacing: 10) {
-                                ProjectDot(project: p)
+                                ProjectAvatar(project: p, size: 32)
                                 VStack(alignment: .leading) { Text(p.name).font(.headline); Text(p.code).font(.footnote).secondaryText() }
                                 Spacer()
                                 if has { Text("Đã có").font(.caption).secondaryText() }

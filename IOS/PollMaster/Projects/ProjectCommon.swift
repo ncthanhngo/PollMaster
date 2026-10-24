@@ -21,22 +21,39 @@ struct ProjectDot: View {
     }
 }
 
-/// "2 Nháp · 1 Cần sửa · 5 Hoàn thành" counters of a project, split the same way as the project detail statistics.
+/// Project identity: its photo, else white initials on the project colour (rounded square, like an app icon).
+struct ProjectAvatar: View {
+    let project: Project?
+    var size: CGFloat = 40
+    @Environment(AppEnvironment.self) private var env
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+        Group {
+            if let p = project, let img = env.projectAvatars[p.id] {
+                Image(uiImage: img).resizable().scaledToFill()
+            } else {
+                Text(project.map { Project.initials(of: $0.name) } ?? "∗")
+                    .font(.system(size: size * 0.4, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                    .minimumScaleFactor(0.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(project?.tint ?? .gray)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(shape)
+        .accessibilityHidden(true)
+    }
+}
+
+/// "2 nháp · 1 cần sửa · 5 hoàn thành" counters of a project, split the same way as the project detail statistics.
 struct ProjectCounts: View {
     let stats: ProjectStats
     var body: some View {
-        // narrow rows (switcher sheet) fall back to one short line instead of wrapping a label mid-word
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 10) {
-                Label("\(stats.draft) Nháp", systemImage: "pencil")
-                if stats.returned > 0 { Label("\(stats.returned) Cần sửa", systemImage: "arrow.uturn.backward") }
-                Label("\(stats.completed) Hoàn thành", systemImage: "checkmark.circle")
-            }
-            .fixedSize()
-            Text("\(stats.draft) nháp" + (stats.returned > 0 ? " · \(stats.returned) cần sửa" : "") + " · \(stats.completed) xong")
-                .lineLimit(1)
-        }
-        .font(.caption).secondaryText().labelStyle(.titleAndIcon)
+        // one short line everywhere (cards, switcher), same wording as the statistics
+        Text("\(stats.draft) nháp" + (stats.returned > 0 ? " · \(stats.returned) cần sửa" : "") + " · \(stats.completed) hoàn thành")
+            .lineLimit(1).minimumScaleFactor(0.85)
+            .font(.caption).secondaryText()
     }
 }
 

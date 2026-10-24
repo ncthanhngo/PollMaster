@@ -14,7 +14,7 @@ struct NewRecordSheet: View {
                         TemplatePicker(project: p, close: { dismiss() })
                     } label: {
                         HStack(spacing: 10) {
-                            ProjectDot(project: p)
+                            ProjectAvatar(project: p, size: 32)
                             VStack(alignment: .leading) { Text(p.name).font(.headline); Text(p.code).font(.caption.monospaced()).secondaryText() }
                         }
                     }

@@ -27,6 +27,22 @@ public struct ProjectStore: Sendable {
     public func folder(_ id: String) -> URL { dir.appendingPathComponent(id, isDirectory: true) }
     public func sites(_ id: String) -> SiteStore { SiteStore(file: folder(id).appendingPathComponent("sites.json")) }
 
+    /// Optional photo avatar (`avatar.jpg` next to project.json); nil when the project uses its initials.
+    public func avatarURL(_ id: String) -> URL? {
+        let url = folder(id).appendingPathComponent("avatar.jpg")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    public func setAvatar(_ jpeg: Data, for id: String) throws {
+        try FileManager.default.createDirectory(at: folder(id), withIntermediateDirectories: true)
+        try jpeg.write(to: folder(id).appendingPathComponent("avatar.jpg"), options: .atomic)
+    }
+
+    public func removeAvatar(_ id: String) throws {
+        guard let url = avatarURL(id) else { return }
+        try FileManager.default.removeItem(at: url)
+    }
+
     /// Newest first.
     public func list() -> [Project] {
         let ids = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []

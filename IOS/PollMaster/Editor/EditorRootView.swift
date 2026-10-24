@@ -135,6 +135,13 @@ struct EditorRootView: View {
     /// Progress at a glance plus the "continue where I left off" button (the screen's one primary action).
     private var progressHero: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let p = env.project(id: model.record.projectId) {
+                HStack(spacing: 8) {
+                    ProjectAvatar(project: p, size: 24)
+                    Text(p.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                }
+                .accessibilityElement(children: .combine).accessibilityLabel("Dự án \(p.name)")
+            }
             HStack(alignment: .firstTextBaseline) {
                 Text("\(model.progress.done)").font(.largeTitle.weight(.bold)).monospacedDigit()
                 Text("/ \(model.progress.total) bắt buộc").font(.subheadline).secondaryText()

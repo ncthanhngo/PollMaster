@@ -75,3 +75,17 @@ struct AITemplateCard: View {
         .contentShape(Capsule())
     }
 }
+
+/// The AI flow opened from the Templates tab: the two-step card in a half-height sheet.
+struct AIGuideSheet: View {
+    let onPaste: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView { AITemplateCard(onPaste: onPaste).padding() }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Đóng") { dismiss() } } }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}

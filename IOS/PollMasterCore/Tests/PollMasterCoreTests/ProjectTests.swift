@@ -242,3 +242,43 @@ import Foundation
         #expect(ProjectStore(root: root).sites(g.id).load().map(\.code) == ["S1", "S2"])
     }
 }
+
+@Suite struct ProjectLookTests {
+    @Test func nextColorSkipsColoursInUse() {
+        #expect(Project.nextColor(used: []) == Project.palette[0])
+        #expect(Project.nextColor(used: [Project.palette[0], Project.palette[1]]) == Project.palette[2])
+        // case-insensitive, unknown colours ignored
+        #expect(Project.nextColor(used: [Project.palette[0].lowercased(), "#000000"]) == Project.palette[1])
+    }
+
+    @Test func nextColorWhenAllUsedPicksLeastUsed() {
+        let used = Project.palette + Project.palette.dropFirst(1)   // every colour once, all but the first twice
+        #expect(Project.nextColor(used: used) == Project.palette[0])
+    }
+
+    @Test func paletteColoursAreDistinct() {
+        #expect(Set(Project.palette.map { $0.uppercased() }).count == Project.palette.count)
+        #expect(Project.palette.count >= 10)
+    }
+
+    @Test func initialsFromName() {
+        #expect(Project.initials(of: "Khảo sát tủ đổi pin Hà Nội") == "KS")
+        #expect(Project.initials(of: "Chung") == "C")
+        #expect(Project.initials(of: "  trạm sạc  ") == "TS")
+        #expect(Project.initials(of: "") == "?")
+    }
+
+    @Test func avatarFileLifecycle() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = ProjectStore(root: root)
+        let p = try store.create(Project(code: "AV", name: "Avatar"))
+        #expect(store.avatarURL(p.id) == nil)
+        try store.setAvatar(Data([0xFF, 0xD8, 0xFF]), for: p.id)
+        let url = try #require(store.avatarURL(p.id))
+        #expect(try Data(contentsOf: url) == Data([0xFF, 0xD8, 0xFF]))
+        try store.removeAvatar(p.id)
+        #expect(store.avatarURL(p.id) == nil)
+        try store.removeAvatar(p.id)   // removing twice is fine
+    }
+}

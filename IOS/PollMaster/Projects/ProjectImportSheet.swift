@@ -39,7 +39,7 @@ struct ProjectImportSheet: View {
     @ViewBuilder private func preview(_ b: ProjectBundle, _ plan: ProjectImporter.Plan) -> some View {
         Section {
             HStack(spacing: 10) {
-                ProjectDot(project: b.project, size: 16)
+                ProjectAvatar(project: b.project, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(b.project.name).font(.title3.bold())
                     Text(b.project.code).font(.subheadline.monospaced()).secondaryText()

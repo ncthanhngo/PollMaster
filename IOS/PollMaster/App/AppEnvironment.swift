@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Observation
 import PollMasterCore
 
@@ -39,6 +40,8 @@ final class AppEnvironment {
 
     var templates: [Template] = []
     var projects: [Project] = []
+    /// Photo avatars by project id, read once per reload (rows would otherwise hit the disk on every render).
+    var projectAvatars: [String: UIImage] = [:]
     var summaries: [RecordSummary] = []
     private(set) var projectStats: [String: ProjectStats] = [:]
     /// Planned sites per project id, loaded on `reload()`.
@@ -99,6 +102,9 @@ final class AppEnvironment {
         templates = templateStore.list()
         let byKey = Dictionary(templates.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
         projects = projectStore.list()
+        projectAvatars = Dictionary(uniqueKeysWithValues: projects.compactMap { p in
+            projectStore.avatarURL(p.id).flatMap { UIImage(contentsOfFile: $0.path) }.map { (p.id, $0) }
+        })
         if let id = currentProjectId, !projects.contains(where: { $0.id == id }) { currentProjectId = nil }
         let general = projects.last(where: \.isGeneral)?.id ?? projects.last?.id ?? ""
         siteCache = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, projectStore.sites($0.id).load()) })

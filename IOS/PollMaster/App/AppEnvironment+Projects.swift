@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import PollMasterCore
 
 /// A `.pmproject` read from disk: what the preview sheet shows, or why it cannot be imported.
@@ -66,6 +67,18 @@ extension AppEnvironment {
 
     /// Only an empty project can be deleted; otherwise explains what to do instead.
     @discardableResult
+    /// Square-cropped, 256 px JPEG of the chosen photo; nil removes it (back to initials).
+    func setAvatar(_ image: UIImage?, for p: Project) {
+        do {
+            if let image, let jpeg = image.squareThumbnail(256).jpegData(compressionQuality: 0.85) {
+                try projectStore.setAvatar(jpeg, for: p.id)
+            } else {
+                try projectStore.removeAvatar(p.id)
+            }
+            reload()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
     func deleteProject(_ p: Project) -> Bool {
         do {
             try projectStore.delete(p.id, recordCount: stats(of: p).total)
@@ -167,5 +180,18 @@ extension AppEnvironment {
             if !r.droppedRefs.isEmpty { note += " Bỏ \(r.droppedRefs.count) mẫu không có trong gói." }
             infoMessage = note
         } catch { incomingBundle = IncomingBundle(errors: [error.localizedDescription]) }
+    }
+}
+
+extension UIImage {
+    /// Centre square crop scaled to `side` points (scale 1).
+    func squareThumbnail(_ side: CGFloat) -> UIImage {
+        let edge = min(size.width, size.height)
+        let crop = CGRect(x: (size.width - edge) / 2, y: (size.height - edge) / 2, width: edge, height: edge)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
+            let k = side / edge
+            draw(in: CGRect(x: -crop.minX * k, y: -crop.minY * k, width: size.width * k, height: size.height * k))
+        }
     }
 }

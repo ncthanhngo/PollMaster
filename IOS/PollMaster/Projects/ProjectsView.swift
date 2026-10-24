@@ -65,7 +65,7 @@ struct ProjectCard: View {
     var body: some View {
         let stats = env.stats(of: project)
         HStack(alignment: .top, spacing: 12) {
-            RoundedRectangle(cornerRadius: 2).fill(project.tint).frame(width: 4).accessibilityHidden(true)
+            ProjectAvatar(project: project, size: 48)
             VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(project.name).font(.headline).lineLimit(2)
