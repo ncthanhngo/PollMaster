@@ -23,8 +23,8 @@ struct TemplatesView: View {
         NavigationStack {
             List {
                 Section { AITemplateCard { sheet = .paste } }
-                    .listRowBackground(LinearGradient(colors: [Color.accentColor.opacity(0.14), theme.cardBackground],
-                                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 Section {
                     if env.templates.isEmpty {
                         ContentUnavailableView("Chưa có mẫu", systemImage: "doc.text",
@@ -101,9 +101,13 @@ struct TemplatesView: View {
                 if !used.isEmpty {
                     HStack(spacing: 6) {
                         HStack(spacing: -3) { ForEach(used.prefix(4)) { ProjectDot(project: $0, size: 10) } }
-                        Text("Dùng trong: " + used.map(\.code).joined(separator: ", ")).lineLimit(1).truncationMode(.tail)
+                        // codes while they fit, else a count: a cut-off code list ("KH…") reads as broken
+                        ViewThatFits(in: .horizontal) {
+                            Text("Dùng trong " + used.map(\.code).joined(separator: ", ")).lineLimit(1)
+                            Text("Dùng trong \(used.count) dự án").lineLimit(1)
+                        }
                     }
-                    .font(.caption).secondaryText()
+                    .font(.footnote).secondaryText()
                 }
             }
         }
