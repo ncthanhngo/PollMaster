@@ -53,7 +53,7 @@ struct EditorRootView: View {
                         HStack(spacing: 12) {
                             sectionIcon(s.id)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(s.title).font(.body.weight(.medium))
+                                Text(s.title).font(.body.weight(.medium)).lineLimit(1).minimumScaleFactor(0.92)
                                 statsLine(s.id)
                             }
                             Spacer(minLength: 4)

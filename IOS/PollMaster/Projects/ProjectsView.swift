@@ -64,23 +64,32 @@ struct ProjectCard: View {
 
     var body: some View {
         let stats = env.stats(of: project)
-        HStack(alignment: .top, spacing: 12) {
-            ProjectAvatar(project: project, size: 48)
-            VStack(alignment: .leading, spacing: 6) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name).font(.headline).lineLimit(2)
-                    Text([project.code, project.client].compactMap { $0 }.joined(separator: " · ")).font(.subheadline).secondaryText().lineLimit(1)
-                }
+        // three single lines: name · code, client, templates, sites · counts and last activity
+        HStack(spacing: 12) {
+            ProjectAvatar(project: project, size: 44)
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    StatusPill(text: "\(project.templates.count) mẫu", neutral: true)
-                    StatusPill(text: "\(env.sites(forProject: project.id).count) điểm", neutral: true)
-                    if project.archived { StatusPill(text: "Đã lưu trữ", neutral: true) }
+                    Text(project.name).font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
+                    if project.archived { StatusPill(text: "Lưu trữ", neutral: true).fixedSize() }
                 }
-                ProjectCounts(stats: stats)
-                Text(stats.latestText).font(.caption2).secondaryText()
+                // drop the less useful parts instead of cutting a word in half
+                let head = [project.code, project.client].compactMap { $0 }
+                let extra = ["\(project.templates.count) mẫu", "\(env.sites(forProject: project.id).count) điểm"]
+                ViewThatFits(in: .horizontal) {
+                    Text((head + extra).joined(separator: " · ")).lineLimit(1)
+                    Text(head.joined(separator: " · ")).lineLimit(1)
+                    Text(project.code).lineLimit(1)
+                }
+                .font(.footnote).secondaryText()
+                HStack(spacing: 4) {
+                    ProjectCounts(stats: stats)
+                    if let latest = stats.latest {
+                        Text("· \(ISODate.format(latest, "dd/MM"))").font(.caption).secondaryText().fixedSize()
+                    }
+                }
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
         .opacity(project.archived ? 0.7 : 1)
     }
 }

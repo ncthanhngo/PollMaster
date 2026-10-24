@@ -24,18 +24,19 @@ struct TemplatesView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section { aiRow }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 Section {
                     if env.templates.isEmpty {
                         ContentUnavailableView("Chưa có mẫu", systemImage: "doc.text",
-                                               description: Text("Nhấn + để nhập mẫu, hoặc tạo mẫu bằng AI bên dưới."))
+                                               description: Text("Nhấn + để nhập mẫu, hoặc tạo mẫu bằng AI."))
                     }
                     ForEach(env.templates) { t in
                         NavigationLink(value: t.key) { templateRow(t) }
                             .swipeActions { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = t } }
                     }
                 } header: { Text("Mẫu trên máy (\(env.templates.count))") }
-                // the AI flow stays one tap away but no longer pushes the templates down
-                Section { aiRow }
             }
             .listSectionSpacing(20)
             .overlay { loadingOverlay }
@@ -88,47 +89,48 @@ struct TemplatesView: View {
         }
     }
 
+    /// One-line brand strip at the top: the AI flow is the first thing offered, at the height of a single row.
     private var aiRow: some View {
         Button { sheet = .ai } label: {
-            HStack(spacing: 12) {
-                IconBadge(systemImage: "sparkles", size: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Tạo mẫu bằng AI").font(.body.weight(.semibold)).foregroundStyle(Color.primary)
-                    Text("Claude hoặc ChatGPT viết mẫu từ mô tả của bạn").font(.footnote).secondaryText()
-                }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).secondaryText()
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles").font(.body.weight(.semibold))
+                Text("Tạo mẫu bằng AI").font(.body.weight(.semibold)).lineLimit(1)
+                Spacer(minLength: 8)
+                Text("Bắt đầu").font(.subheadline.weight(.semibold)).lineLimit(1)
+                Image(systemName: "chevron.right").font(.footnote.weight(.bold))
             }
+            .foregroundStyle(.white)
+            .padding(.horizontal, PMSpace.m)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(theme.highContrast ? AnyShapeStyle(Color.black) : AnyShapeStyle(LinearGradient(
+                colors: [Color(red: 0.13, green: 0.50, blue: 0.42), Color(red: 0.08, green: 0.32, blue: 0.27)],
+                startPoint: .leading, endPoint: .trailing)), in: RoundedRectangle(cornerRadius: PMRadius.m))
         }
+        .buttonStyle(.plain)
+        .accessibilityHint("Gửi hướng dẫn cho AI rồi dán JSON kết quả")
     }
 
+    /// Two lines, never wrapped: title (full width), then "BB-TDP-01 · v1.2 · 180 trường" + avatars of the projects using it.
     private func templateRow(_ t: Template) -> some View {
         let old = !env.newestTemplates.contains { $0.key == t.key }
-        return HStack(alignment: .top, spacing: 12) {
-            IconBadge(systemImage: "doc.text.fill", tint: old ? theme.secondaryText : .accentColor)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(t.title).font(.headline).lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(t.id).font(.caption.weight(.medium)).secondaryText()
-                    StatusPill(text: "v\(t.version)", color: .accentColor)
-                    StatusPill(text: "\(t.displayFieldCount) trường", neutral: true)
-                    if old { StatusPill(text: "Bản cũ", color: theme.warning) }
-                }
-                let used = env.projects(using: t)
-                if !used.isEmpty {
-                    HStack(spacing: 6) {
-                        HStack(spacing: -3) { ForEach(used.prefix(4)) { ProjectDot(project: $0, size: 10) } }
-                        // codes while they fit, else a count: a cut-off code list ("KH…") reads as broken
-                        ViewThatFits(in: .horizontal) {
-                            Text("Dùng trong " + used.map(\.code).joined(separator: ", ")).lineLimit(1)
-                            Text("Dùng trong \(used.count) dự án").lineLimit(1)
-                        }
+        let used = env.projects(using: t)
+        return HStack(spacing: 12) {
+            IconBadge(systemImage: "doc.text.fill", tint: old ? theme.secondaryText : .accentColor, size: 36)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(t.title).font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                HStack(spacing: 8) {
+                    (Text("\(t.id) · v\(t.version) · \(t.displayFieldCount) trường")
+                        + (old ? Text(" · Bản cũ").foregroundColor(theme.warning) : Text("")))
+                        .font(.footnote).secondaryText().lineLimit(1)
+                    if !used.isEmpty {
+                        HStack(spacing: -3) { ForEach(used.prefix(3)) { ProjectAvatar(project: $0, size: 16) } }
+                            .accessibilityElement().accessibilityLabel("Dùng trong \(used.count) dự án: \(used.map(\.name).joined(separator: ", "))")
                     }
-                    .font(.footnote).secondaryText()
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder private var loadingOverlay: some View {

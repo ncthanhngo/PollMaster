@@ -133,44 +133,51 @@ struct RecordRow: View {
     var project: Project?
     @Environment(\.pmTheme) private var theme
 
+    /// Three lines, none wrapping: title · project + date · status, backup flag and progress.
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             thumbnail
-            VStack(alignment: .leading, spacing: 4) {
-                Text(summary.title).font(.headline).lineLimit(1)
-                if let p = project {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(summary.title).font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
+                if summary.loadError != nil {
+                    Text(summary.subtitle).font(.footnote).secondaryText().lineLimit(3)
+                } else {
                     HStack(spacing: 6) {
-                        ProjectAvatar(project: p, size: 18)
-                        Text(p.name).font(.footnote.weight(.semibold)).lineLimit(1)
+                        if let p = project {
+                            ProjectAvatar(project: p, size: 16)
+                            // full name when it fits, else the short code, never a cut-off name
+                            ViewThatFits(in: .horizontal) {
+                                Text(p.name).lineLimit(1)
+                                Text(p.code).lineLimit(1)
+                            }
+                            Text("·")
+                        }
+                        Text(ISODate.format(summary.updatedAt, "dd/MM HH:mm")).fixedSize()
                     }
-                    .accessibilityElement(children: .combine).accessibilityLabel("Dự án \(p.name)")
+                    .font(.footnote).secondaryText()
+                    .accessibilityElement(children: .combine)
                 }
-                Text(metaText).font(.footnote).secondaryText().lineLimit(summary.loadError == nil ? 1 : 3)
-                if summary.loadError == nil {
-                    HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    ForEach(chips, id: \.text) { c in StatusPill(text: c.text, color: c.color, neutral: c.text == "Nháp").fixedSize() }
+                    if summary.needsBackup {
+                        Image(systemName: "icloud.slash").font(.footnote.weight(.semibold)).foregroundStyle(theme.warning)
+                            .accessibilityLabel("Chưa sao lưu")
+                    }
+                    if summary.loadError == nil {
                         ProgressView(value: summary.progress.fraction)
-                        Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption).monospacedDigit().secondaryText()
+                        Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption).monospacedDigit().secondaryText().fixedSize()
                     }
-                }
-                FlowLayout(spacing: 6) {
-                    ForEach(chips, id: \.text) { c in StatusPill(text: c.text, color: c.color, neutral: c.text == "Nháp") }
                 }
             }
         }
-        .padding(.vertical, 6)
-    }
-
-    /// "BB-TDP-01 · 001/A · 23/10 22:13": one secondary line.
-    private var metaText: String {
-        guard summary.loadError == nil else { return summary.subtitle }
-        return [summary.subtitle, ISODate.format(summary.updatedAt, "dd/MM HH:mm")].joined(separator: " · ")
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder private var thumbnail: some View {
         if let url = summary.thumbnail {
-            Thumbnail(url: url, video: false, size: 48)
+            Thumbnail(url: url, video: false, size: 44)
         } else {
-            IconBadge(systemImage: statusIcon.name, tint: statusIcon.tint, size: 48)
+            IconBadge(systemImage: statusIcon.name, tint: statusIcon.tint, size: 44)
         }
     }
 
@@ -185,7 +192,6 @@ struct RecordRow: View {
         var out: [(String, Color)] = []
         if summary.returned && summary.status == .draft { out.append(("Cần sửa", theme.attention)) }
         else { out.append(summary.status == .draft ? ("Nháp", .gray) : ("Hoàn thành", theme.success)) }
-        if summary.needsBackup { out.append(("Chưa sao lưu", theme.warning)) }
         return out
     }
 }

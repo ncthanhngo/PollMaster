@@ -73,11 +73,11 @@ struct TemplateDetailView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                IconBadge(systemImage: "doc.text.fill", size: 56)
+            HStack(alignment: .top, spacing: 12) {
+                IconBadge(systemImage: "doc.text.fill", size: 44)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(template.title).font(.title3.weight(.bold))
-                    if let s = template.subtitle { Text(s).font(.subheadline).secondaryText() }
+                    Text(template.title).font(.headline).lineLimit(2).minimumScaleFactor(0.85)
+                    if let s = template.subtitle { Text(s).font(.footnote).secondaryText().lineLimit(2) }
                     HStack(spacing: 6) {
                         Text(template.id).font(.caption.weight(.medium)).secondaryText()
                         StatusPill(text: "v\(template.version)", color: .accentColor)
@@ -95,10 +95,10 @@ struct TemplateDetailView: View {
 
     private func sectionRow(icon: String, title: String, detail: String) -> some View {
         HStack(spacing: 12) {
-            IconBadge(systemImage: icon, size: 32)
-            Text(title).font(.subheadline)
+            IconBadge(systemImage: icon, size: 28)
+            Text(title).font(.subheadline).lineLimit(1).minimumScaleFactor(0.92)
             Spacer(minLength: 8)
-            Text(detail).font(.caption).secondaryText().monospacedDigit()
+            Text(detail).font(.caption).secondaryText().monospacedDigit().fixedSize()
         }
     }
 }
