@@ -56,6 +56,13 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 ./gradlew lint            # report: app/build/reports/lint-results-debug.html
 ```
 
+## Release (APK on GitHub)
+
+`./release-apk.sh` (or `/rl` in Claude Code, which also ships iOS to TestFlight): tests, builds a release APK signed with
+`~/.android/pollmaster-release.jks` (password in the keychain, one-time setup at the top of the script), and publishes it
+as GitHub release `android-v<versionName>-<build>`; the build number is the commit count. Back the keystore up: without it
+installed apps cannot be updated.
+
 ## Run on an emulator / device
 
 ```sh

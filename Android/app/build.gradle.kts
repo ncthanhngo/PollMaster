@@ -13,13 +13,26 @@ android {
         applicationId = "com.ncthanhngo.pollmaster"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        // release-apk.sh passes the commit count, like the iOS build number
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = "1.0.0"
+    }
+
+    // Release key lives outside the repo; release-apk.sh exports these from the keychain.
+    val keystore = System.getenv("POLLMASTER_KEYSTORE")?.let(::file)?.takeIf { it.isFile }
+    signingConfigs {
+        if (keystore != null) create("release") {
+            storeFile = keystore
+            storePassword = System.getenv("POLLMASTER_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("POLLMASTER_KEY_ALIAS") ?: "pollmaster"
+            keyPassword = System.getenv("POLLMASTER_KEYSTORE_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
