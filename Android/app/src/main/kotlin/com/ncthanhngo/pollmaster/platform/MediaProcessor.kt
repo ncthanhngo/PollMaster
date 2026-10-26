@@ -58,6 +58,19 @@ class MediaProcessor(private val context: Context, private val settings: Setting
         return Media("media/${dest.name}", takenAt, location?.latitude, location?.longitude)
     }
 
+    /** Centre square crop of a picked image, [side] px, as JPEG (project avatar). Deletes [src]. */
+    fun squareJpeg(src: File, side: Int = 256): ByteArray {
+        try {
+            val full = decode(src, side * 4)
+            val edge = minOf(full.width, full.height)
+            val crop = Bitmap.createBitmap(full, (full.width - edge) / 2, (full.height - edge) / 2, edge, edge)
+            val square = Bitmap.createScaledBitmap(crop, side, side, true)
+            return java.io.ByteArrayOutputStream().also { square.compress(Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+        } finally {
+            src.delete()
+        }
+    }
+
     /** Moves a video into the record media folder. */
     fun finishVideo(src: File, dest: File, location: android.location.Location?, takenAt: String): Media {
         dest.parentFile?.mkdirs()

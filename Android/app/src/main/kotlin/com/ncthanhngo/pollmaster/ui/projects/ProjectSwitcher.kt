@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,11 +31,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectStats
+import com.ncthanhngo.pollmaster.ui.common.IconBadge
 
 /** Sheet to pick the current project of the records tab: search, "Tất cả dự án", new project, import package. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,8 +68,7 @@ fun ProjectSwitcherSheet(
                     SwitcherRow(stringResource(R.string.project_all), null, null, currentId == null, null) { onSelect(null) }
                 }
                 items(shown, key = { it.id }) { p ->
-                    val s = statsOf(p)
-                    SwitcherRow(p.name, p.code, p.color, currentId == p.id, stringResource(R.string.project_row_counts, s.draft, s.completed)) { onSelect(p.id) }
+                    SwitcherRow(p.name, p.code, p, currentId == p.id, projectCounts(statsOf(p))) { onSelect(p.id) }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -83,17 +86,17 @@ fun ProjectSwitcherSheet(
 }
 
 @Composable
-private fun SwitcherRow(name: String, code: String?, color: String?, selected: Boolean, counts: String?, onClick: () -> Unit) {
+private fun SwitcherRow(name: String, code: String?, project: Project?, selected: Boolean, counts: String?, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (code != null) ProjectDot(color) else ProjectDot("#9AA5A2")
+        if (project != null) ProjectAvatar(project, 36.dp) else IconBadge(Icons.Filled.Layers, tint = Color.Gray, size = 36.dp)
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleSmall)
-            val sub = listOfNotNull(code, counts).joinToString(" · ")
-            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            code?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            counts?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         if (selected) Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
     }

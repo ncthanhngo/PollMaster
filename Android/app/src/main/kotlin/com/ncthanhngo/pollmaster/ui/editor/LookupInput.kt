@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -47,7 +49,7 @@ fun LookupInput(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv
             result.onSuccess { choosing = true }
                 .onFailure { Toast.makeText(context, context.getString(R.string.settings_sites_error, it.message.orEmpty()), Toast.LENGTH_LONG).show() }
         }
-        OutlinedButton(enabled = enabled, onClick = { if (env.sites.isEmpty()) loadCsv() else choosing = true }) {
+        FilledTonalButton(enabled = enabled, colors = accentTonalColors(), onClick = { if (env.sites.isEmpty()) loadCsv() else choosing = true }) {
             Text(stringResource(if (env.sites.isEmpty()) R.string.lookup_load_csv else R.string.lookup_choose))
         }
     }

@@ -61,6 +61,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var askUrl by rememberSaveable { mutableStateOf(false) }
     var askPaste by rememberSaveable { mutableStateOf(false) }
+    var aiGuide by rememberSaveable { mutableStateOf(false) }
     var state by remember { mutableStateOf<ImportState?>(null) }
     val projects by container.projects.projects.collectAsState()
     var offerAdd by remember { mutableStateOf<Template?>(null) }
@@ -106,13 +107,14 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                     )
                     DropdownMenuItem(text = { Text(stringResource(R.string.import_url)) }, onClick = { menu = false; askUrl = true })
                     DropdownMenuItem(text = { Text(stringResource(R.string.paste_json)) }, onClick = { menu = false; askPaste = true })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.ai_card_title)) }, onClick = { menu = false; aiGuide = true })
                 }
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
             LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                item(key = "ai-guide") { AiGuideCard(onPaste = { askPaste = true }) }
+                item(key = "ai-guide") { AiGuideStrip { aiGuide = true } }
                 if (templates.isEmpty()) {
                     item(key = "empty") { Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(8.dp)) }
                 }
@@ -137,6 +139,8 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     offerAdd?.let { AddToProjectsDialog(it, projects) { offerAdd = null } }
 
     if (askUrl) UrlDialog(onDismiss = { askUrl = false }, onSubmit = { url -> guarded { container.templates.download(url) } })
+
+    if (aiGuide) AiGuideSheet(onPaste = { askPaste = true }, onDismiss = { aiGuide = false })
 
     if (askPaste) PasteJsonDialog(onDismiss = { askPaste = false }, onSubmit = { importJson(it) })
 

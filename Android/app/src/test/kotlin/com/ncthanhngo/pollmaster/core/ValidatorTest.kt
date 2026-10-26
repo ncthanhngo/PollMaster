@@ -133,4 +133,11 @@ class ValidatorTest {
     @Test fun requiredFieldsExistInTemplate() {
         assertTrue(t.header.filterIsInstance<Field>().any { it.required })
     }
+
+    @Test fun missingKindsAreSeparateFromWrongValues() {
+        assertEquals(
+            setOf(IssueKind.REQUIRED, IssueKind.MIN_COUNT, IssueKind.MIN_ROWS),
+            IssueKind.entries.filter { it.isMissing }.toSet(),
+        )
+    }
 }

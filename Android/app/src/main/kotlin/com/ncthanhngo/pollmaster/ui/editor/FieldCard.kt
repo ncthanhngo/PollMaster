@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,27 +24,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.editor.FieldLayoutRules
-import com.ncthanhngo.pollmaster.core.format.KDD
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.FieldValue
 import com.ncthanhngo.pollmaster.core.model.RoundEntry
 import com.ncthanhngo.pollmaster.core.model.asText
 import kotlinx.serialization.json.JsonPrimitive
-import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
+import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.theme.attentionColor
 import com.ncthanhngo.pollmaster.ui.theme.warnColor
 
-private const val COMPACT_FRACTION = 0.4f
+/** Fixed width of the input on a compact row, so inputs line up down the section. */
+private val COMPACT_INPUT_WIDTH = 132.dp
 
 /** The round (0-based) being entered and the heading option that groups the round fields. */
 class RoundContext(val index: Int, val entry: RoundEntry)
 
 /**
- * Card for one field: badge, label with `*`, KĐĐ / ~ toggles, input by type, then reason, note, validation
- * error, warning and photo reference.
+ * One field (a row in a [FieldGroupCard], else its own card): label with `*` and ~ / KĐĐ badges, one meta line
+ * (code · method · usual range), ⋯ menu, input by type, then reason, note, validation error, warning and photo reference.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -84,26 +87,39 @@ fun FieldCard(
         }
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    fv?.review?.takeIf { it.isNotBlank() }?.let { note ->
-        ReviewBox(note) { scope.update(field.id) { it.copy(review = null) } }
+    val stroke = when {
+        error != null -> MaterialTheme.colorScheme.error
+        !fv?.review.isNullOrBlank() -> attentionColor()
+        else -> null
     }
-    AppCard(if (oneHand && editable) Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true }) else Modifier) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)) {
+    val menu: @Composable () -> Unit = {
+        if (editable) FieldActions(field, fv, { noteOpen = true }, update, menuOpen = menuOpen, onMenuOpen = { menuOpen = it }, showMenuButton = !oneHand)
+    }
+    FieldContainer(
+        modifier.then(if (oneHand && editable) Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true }) else Modifier),
+        stroke = stroke, compact = compact,
+    ) {
+            fv?.review?.takeIf { it.isNotBlank() }?.let { note ->
+                ReviewBox(note) { scope.update(field.id) { it.copy(review = null) } }
+            }
             if (compact) {
+                // label and input share the first line; the meta line runs full width below so the label keeps its room
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f - COMPACT_FRACTION - 0.08f)) {
-                        FieldLabel(field, showCode, fv)
-                    }
-                    Box(Modifier.weight(COMPACT_FRACTION)) { input() }
-                    // Compact rows keep ~ and KĐĐ in the ⋯ menu to save height (they show as badges when set).
-                    if (editable) FieldActions(field, fv, { noteOpen = true }, update, chips = false, menuOpen = menuOpen, onMenuOpen = { menuOpen = it }, showMenuButton = !oneHand)
+                    FieldTitle(field, Modifier.weight(1f), fv)
+                    Box(Modifier.width(COMPACT_INPUT_WIDTH)) { input() }
+                    menu()
                 }
+                FieldMeta(field, showCode)
+                FieldHint(field)
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { FieldLabel(field, showCode, fv) }
-                    if (editable) FieldActions(field, fv, { noteOpen = true }, update, menuOpen = menuOpen, onMenuOpen = { menuOpen = it }, showMenuButton = !oneHand)
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        FieldTitle(field, fv = fv)
+                        FieldMeta(field, showCode)
+                    }
+                    menu()
                 }
+                FieldHint(field)
                 input()
             }
             if (kdd) {
@@ -132,8 +148,6 @@ fun FieldCard(
             if (field.isMedia) PhotoUsers(field.id, env)
             error?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             warning?.let { Text("⚠ " + it.message, color = warnColor(), style = MaterialTheme.typography.bodySmall) }
-        }
-    }
     }
 }
 
@@ -156,19 +170,19 @@ fun ReviewBox(text: String, onResolved: (() -> Unit)?) {
     }
 }
 
+/** One secondary line under the label: code · method · usual range (was up to three grey lines). */
 @Composable
-private fun FieldLabel(field: Field, showCode: Boolean, fv: FieldValue?) {
-    Column {
-        Row(verticalAlignment = Alignment.Top) {
-            if (showCode) Badge(field.id)
-            when (fv?.flag) {
-                FieldValue.FLAG_ESTIMATE -> Badge("~", warn = true)
-                FieldValue.FLAG_NOT_MEASURABLE -> Badge(KDD, warn = true)
-            }
-            FieldTitle(field, Modifier.weight(1f))
-        }
-        listOfNotNull(field.method, field.hint).filter { it.isNotBlank() }.forEach {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+private fun FieldMeta(field: Field, showCode: Boolean) {
+    val text = listOfNotNull(field.method?.takeIf { it.isNotBlank() }, FieldLayoutRules.usualRange(field)).joinToString(" · ")
+    if (!showCode && text.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (showCode) Badge(field.id)
+        if (text.isNotEmpty()) Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** Hint under the label, once (never as a placeholder: boxes can be narrow). */
+@Composable
+private fun FieldHint(field: Field) {
+    field.hint?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }

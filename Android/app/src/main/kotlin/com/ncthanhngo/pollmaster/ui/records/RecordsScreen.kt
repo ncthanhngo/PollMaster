@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Surface
@@ -39,6 +41,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.automirrored.filled.Undo
 import com.ncthanhngo.pollmaster.ui.common.IconBadge
+import com.ncthanhngo.pollmaster.ui.theme.attentionColor
 import com.ncthanhngo.pollmaster.ui.theme.okColor
 import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import androidx.compose.material3.MaterialTheme
@@ -68,23 +71,25 @@ import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
 import com.ncthanhngo.pollmaster.data.RecordItem
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
 import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.common.FirstFitText
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
+import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.ProjectStats
 import com.ncthanhngo.pollmaster.ui.editor.ExportSheet
 import com.ncthanhngo.pollmaster.ui.projects.ProjectChoiceDialog
-import com.ncthanhngo.pollmaster.ui.projects.ProjectDot
+import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
 import com.ncthanhngo.pollmaster.ui.projects.ProjectSwitcherSheet
 import com.ncthanhngo.pollmaster.ui.projects.rememberBundlePicker
 import kotlinx.coroutines.launch
 
-/** Title of the records tab: dot + name of the current project (or "Tất cả dự án") and a drop-down arrow. */
+/** Title of the records tab: avatar + name of the current project (or "Tất cả dự án") and a drop-down arrow. */
 @Composable
 private fun ProjectTitle(project: com.ncthanhngo.pollmaster.core.project.Project?, onClick: () -> Unit) {
     Row(Modifier.clickable(onClick = onClick).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (project != null) ProjectDot(project.color)
+        if (project != null) ProjectAvatar(project, 24.dp)
         Text(project?.name ?: stringResource(R.string.project_all), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.project_switch))
     }
@@ -198,7 +203,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit, onNewProject: () -> Unit) {
                 items(visible, key = { it.record.id }) { item ->
                     RecordCard(
                         item = item,
-                        projectCode = if (currentId == null) projects.firstOrNull { it.id == item.projectId }?.code else null,
+                        project = projects.firstOrNull { it.id == item.projectId },
                         onMove = { moving = item },
                         onOpen = { onOpenRecord(item.record.id) },
                         onDuplicate = {
@@ -303,25 +308,37 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit, onNewProject: () -> Unit) {
     exporting?.let { id -> ExportSheet(recordId = id, onDismiss = { exporting = null }) }
 }
 
+/** Three lines, none wrapping: title · project avatar + name (or code) and date · status, backup flag and progress. */
 @Composable
-private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun RecordCard(item: RecordItem, project: Project?, onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     AppCard(Modifier.clickable(onClick = onOpen)) {
-        Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
+        Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Thumb(item)
-            Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (item.subtitle.isNotEmpty()) {
-                    Text(item.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val style = MaterialTheme.typography.bodyMedium
+                    if (project != null) {
+                        ProjectAvatar(project, 16.dp)
+                        // full name when it fits, else the short code, never a cut-off name
+                        FirstFitText(listOf(project.name, project.code), Modifier.weight(1f, fill = false), style = style, color = secondary)
+                        Text("·", style = style, color = secondary)
+                    }
+                    Text(displayDayMonthTime(item.record.updatedAt), style = style, color = secondary, maxLines = 1, softWrap = false)
                 }
-                val p = item.progress
-                Text(
-                    stringResource(R.string.updated_at, displayDayMonthTime(item.record.updatedAt)) + if (p.total > 0) " · ${p.filled}/${p.total}" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (p.total > 0) LinearProgressIndicator(progress = { p.filled.toFloat() / p.total }, modifier = Modifier.fillMaxWidth(), color = if (item.record.isCompleted) okColor() else MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
-                RecordChips(item, projectCode)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RecordChips(item)
+                    val p = item.progress
+                    if (p.total > 0) {
+                        LinearProgressIndicator(
+                            progress = { p.filled.toFloat() / p.total }, modifier = Modifier.weight(1f),
+                            color = if (item.record.isCompleted) okColor() else MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                        Text("${p.filled}/${p.total}", style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1, softWrap = false)
+                    }
+                }
             }
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
@@ -336,40 +353,39 @@ private fun RecordCard(item: RecordItem, projectCode: String?, onMove: () -> Uni
     }
 }
 
-/** 48x48 photo of the record, or a status icon (draft, returned, completed) when there is no photo yet. */
+/** 44x44 photo of the record, or a status icon (draft, returned, completed) when there is no photo yet. */
 @Composable
 private fun Thumb(item: RecordItem) {
     val file = item.thumbnail
     if (file != null) {
-        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
+        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
             AsyncImage(model = file, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
         return
     }
     val r = item.record
     when {
-        r.isCompleted -> IconBadge(Icons.Filled.Verified, tint = okColor(), size = 48.dp)
-        r.returned -> IconBadge(Icons.AutoMirrored.Filled.Undo, tint = warnColor(), size = 48.dp)
-        else -> IconBadge(Icons.Filled.Description, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 48.dp)
+        r.isCompleted -> IconBadge(Icons.Filled.Verified, tint = okColor(), size = 44.dp)
+        r.returned -> IconBadge(Icons.AutoMirrored.Filled.Undo, tint = attentionColor(), size = 44.dp)
+        else -> IconBadge(Icons.Filled.Description, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 44.dp)
     }
 }
 
+/** One status chip ("Cần sửa" replaces "Nháp" on a returned record), then a cloud-off icon while the record is not backed up. */
 @Composable
-internal fun RecordChips(item: RecordItem, projectCode: String? = null) {
+internal fun RecordChips(item: RecordItem) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalUiPrefs.current.dark
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        projectCode?.let { StatusChip(it, scheme.secondaryContainer, scheme.onSecondaryContainer) }
-        if (item.record.isCompleted) {
-            StatusChip(stringResource(R.string.status_completed), if (dark) Color(0xFF1E4D33) else Color(0xFFD7F0DF), if (dark) Color(0xFFBFF0D0) else Color(0xFF0E4A25))
-        } else {
-            StatusChip(stringResource(R.string.status_draft), scheme.surfaceVariant, scheme.onSurfaceVariant)
-        }
-        if (item.record.returned && !item.record.isCompleted) {
-            StatusChip(stringResource(R.string.status_returned), if (dark) Color(0xFF5A3300) else Color(0xFFFFE0B8), if (dark) Color(0xFFFFD9A8) else Color(0xFF6A3A00))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        when {
+            item.record.isCompleted ->
+                StatusChip(stringResource(R.string.status_completed), if (dark) Color(0xFF1E4D33) else Color(0xFFD7F0DF), if (dark) Color(0xFFBFF0D0) else Color(0xFF0E4A25))
+            item.record.returned ->
+                StatusChip(stringResource(R.string.status_returned), if (dark) Color(0xFF5A3300) else Color(0xFFFFE0B8), if (dark) Color(0xFFFFD9A8) else Color(0xFF6A3A00))
+            else -> StatusChip(stringResource(R.string.status_draft), scheme.surfaceVariant, scheme.onSurfaceVariant)
         }
         if (item.needsBackup) {
-            StatusChip(stringResource(R.string.status_not_backed_up), if (dark) Color(0xFF4F4400) else Color(0xFFFFF0A8), if (dark) Color(0xFFFFEE9A) else Color(0xFF5A4B00))
+            Icon(Icons.Filled.CloudOff, contentDescription = stringResource(R.string.status_not_backed_up), tint = warnColor(), modifier = Modifier.size(18.dp))
         }
     }
 }

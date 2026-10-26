@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -19,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -122,7 +124,7 @@ fun OcrButton(field: Field, env: EditorEnv, enabled: Boolean, onNeedPhoto: () ->
     LaunchedEffect(photos.size) {
         if (waiting && photos.isNotEmpty()) { waiting = false; run++ }
     }
-    OutlinedButton(enabled = enabled && !busy, onClick = {
+    FilledTonalButton(enabled = enabled && !busy, colors = accentTonalColors(), onClick = {
         if (photos.isEmpty()) { waiting = true; onNeedPhoto() } else run++
     }) { Text(stringResource(if (busy) R.string.ocr_reading else R.string.ocr_read, ref.id)) }
 

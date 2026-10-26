@@ -18,6 +18,15 @@ object FieldLayoutRules {
         (f.type == "number" || f.type == "integer" || (f.type == "text" && f.short)) &&
             f.parts.isEmpty() && f.samples == null && !f.attachPhoto && !f.readonly && f.lookup == null
 
+    /** "Thường 1000–2500 mm" from warnMin/warnMax (typical values, falling back to min/max): the expected magnitude at a glance. */
+    fun usualRange(f: Field): String? {
+        if (f.type != "number" && f.type != "integer") return null
+        val lo = f.warnMin ?: f.min ?: return null
+        val hi = f.warnMax ?: f.max ?: return null
+        fun short(d: Double) = if (d == floor(d)) d.toLong().toString() else d.toString()
+        return "Thường ${short(lo)}–${short(hi)}" + (f.unit?.let { " $it" } ?: "")
+    }
+
     /** Largest chip of [range]: the integer > 0 found at `maxRef` ("B-06.rows" = part `rows` of B-06), else the fallback. */
     fun chipsMax(range: ChipsRange, valueOf: (fieldId: String) -> FieldValue?): Int {
         val ref = range.maxRef ?: return range.fallbackMax

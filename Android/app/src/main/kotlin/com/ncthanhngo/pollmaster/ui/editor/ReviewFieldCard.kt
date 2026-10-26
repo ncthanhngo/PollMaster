@@ -25,7 +25,7 @@ import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.asDouble
 import com.ncthanhngo.pollmaster.core.model.asText
 import com.ncthanhngo.pollmaster.core.format.formatShortest
-import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.theme.attentionColor
 
 /** Read-only card of review mode: shows the value; tapping opens the reviewer's note (stored in `FieldValue.review`). */
 @Composable
@@ -37,22 +37,21 @@ fun ReviewFieldCard(field: Field, scope: ValueScope, env: EditorEnv, modifier: M
         fv != null -> env.formatter.display(field, fv)
         else -> scope.fixed(field.id)?.let { it.asText() ?: it.asDouble()?.let(::formatShortest) }.orEmpty()
     }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    FieldContainer(
+        modifier.clickable(enabled = scope is RecordScope) { editing = true },
+        stroke = if (fv?.review.isNullOrBlank()) null else attentionColor(),
+    ) {
         fv?.review?.takeIf { it.isNotBlank() }?.let { ReviewBox(it, onResolved = null) }
-        AppCard(Modifier.clickable(enabled = scope is RecordScope) { editing = true }) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (showCode) Badge(field.id)
-                    FieldTitle(field, Modifier.weight(1f))
-                }
-                Text(
-                    listOf(shown, field.unit.orEmpty().takeIf { shown.isNotEmpty() }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "—" },
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                if (fv?.review.isNullOrBlank() && scope is RecordScope) {
-                    Text(stringResource(R.string.review_tap_to_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (showCode) Badge(field.id)
+            FieldTitle(field, Modifier.weight(1f))
+        }
+        Text(
+            listOf(shown, field.unit.orEmpty().takeIf { shown.isNotEmpty() }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "—" },
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (fv?.review.isNullOrBlank() && scope is RecordScope) {
+            Text(stringResource(R.string.review_tap_to_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     if (editing) {

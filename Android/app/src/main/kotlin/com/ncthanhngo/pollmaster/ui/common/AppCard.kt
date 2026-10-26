@@ -13,20 +13,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 
-/** White card with a 1 px outline on the gray background (2 px in high contrast); optional tint for notes. */
+/**
+ * Flat white card on the gray background: the contrast is the separation. An outline only for state ([borderColor]:
+ * notes, errors) or in high contrast (2 px); optional tint for notes.
+ */
 @Composable
 fun AppCard(
     modifier: Modifier = Modifier,
     container: Color = MaterialTheme.colorScheme.surface,
-    borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
+    borderColor: Color? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val width = if (LocalUiPrefs.current.highContrast) 2.dp else 1.dp
+    val hc = LocalUiPrefs.current.highContrast
+    val width = if (hc) 2.dp else 1.dp
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = container),
-        border = BorderStroke(width, borderColor),
+        border = (borderColor ?: MaterialTheme.colorScheme.outline.takeIf { hc })?.let { BorderStroke(width, it) },
         content = content,
     )
 }

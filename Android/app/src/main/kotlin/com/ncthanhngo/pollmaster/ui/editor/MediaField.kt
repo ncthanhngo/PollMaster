@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -171,14 +173,14 @@ fun MediaField(
         }
         if (canAdd) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = ::requestCapture) {
+                FilledTonalButton(onClick = ::requestCapture, colors = accentTonalColors()) {
                     Text(
                         if (referenceOnly) stringResource(R.string.media_capture_ref, field.id)
                         else if (captureLabel != null) captureLabel
                         else stringResource(if (isVideo) R.string.media_record else R.string.media_capture),
                     )
                 }
-                if (!referenceOnly) OutlinedButton(onClick = {
+                if (!referenceOnly) FilledTonalButton(colors = accentTonalColors(), onClick = {
                     pick.launch(PickVisualMediaRequest(if (isVideo) ActivityResultContracts.PickVisualMedia.VideoOnly else ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) { Text(stringResource(R.string.media_library)) }
             }

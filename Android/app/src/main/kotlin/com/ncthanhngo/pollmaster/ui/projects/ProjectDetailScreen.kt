@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
@@ -42,9 +42,11 @@ import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.BackButton
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
+import com.ncthanhngo.pollmaster.ui.common.StatTile
+import com.ncthanhngo.pollmaster.ui.theme.attentionColor
 import kotlinx.coroutines.launch
 
-/** Project detail: stats, its templates, its sites and the actions (share, summary, records, archive, delete). */
+/** Project detail: stats, everyday actions (records, summary, share), its templates and sites, then archive / delete. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onEdit: () -> Unit, onShowRecords: () -> Unit) {
@@ -77,20 +79,23 @@ fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onEdit: () -> Uni
     ) { padding ->
         LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProjectDot(project.color, 14.dp)
-                    Text(listOfNotNull(project.code, project.client).joinToString(" · "), style = MaterialTheme.typography.titleSmall)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ProjectAvatar(project, 56.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(project.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(listOfNotNull(project.code, project.client).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                project.description?.let { Text(it, Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium) }
+                project.description?.let { Text(it, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium) }
+                if (project.archived) Text(stringResource(R.string.projects_archived_label), Modifier.padding(top = 4.dp), color = attentionColor(), style = MaterialTheme.typography.bodyMedium)
             }
-            item { StatsCard(stats, mine.maxByOrNull { it.record.updatedAt }?.title) }
-            item { ProjectTemplatesSection(project) }
-            item { ProjectSitesSection(project, mine) }
+            item { StatsTiles(stats, mine.maxByOrNull { it.record.updatedAt }?.title) }
+            // everyday actions first, the rare state-changing ones stay at the bottom
             item {
                 AppCard {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.project_actions), style = MaterialTheme.typography.titleSmall)
                         ActionButton(R.string.project_open_records, onShowRecords)
+                        ActionButton(R.string.project_summary) { summary = true }
                         ActionButton(R.string.project_share) {
                             scope.launch {
                                 try {
@@ -100,8 +105,14 @@ fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onEdit: () -> Uni
                                 }
                             }
                         }
-                        ActionButton(R.string.project_summary) { summary = true }
-                        HorizontalDivider()
+                    }
+                }
+            }
+            item { ProjectTemplatesSection(project) }
+            item { ProjectSitesSection(project, mine) }
+            item {
+                AppCard {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         ActionButton(if (project.archived) R.string.project_unarchive else R.string.project_archive) {
                             scope.launch { container.projects.setArchived(projectId, !project.archived) }
                         }
@@ -135,30 +146,18 @@ private fun ActionButton(label: Int, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(stringResource(label)) }
 }
 
+/** Nháp / Cần sửa / Hoàn thành tiles (drafts without the returned ones), then the latest record. */
 @Composable
-private fun StatsCard(stats: ProjectStats, latestTitle: String?) {
-    AppCard {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.project_stats), style = MaterialTheme.typography.titleSmall)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                Stat(stats.draft, R.string.project_stat_draft)
-                Stat(stats.completed, R.string.project_stat_completed)
-                Stat(stats.returned, R.string.project_stat_returned)
-            }
-            if (latestTitle != null && stats.lastActivityAt != null) {
-                Text(
-                    stringResource(R.string.project_stat_latest, "$latestTitle · ${displayDayMonthTime(stats.lastActivityAt)}"),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+private fun StatsTiles(stats: ProjectStats, latestTitle: String?) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            StatTile("${stats.draft - stats.returned}", stringResource(R.string.project_stat_draft), Modifier.weight(1f))
+            StatTile("${stats.returned}", stringResource(R.string.project_stat_returned), Modifier.weight(1f))
+            StatTile("${stats.completed}", stringResource(R.string.project_stat_completed), Modifier.weight(1f))
         }
-    }
-}
-
-@Composable
-private fun Stat(value: Int, label: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$value", style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(R.string.project_stat_latest, if (latestTitle != null && stats.lastActivityAt != null) "$latestTitle · ${displayDayMonthTime(stats.lastActivityAt)}" else "–"),
+            Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

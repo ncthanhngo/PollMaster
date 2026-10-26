@@ -32,7 +32,6 @@
     <string name="status_draft">Nháp</string>
     <string name="status_completed">Hoàn thành</string>
     <string name="progress_required">%1$d/%2$d bắt buộc</string>
-    <string name="updated_at">Cập nhật %1$s</string>
     <string name="record_new">Tạo phiếu mới</string>
     <string name="pick_template">Chọn mẫu</string>
     <string name="record_read_error">Lỗi đọc</string>
@@ -41,7 +40,7 @@
     <string name="record_template_missing">Không tìm thấy mẫu của phiếu này</string>
 
     <!-- Templates -->
-    <string name="templates_empty">Chưa có mẫu nào</string>
+    <string name="templates_empty">Chưa có mẫu. Nhấn + để nhập mẫu, hoặc tạo mẫu bằng AI.</string>
     <string name="template_meta">%1$s · v%2$s · %3$d trường</string>
     <string name="template_import">Nhập mẫu</string>
     <string name="import_file">Nhập từ tệp</string>
@@ -63,9 +62,14 @@
     <string name="errors_prefix">Mẫu JSON bị app PollMaster từ chối với các lỗi sau, hãy sửa và trả lại toàn bộ JSON:</string>
     <string name="ai_card_title">Tạo mẫu bằng AI</string>
     <string name="ai_card_text">Gửi file hướng dẫn cho Claude/ChatGPT kèm mô tả khảo sát, rồi dán kết quả JSON vào đây</string>
-    <string name="ai_card_subtitle">Claude, ChatGPT…</string>
-    <string name="ai_card_step1">Gửi file hướng dẫn cho AI kèm mô tả khảo sát</string>
-    <string name="ai_card_step2">Dán kết quả JSON vào app</string>
+    <string name="ai_card_subtitle">Mô tả biên bản, Claude hoặc ChatGPT viết mẫu cho bạn</string>
+    <string name="ai_card_step1">Gửi hướng dẫn cho AI</string>
+    <string name="ai_card_step1_detail">Kèm mô tả khảo sát cần làm</string>
+    <string name="ai_card_step2">Dán JSON AI trả về</string>
+    <string name="ai_card_step2_detail">App tự kiểm tra lỗi</string>
+    <string name="ai_send">Gửi</string>
+    <string name="ai_paste">Dán</string>
+    <string name="ai_start">Bắt đầu</string>
     <string name="templates_local_header">Mẫu trên máy (%1$d)</string>
     <string name="template_fields_pill">%1$d trường</string>
     <string name="template_old_pill">Bản cũ</string>
@@ -183,7 +187,6 @@
     <string name="warn_confirm_message">Giữ giá trị này?</string>
     <string name="warn_keep">Giữ</string>
     <string name="warn_recheck">Nhập lại</string>
-    <string name="progress_saved">%1$d/%2$d bắt buộc · Đã lưu %3$s</string>
     <string name="resume_at">Tiếp tục: %1$s</string>
     <string name="results_title">Kết quả</string>
     <string name="section_menu_kdd">Đánh dấu KĐĐ các trường còn trống</string>
@@ -214,6 +217,9 @@
     <string name="gps_poor">kém</string>
     <string name="status_returned">Cần sửa</string>
     <string name="status_not_backed_up">Chưa sao lưu</string>
+    <string name="review_group_errors">Lỗi</string>
+    <string name="review_group_missing">Còn thiếu</string>
+    <string name="review_filled_of">Đã điền %1$d/%2$d</string>
     <string name="review_group_warnings">Cần xem lại</string>
     <string name="review_group_notes">Ghi chú kiểm tra</string>
     <string name="review_note_prefix">Kiểm tra: %1$s</string>
@@ -299,12 +305,8 @@
     <string name="project_new">Dự án mới</string>
     <string name="project_import">Nhập gói dự án</string>
     <string name="project_search">Tìm dự án</string>
-    <string name="project_row_counts">%1$d nháp · %2$d hoàn thành</string>
     <string name="projects_empty">Chưa có dự án. Chạm + để tạo dự án hoặc nhập gói dự án.</string>
     <string name="projects_archived">Đã lưu trữ (%1$d)</string>
-    <string name="project_card_meta">%1$d mẫu · %2$d nháp · %3$d hoàn thành</string>
-    <string name="project_last_activity">Hoạt động gần nhất: %1$s</string>
-    <string name="project_no_activity">Chưa có hoạt động</string>
     <string name="project_form_new">Dự án mới</string>
     <string name="project_form_edit">Sửa dự án</string>
     <string name="project_name">Tên dự án</string>
@@ -313,7 +315,6 @@
     <string name="project_client">Khách hàng</string>
     <string name="project_description">Mô tả</string>
     <string name="project_color">Màu</string>
-    <string name="project_stats">Thống kê</string>
     <string name="project_stat_draft">Nháp</string>
     <string name="project_stat_completed">Hoàn thành</string>
     <string name="project_stat_returned">Cần sửa</string>
@@ -331,7 +332,6 @@
     <string name="project_sites_search">Tìm theo mã hoặc địa chỉ</string>
     <string name="project_sites_visited">Đã có phiếu</string>
     <string name="project_sites_unvisited">Chưa có phiếu</string>
-    <string name="project_actions">Hành động</string>
     <string name="project_share">Chia sẻ gói dự án</string>
     <string name="project_summary">Xuất tổng hợp (Excel)</string>
     <string name="project_open_records">Mở danh sách phiếu</string>
@@ -352,8 +352,7 @@
     <string name="pick_project">Tạo phiếu trong dự án</string>
     <string name="project_no_templates">Dự án chưa có mẫu. Thêm mẫu trong chi tiết dự án.</string>
     <string name="no_active_projects">Chưa có dự án nào đang hoạt động. Hãy tạo dự án ở thẻ Dự án.</string>
-    <string name="template_used_in">Dùng trong: %1$s</string>
-    <string name="template_unused">Chưa thuộc dự án nào</string>
+    <string name="template_used_by_count">Dùng trong %1$d dự án: %2$s</string>
     <string name="template_create_no_project">Mẫu này chưa thuộc dự án nào. Hãy thêm mẫu vào dự án (thẻ Dự án → chi tiết dự án → Mẫu của dự án) rồi tạo phiếu.</string>
     <string name="template_used_by_projects">Mẫu đang được dự án dùng: %1$s. Hãy gỡ mẫu khỏi dự án trước.</string>
     <string name="add_to_projects_title">Thêm vào dự án?</string>
@@ -370,4 +369,21 @@
     <string name="bundle_keep_templates">Giữ mẫu hiện có</string>
     <string name="bundle_done">Đã nhập dự án %1$s</string>
     <string name="bundle_share_title">Chia sẻ gói dự án</string>
+    <!-- Project look: avatars, compact rows -->
+    <string name="count_draft">%1$d nháp</string>
+    <string name="count_returned">%1$d cần sửa</string>
+    <string name="count_completed">%1$d hoàn thành</string>
+    <string name="project_card_extra">%1$d mẫu · %2$d điểm</string>
+    <string name="project_archived_short">Lưu trữ</string>
+    <string name="projects_archived_label">Đã lưu trữ</string>
+    <string name="project_avatar_pick">Chọn ảnh</string>
+    <string name="project_avatar_change">Đổi ảnh</string>
+    <string name="project_avatar_remove">Bỏ ảnh</string>
+    <!-- Field card: flags only in the ⋯ menu -->
+    <string name="flag_estimate_badge">~ Ước lượng</string>
+    <string name="outline_saved">Đã lưu %1$s</string>
+    <string name="outline_toc">Mục lục</string>
+    <string name="outline_required_of">/ %1$d bắt buộc</string>
+    <string name="outline_nothing_required">Không có mục bắt buộc</string>
+    <string name="field_menu_cd">Tùy chọn trường: ước lượng, không đo được, ghi chú</string>
 </resources>

@@ -3,9 +3,7 @@ package com.ncthanhngo.pollmaster.ui.editor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -37,8 +35,7 @@ fun RoundGroup(heading: HeadingItem, fields: List<Field>, env: EditorEnv, focus:
     var selected by rememberSaveable(heading.id, focus) { mutableIntStateOf(start) }
     val round = RoundContext(selected.coerceIn(0, entry.samples - 1), entry)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(heading.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-        heading.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        SectionHeading(heading)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             for (i in 0 until entry.samples) {
                 val hasData = fields.any { !env.record.values[it.id].sample(i).isEmptyJson() }
@@ -50,6 +47,6 @@ fun RoundGroup(heading: HeadingItem, fields: List<Field>, env: EditorEnv, focus:
                 )
             }
         }
-        fields.forEach { f -> androidx.compose.foundation.layout.Box(Modifier.trackTouch { onTouch(f.id) }) { FieldCard(f, env.scope, env, round = round) } }
+        FieldGroupCard(fields) { f -> androidx.compose.foundation.layout.Box(Modifier.trackTouch { onTouch(f.id) }) { FieldCard(f, env.scope, env, round = round) } }
     }
 }

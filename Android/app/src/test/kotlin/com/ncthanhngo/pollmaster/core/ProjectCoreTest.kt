@@ -189,4 +189,40 @@ class ProjectCoreTest {
         assertEquals("Download/PollMaster", Backup.folder(null))
         assertNotNull(Backup.FOLDER)
     }
+
+    @Test fun nextColorSkipsColoursInUse() {
+        assertEquals(Project.COLORS[0], Project.nextColor(emptyList()))
+        assertEquals(Project.COLORS[2], Project.nextColor(listOf(Project.COLORS[0], Project.COLORS[1])))
+        // case-insensitive, unknown colours ignored
+        assertEquals(Project.COLORS[1], Project.nextColor(listOf(Project.COLORS[0].lowercase(), "#000000")))
+    }
+
+    @Test fun nextColorWhenAllUsedPicksLeastUsed() {
+        assertEquals(Project.COLORS[0], Project.nextColor(Project.COLORS + Project.COLORS.drop(1)))
+    }
+
+    @Test fun paletteColoursAreDistinct() {
+        assertEquals(Project.COLORS.size, Project.COLORS.map { it.uppercase() }.toSet().size)
+        assertTrue(Project.COLORS.size >= 10)
+    }
+
+    @Test fun initialsFromName() {
+        assertEquals("KS", Project.initials("Khảo sát tủ đổi pin Hà Nội"))
+        assertEquals("C", Project.initials("Chung"))
+        assertEquals("TS", Project.initials("  trạm sạc  "))
+        assertEquals("?", Project.initials(""))
+    }
+
+    @Test fun avatarFileLifecycle() {
+        val store = ProjectStore(TestData.tempDir())
+        val p = store.create(ProjectDraft("Avatar", "AV"), NOW)
+        assertNull(store.avatarFile(p.id))
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+        store.setAvatar(p.id, jpeg)
+        assertEquals(jpeg.toList(), store.avatarFile(p.id)!!.readBytes().toList())
+        assertEquals(listOf(p.id), store.list().map { it.id })
+        store.removeAvatar(p.id)
+        assertNull(store.avatarFile(p.id))
+        store.removeAvatar(p.id) // removing twice is fine
+    }
 }

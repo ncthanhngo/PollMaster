@@ -1,14 +1,12 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -44,59 +42,40 @@ fun Badge(text: String, warn: Boolean = false) {
     }
 }
 
-/** Label followed directly by a red asterisk when the field is required. */
+/** Label (semibold) followed directly by a red asterisk when required, then "~ Ước lượng" / "KĐĐ" while that flag is on. */
 @Composable
-fun FieldTitle(field: Field, modifier: Modifier = Modifier) {
+fun FieldTitle(field: Field, modifier: Modifier = Modifier, fv: FieldValue? = null) {
     val star = MaterialTheme.colorScheme.error
-    Text(
-        buildAnnotatedString {
-            append(field.label)
-            if (field.required) withStyle(SpanStyle(color = star, fontWeight = FontWeight.Bold)) { append(" *") }
-        },
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Medium,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun MiniToggle(text: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surface,
-        contentColor = if (selected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline),
-        modifier = Modifier.clickable(onClick = onClick),
-    ) {
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            buildAnnotatedString {
+                append(field.label)
+                if (field.required) withStyle(SpanStyle(color = star, fontWeight = FontWeight.Bold)) { append(" *") }
+            },
+            Modifier.weight(1f, fill = false).padding(end = 6.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        when (fv?.flag) {
+            FieldValue.FLAG_ESTIMATE -> Badge(stringResource(R.string.flag_estimate_badge), warn = true)
+            FieldValue.FLAG_NOT_MEASURABLE -> Badge(KDD, warn = true)
+        }
     }
 }
 
-/** "KĐĐ" and "~" toggle chips (only for fields with flags) followed by the ⋯ menu. */
+/** The ⋯ menu (ước lượng, KĐĐ, note, clear); ~ / KĐĐ live only here and show as badges after the label when on. */
 @Composable
 fun FieldActions(
     field: Field,
     fv: FieldValue?,
     onNote: () -> Unit,
     update: ((FieldValue) -> FieldValue) -> Unit,
-    chips: Boolean = true,
     menuOpen: Boolean = false,
     onMenuOpen: (Boolean) -> Unit = {},
     /** One-hand mode hides the ⋯ button: the menu opens with a long press on the card instead. */
     showMenuButton: Boolean = true,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (field.flagsEnabled && chips) {
-            MiniToggle(KDD, fv?.flag == FieldValue.FLAG_NOT_MEASURABLE) {
-                update { it.copy(flag = if (it.flag == FieldValue.FLAG_NOT_MEASURABLE) null else FieldValue.FLAG_NOT_MEASURABLE) }
-            }
-            Text(" ")
-            MiniToggle("~", fv?.flag == FieldValue.FLAG_ESTIMATE) {
-                update { it.copy(flag = if (it.flag == FieldValue.FLAG_ESTIMATE) null else FieldValue.FLAG_ESTIMATE, reason = null) }
-            }
-        }
-        FieldMenu(field, fv, onNote, update, menuOpen, onMenuOpen, showMenuButton)
-    }
+    FieldMenu(field, fv, onNote, update, menuOpen, onMenuOpen, showMenuButton)
 }
 
 @Composable
@@ -111,8 +90,8 @@ private fun FieldMenu(
 ) {
     Box {
         if (showButton) {
-            IconButton(onClick = { onOpen(true) }, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+            IconButton(onClick = { onOpen(true) }, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Filled.MoreHoriz, contentDescription = stringResource(R.string.field_menu_cd), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         DropdownMenu(expanded = open, onDismissRequest = { onOpen(false) }) {

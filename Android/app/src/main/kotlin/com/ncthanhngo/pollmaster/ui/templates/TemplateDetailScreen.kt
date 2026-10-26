@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import com.ncthanhngo.pollmaster.core.model.TableItem
 import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_TITLE
 import com.ncthanhngo.pollmaster.ui.common.AppCard
-import com.ncthanhngo.pollmaster.ui.projects.ProjectDot
+import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -164,7 +164,7 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
                     AppCard {
                         users.forEach { p ->
                             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                ProjectDot(p.color)
+                                ProjectAvatar(p, 28.dp)
                                 Text(p.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                                 Text(p.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

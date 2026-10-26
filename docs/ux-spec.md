@@ -198,7 +198,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 - **Tab Dự án**: danh sách dự án (đang hoạt động trước, "Đã lưu trữ" thu gọn cuối), mỗi thẻ 3 dòng: avatar · tên · "mã · khách hàng ·
   N mẫu · N điểm" (bớt phần cuối khi không đủ chỗ) · số phiếu nháp / cần sửa / hoàn thành · ngày gần nhất. Nút + "Dự án mới" / "Nhập gói dự án".
 - **Tạo/Sửa dự án**: Tên (bắt buộc), Mã (tự sinh từ tên: bỏ dấu, in hoa, khoảng trắng → `-`, tối đa 16 ký tự; sửa được; kiểm trùng),
-  Khách hàng, Mô tả, Màu (10 màu chọn sẵn; dự án mới tự nhận màu chưa dự án nào dùng), **Ảnh đại diện** (iOS: chọn từ thư viện ảnh,
+  Khách hàng, Mô tả, Màu (10 màu chọn sẵn; dự án mới tự nhận màu chưa dự án nào dùng), **Ảnh đại diện** (chọn từ thư viện ảnh,
   cắt vuông 256 px, lưu `avatar.jpg` cạnh project.json, không đi kèm gói dự án; không có ảnh → chữ cái đầu trên nền màu dự án).
 - **Chi tiết dự án**: thống kê (Nháp/Hoàn thành/Cần sửa, phiếu gần nhất) · **Mẫu của dự án** (thêm từ thư viện, gỡ, gợi ý bản mới) ·
   **Danh sách điểm** (nạp CSV, số điểm, xem/tìm, xóa; số điểm đã có phiếu / chưa) · Hành động: **Chia sẻ gói dự án**, **Xuất tổng hợp

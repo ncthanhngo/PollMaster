@@ -9,6 +9,9 @@ import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +31,11 @@ class ProjectsRepository(
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
     val projects: StateFlow<List<Project>> = _projects.asStateFlow()
 
+    private val _avatars = MutableStateFlow<Map<String, ImageBitmap>>(emptyMap())
+
+    /** Photo avatars by project id, read once per refresh (rows would otherwise hit the disk on every frame). */
+    val avatars: StateFlow<Map<String, ImageBitmap>> = _avatars.asStateFlow()
+
     /** Selected project id, or null for "Tất cả dự án". */
     val currentId: StateFlow<String?> get() = settings.projectFilter
 
@@ -39,7 +47,13 @@ class ProjectsRepository(
     fun chungId(): String? = _projects.value.firstOrNull { it.id == Project.CHUNG_ID }?.id
 
     suspend fun refresh() {
-        val list = withContext(Dispatchers.IO) { store.list().also { p -> sites.reload(p.map { it.id }) } }
+        val (list, avatars) = withContext(Dispatchers.IO) {
+            val list = store.list().also { p -> sites.reload(p.map { it.id }) }
+            list to list.mapNotNull { p ->
+                store.avatarFile(p.id)?.let { BitmapFactory.decodeFile(it.path) }?.let { p.id to it.asImageBitmap() }
+            }.toMap()
+        }
+        _avatars.value = avatars
         _projects.value = list
         if (currentId.value != null && list.none { it.id == currentId.value }) select(null)
     }
@@ -79,6 +93,12 @@ class ProjectsRepository(
         withContext(Dispatchers.IO) {
             projectIds.forEach { id -> store.get(id)?.let { store.setTemplates(id, it.templates + ref, nowIso()) } }
         }
+        refresh()
+    }
+
+    /** Stores a 256 px JPEG as the avatar of [id], or removes it (back to initials) when [jpeg] is null. */
+    suspend fun setAvatar(id: String, jpeg: ByteArray?) {
+        withContext(Dispatchers.IO) { if (jpeg != null) store.setAvatar(id, jpeg) else store.removeAvatar(id) }
         refresh()
     }
 

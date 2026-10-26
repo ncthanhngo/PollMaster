@@ -32,8 +32,23 @@ data class Project(
         const val CHUNG_CODE = "CHUNG"
         const val CHUNG_NAME = "Chung"
 
-        /** The 6 colours offered in the project form. */
-        val COLORS = listOf("#1B6B5A", "#1565C0", "#6A1B9A", "#C62828", "#EF6C00", "#455A64")
+        /** Identity colours offered in the project form, all dark enough for white initials (>= 4.5:1); same set as iOS. */
+        val COLORS = listOf(
+            "#1B6B5A", "#1F5FA8", "#7B4FA3", "#C2571A", "#B8312F", "#5F6B73",
+            "#0E7490", "#A3367A", "#8A6D0B", "#3F4BA8",
+        )
+
+        /** Colour for a new project: the first palette colour no project uses yet, else the least used one. */
+        fun nextColor(used: List<String>): String {
+            val counts = used.groupingBy { it.uppercase() }.eachCount()
+            return COLORS.minBy { counts[it.uppercase()] ?: 0 }
+        }
+
+        /** Up to two initials for the avatar: first letters of the first two words ("Khảo sát…" → "KS"). */
+        fun initials(name: String): String {
+            val letters = name.split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).map { it.first().uppercase() }
+            return letters.joinToString("").ifEmpty { "?" }
+        }
     }
 }
 

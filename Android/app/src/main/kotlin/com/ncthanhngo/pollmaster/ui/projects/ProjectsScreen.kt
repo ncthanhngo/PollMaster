@@ -32,23 +32,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
-import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
+import com.ncthanhngo.pollmaster.core.format.displayDayMonth
 import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectStats
 import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.common.FirstFitText
+import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.common.ThemeToggleButton
 
 /** Tab "Dự án": active projects first, archived ones folded at the end (ux-spec M). */
@@ -58,6 +54,7 @@ fun ProjectsScreen(onOpenProject: (String) -> Unit, onNewProject: () -> Unit) {
     val container = LocalContainer.current
     val projects by container.projects.projects.collectAsState()
     val items by container.records.items.collectAsState()
+    val sites by container.sites.all.collectAsState()
     var menu by remember { mutableStateOf(false) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     val pickBundle = rememberBundlePicker()
@@ -82,7 +79,7 @@ fun ProjectsScreen(onOpenProject: (String) -> Unit, onNewProject: () -> Unit) {
     ) { padding ->
         LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (projects.isEmpty()) item(key = "empty") { Text(stringResource(R.string.projects_empty), Modifier.padding(8.dp)) }
-            items(active, key = { it.id }) { p -> ProjectCard(p, ProjectStats.of(p.id, records, chung)) { onOpenProject(p.id) } }
+            items(active, key = { it.id }) { p -> ProjectCard(p, ProjectStats.of(p.id, records, chung), sites[p.id].orEmpty().size) { onOpenProject(p.id) } }
             if (archived.isNotEmpty()) {
                 item(key = "archived") {
                     Row(Modifier.fillMaxWidth().clickable { showArchived = !showArchived }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -90,27 +87,30 @@ fun ProjectsScreen(onOpenProject: (String) -> Unit, onNewProject: () -> Unit) {
                         Icon(if (showArchived) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null)
                     }
                 }
-                if (showArchived) items(archived, key = { "a-" + it.id }) { p -> ProjectCard(p, ProjectStats.of(p.id, records, chung)) { onOpenProject(p.id) } }
+                if (showArchived) items(archived, key = { "a-" + it.id }) { p -> ProjectCard(p, ProjectStats.of(p.id, records, chung), sites[p.id].orEmpty().size) { onOpenProject(p.id) } }
             }
         }
     }
 }
 
+/** Three single lines: name · code, client, templates, sites (shortened to fit) · counts and last activity. */
 @Composable
-private fun ProjectCard(project: Project, stats: ProjectStats, onClick: () -> Unit) {
-    AppCard(Modifier.clickable(onClick = onClick)) {
-        Row(Modifier.height(IntrinsicSize.Min).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.width(4.dp).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(projectColor(project.color)))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(project.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+private fun ProjectCard(project: Project, stats: ProjectStats, siteCount: Int, onClick: () -> Unit) {
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    AppCard(Modifier.clickable(onClick = onClick).alpha(if (project.archived) 0.7f else 1f)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ProjectAvatar(project, 44.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(project.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (project.archived) StatusChip(stringResource(R.string.project_archived_short), MaterialTheme.colorScheme.surfaceVariant, secondary)
+                }
+                val head = listOfNotNull(project.code, project.client).joinToString(" · ")
+                val extra = stringResource(R.string.project_card_extra, project.templates.size, siteCount)
+                FirstFitText(listOf("$head · $extra", head, project.code), style = MaterialTheme.typography.bodyMedium, color = secondary)
                 Text(
-                    listOfNotNull(project.code, project.client).joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(stringResource(R.string.project_card_meta, project.templates.size, stats.draft, stats.completed), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    stats.lastActivityAt?.let { stringResource(R.string.project_last_activity, displayDayMonthTime(it)) } ?: stringResource(R.string.project_no_activity),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    projectCounts(stats) + (stats.lastActivityAt?.let { " · " + displayDayMonth(it) } ?: ""),
+                    style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
         }

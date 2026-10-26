@@ -113,7 +113,7 @@ private fun PreviewDialog(contents: BundleContents, plan: ImportPlan, onImport: 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProjectDot(p.color)
+                    ProjectAvatar(p, 40.dp)
                     Text(p.name, style = MaterialTheme.typography.titleMedium)
                 }
                 Text(stringResource(R.string.bundle_preview_info, plan.code, contents.templates.size, contents.sites?.size ?: 0), style = MaterialTheme.typography.bodyMedium)

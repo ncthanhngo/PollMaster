@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter
 private val dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private val dateTimeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 private val dayMonthTimeFmt = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+private val dayMonthFmt = DateTimeFormatter.ofPattern("dd/MM")
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 private val monthFmt = DateTimeFormatter.ofPattern("MM/yyyy")
 private val fileStampFmt = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")
@@ -40,6 +41,10 @@ fun parseInstant(iso: String?): Instant? =
 /** `dd/MM HH:mm` (list rows). */
 fun displayDayMonthTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
     runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dayMonthTimeFmt) }.getOrDefault(iso)
+
+/** `dd/MM` (last activity on project cards). */
+fun displayDayMonth(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
+    runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dayMonthFmt) }.getOrDefault(iso)
 
 /** `HH:mm` ("Đã lưu 14:05"). */
 fun displayTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =

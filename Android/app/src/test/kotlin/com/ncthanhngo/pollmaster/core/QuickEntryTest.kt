@@ -256,6 +256,13 @@ class QuickEntryTest {
         assertFalse(FieldLayoutRules.isCompactable(t.findField("B-06")!!))
     }
 
+    @Test fun usualRangePrefersWarnBoundsThenMinMax() {
+        assertEquals("Thường 1000–2500 mm", FieldLayoutRules.usualRange(Field("a", "a", "number", unit = "mm", min = 0.0, max = 9000.0, warnMin = 1000.0, warnMax = 2500.0)))
+        assertEquals("Thường 0–1.5", FieldLayoutRules.usualRange(Field("a", "a", "number", min = 0.0, max = 1.5)))
+        assertNull(FieldLayoutRules.usualRange(Field("a", "a", "number", min = 0.0)))
+        assertNull(FieldLayoutRules.usualRange(Field("a", "a", "text", min = 0.0, max = 5.0)))
+    }
+
     @Test fun threeShortNumberPartsShareOneRow() {
         val d02 = t.findField("D-02")!!.parts
         assertEquals(3, FieldLayoutRules.partsColumns(d02, wide = false))

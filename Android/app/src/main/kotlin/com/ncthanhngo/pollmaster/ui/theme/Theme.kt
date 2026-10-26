@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.ui.theme
 
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -27,6 +29,9 @@ val WarnLight = Color(0xFF8A5A00)
 val WarnDark = Color(0xFFFFC857)
 val OkLight = Color(0xFF1B6B3A)
 val OkDark = Color(0xFF7FD99B)
+/** "Cần sửa" and checker notes: orange that still reads as text (>= 4.5:1) on the card. */
+val AttentionLight = Color(0xFFB35400)
+val AttentionDark = Color(0xFFFFA859)
 
 // Secondary text (onSurfaceVariant) is >= 4.5:1 on the white card (light) and on the dark card (dark).
 private val Light = lightColorScheme(
@@ -114,3 +119,13 @@ else if (LocalUiPrefs.current.dark) WarnDark else WarnLight
 @Composable
 fun okColor(): Color = if (LocalUiPrefs.current.highContrast) MaterialTheme.colorScheme.onSurface
 else if (LocalUiPrefs.current.dark) OkDark else OkLight
+
+@Composable
+fun attentionColor(): Color = if (LocalUiPrefs.current.highContrast) MaterialTheme.colorScheme.onSurface
+else if (LocalUiPrefs.current.dark) AttentionDark else AttentionLight
+
+/** Secondary actions (read text from photo, capture, pick from list, section navigation): light accent fill, accent text. */
+@Composable
+fun accentTonalColors(): ButtonColors = MaterialTheme.colorScheme.primary.let {
+    ButtonDefaults.filledTonalButtonColors(containerColor = it.copy(alpha = 0.12f), contentColor = it)
+}

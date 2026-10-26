@@ -19,7 +19,12 @@ import com.ncthanhngo.pollmaster.core.model.visibleParts
 const val HEADER_SECTION_ID = "header"
 const val HEADER_SECTION_TITLE = "Thông tin đầu biên bản"
 
-enum class IssueKind { REQUIRED, REASON_MISSING, BELOW_MIN, ABOVE_MAX, MIN_COUNT, MIN_ROWS }
+enum class IssueKind {
+    REQUIRED, REASON_MISSING, BELOW_MIN, ABOVE_MAX, MIN_COUNT, MIN_ROWS;
+
+    /** Not filled yet (value, photos, rows): shown neutral; the other kinds are wrong values, shown as errors. */
+    val isMissing: Boolean get() = this == REQUIRED || this == MIN_COUNT || this == MIN_ROWS
+}
 
 /**
  * A validation problem. [targetId] is a field id or table id; [rowId] is set for problems inside a

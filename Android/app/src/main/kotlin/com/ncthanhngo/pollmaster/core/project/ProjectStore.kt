@@ -27,6 +27,15 @@ class ProjectStore(root: File) {
     /** Planned points of one project (schema 9.1). */
     fun sites(id: String): SitesStore = SitesStore(dir(id).also { it.mkdirs() })
 
+    /** Optional photo avatar (`avatar.jpg` next to project.json, not part of bundles); null when the project uses its initials. */
+    fun avatarFile(id: String): File? = File(dir(id), AVATAR).takeIf { it.isFile }
+
+    fun setAvatar(id: String, jpeg: ByteArray) = writeAtomically(File(dir(id), AVATAR), jpeg)
+
+    fun removeAvatar(id: String) {
+        avatarFile(id)?.delete()
+    }
+
     /** Active projects first, then archived, each by name. */
     fun list(): List<Project> = dir.listFiles { f -> f.isDirectory }.orEmpty().mapNotNull { get(it.name) }
         .sortedWith(compareBy<Project> { it.archived }.thenBy { it.name.lowercase() })
@@ -91,5 +100,6 @@ class ProjectStore(root: File) {
 
     companion object {
         const val FILE = "project.json"
+        const val AVATAR = "avatar.jpg"
     }
 }

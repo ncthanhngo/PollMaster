@@ -42,6 +42,8 @@ import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.validation.Issue
 import com.ncthanhngo.pollmaster.core.validation.reviewNotes
 import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.theme.attentionColor
+import androidx.compose.material3.LinearProgressIndicator
 import com.ncthanhngo.pollmaster.ui.common.BackButton
 import com.ncthanhngo.pollmaster.ui.theme.warnColor
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
@@ -72,10 +74,12 @@ fun ReviewScreen(
     val template = controller.template
     val progress = remember(record) { controller.progress(record) }
     val missing = (progress.total - progress.filled).takeIf { it > 0 } ?: issues.distinctBy { it.targetId }.size
-    val groups = remember(issues) { issues.groupBy { it.sectionId } }
-    // Which section groups are open: null = default (only the first one).
+    // Wrong values (range, missing KĐĐ reason) are errors in red; not filled yet (value, photos, rows) is neutral.
+    val errorGroups = remember(issues) { issues.filterNot { it.kind.isMissing }.groupBy { it.sectionId } }
+    val missingGroups = remember(issues) { issues.filter { it.kind.isMissing }.groupBy { it.sectionId } }
+    // Which section groups are open ("e:" / "m:" + section id): null = default (only the first one).
     var openIds by rememberSaveable { mutableStateOf<String?>(null) }
-    val open = openIds?.split('|')?.toSet() ?: groups.keys.take(1).toSet()
+    val open = openIds?.split('|')?.toSet() ?: (errorGroups.keys.map { "e:$it" } + missingGroups.keys.map { "m:$it" }).take(1).toSet()
     fun toggle(id: String) { openIds = (if (id in open) open - id else open + id).joinToString("|") }
 
     Scaffold(
@@ -108,6 +112,8 @@ fun ReviewScreen(
             }
         },
     ) { padding ->
+        val errorColor = MaterialTheme.colorScheme.error
+        val neutralColor = MaterialTheme.colorScheme.onSurfaceVariant
         LazyColumn(
             Modifier.padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -124,11 +130,16 @@ fun ReviewScreen(
                 item { Text(stringResource(R.string.review_ok), style = MaterialTheme.typography.bodyLarge) }
             } else {
                 item(key = "summary") {
-                    AppCard(container = MaterialTheme.colorScheme.errorContainer, borderColor = MaterialTheme.colorScheme.error) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppCard {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(R.string.review_missing_count, missing), style = MaterialTheme.typography.titleMedium)
+                            LinearProgressIndicator(
+                                progress = { if (progress.total > 0) progress.filled.toFloat() / progress.total else 1f }, Modifier.fillMaxWidth(),
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
                             Text(
-                                stringResource(R.string.review_missing_count, missing),
-                                style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer,
+                                stringResource(R.string.review_filled_of, progress.filled, progress.total),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Button(
                                 onClick = onFillOneByOne,
@@ -138,21 +149,32 @@ fun ReviewScreen(
                     }
                 }
             }
-            groups.forEach { (sectionId, list) ->
-                item(key = "h-$sectionId") {
-                    Row(
-                        Modifier.fillMaxWidth().clickable { toggle(sectionId) }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("${list.first().sectionTitle} (${list.size})", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                        Icon(if (sectionId in open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    }
+            listOf(
+                Triple("e", R.string.review_group_errors, errorGroups),
+                Triple("m", R.string.review_group_missing, missingGroups),
+            ).forEach { (block, titleRes, groups) ->
+                if (groups.isEmpty()) return@forEach
+                val color = if (block == "e") errorColor else neutralColor
+                item(key = "$block-title") {
+                    Text(stringResource(titleRes), style = MaterialTheme.typography.titleSmall, color = color, modifier = Modifier.padding(top = 8.dp))
                 }
-                if (sectionId in open) {
-                    items(list, key = { "${it.key}-${it.kind}" }) { issue ->
-                        IssueRow(issue) {
-                            if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
-                            else onJumpField(issue.sectionId, issue.targetId)
+                groups.forEach { (sectionId, list) ->
+                    val id = "$block:$sectionId"
+                    item(key = "h-$id") {
+                        Row(
+                            Modifier.fillMaxWidth().clickable { toggle(id) }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("${list.first().sectionTitle} (${list.size})", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            Icon(if (id in open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    if (id in open) {
+                        items(list, key = { "${it.key}-${it.kind}" }) { issue ->
+                            IssueRow(issue, color) {
+                                if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
+                                else onJumpField(issue.sectionId, issue.targetId)
+                            }
                         }
                     }
                 }
@@ -169,10 +191,10 @@ fun ReviewScreen(
             }
             if (notes.isNotEmpty()) {
                 item(key = "notes-title") {
-                    Text(stringResource(R.string.review_group_notes), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(top = 8.dp))
+                    Text(stringResource(R.string.review_group_notes), style = MaterialTheme.typography.titleSmall, color = attentionColor(), modifier = Modifier.padding(top = 8.dp))
                 }
                 items(notes, key = { "n-${it.targetId}" }) { n ->
-                    ListRow("${n.targetId} · ${n.label}", n.text, MaterialTheme.colorScheme.tertiary) {
+                    ListRow("${n.targetId} · ${n.label}", n.text, attentionColor()) {
                         onJumpField(n.sectionId, n.targetId)
                     }
                 }
@@ -198,9 +220,9 @@ fun ReviewScreen(
 }
 
 @Composable
-private fun IssueRow(issue: Issue, onClick: () -> Unit) = ListRow(
+private fun IssueRow(issue: Issue, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) = ListRow(
     (if (issue.rowId == null) "${issue.targetId} · " else "${issue.targetId} › ") + issue.label,
-    issue.message(), MaterialTheme.colorScheme.error, onClick,
+    issue.message(), color, onClick,
 )
 
 @Composable

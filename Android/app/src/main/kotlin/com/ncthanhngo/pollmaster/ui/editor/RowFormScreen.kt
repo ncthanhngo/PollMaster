@@ -64,10 +64,6 @@ fun RowFormScreen(
         } else {
             val scope = RowScope(controller, env.record, tableId, view.row, view.fixed)
             val listState = rememberLazyListState()
-            LaunchedEffect(focus) {
-                val at = table.columns.indexOfFirst { it.id == focus }
-                if (at >= 0) listState.scrollToItem(at)
-            }
             Column(Modifier.padding(padding)) {
                 table.stopwatch?.let { sw ->
                     if (!env.reviewMode) PinnedStopwatch(tableId, view.row, sw, controller, listState.canScrollBackward, ::openField)
@@ -78,7 +74,9 @@ fun RowFormScreen(
                     contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(table.columns, key = { it.id }) { column -> FieldCard(column, scope, env, showCode = false) }
+                    item(key = "columns") {
+                        FieldGroupCard(table.columns) { column -> BringIntoViewWhen(column.id == focus) { FieldCard(column, scope, env, showCode = false) } }
+                    }
                 }
             }
         }

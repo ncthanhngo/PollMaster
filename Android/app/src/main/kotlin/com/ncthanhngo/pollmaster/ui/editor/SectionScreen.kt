@@ -1,6 +1,11 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,14 +15,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -29,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
@@ -52,11 +57,42 @@ private fun arrange(items: List<Item>): Pair<List<Item>, List<Field>> {
     return rest.take(lastTable + 1) + rest.drop(lastTable + 1) to results
 }
 
+/** One list item of a section: a heading, consecutive fields drawn as one grouped block, a table on its own, a round group. */
 private sealed interface Row0 {
-    data class Entry(val item: Item) : Row0
-    data class Round(val heading: HeadingItem, val fields: List<Field>) : Row0
-    data object ResultsTitle : Row0
-    data class Result(val field: Field) : Row0
+    val key: String
+    data class Heading(val heading: HeadingItem) : Row0 { override val key get() = heading.id }
+    data class Group(val fields: List<Field>) : Row0 { override val key get() = "g-" + fields.first().id }
+    data class Table(val table: TableItem) : Row0 { override val key get() = table.id }
+    data class Round(val heading: HeadingItem, val fields: List<Field>) : Row0 { override val key get() = heading.id }
+    data object ResultsTitle : Row0 { override val key get() = "results-title" }
+    data class Results(val fields: List<Field>) : Row0 { override val key get() = "results" }
+}
+
+private fun Row0.holds(id: String?): Boolean = when (this) {
+    is Row0.Heading -> heading.id == id
+    is Row0.Group -> fields.any { it.id == id }
+    is Row0.Table -> table.id == id
+    is Row0.Round -> fields.any { it.id == id }
+    Row0.ResultsTitle -> false
+    is Row0.Results -> fields.any { it.id == id }
+}
+
+/** Fields that follow each other (after a heading or at the start) share one block; tables and round groups break it. */
+private fun segments(ordered: List<Item>, groups: Map<String, List<Field>>): List<Row0> {
+    val grouped = groups.values.flatten().map { it.id }.toSet()
+    val out = mutableListOf<Row0>()
+    for (item in ordered) {
+        if (item.id in grouped) continue
+        when (item) {
+            is HeadingItem -> out += if (item.id in groups) Row0.Round(item, groups.getValue(item.id)) else Row0.Heading(item)
+            is TableItem -> out += Row0.Table(item)
+            is Field -> {
+                val last = out.lastOrNull()
+                if (last is Row0.Group) out[out.lastIndex] = Row0.Group(last.fields + item) else out += Row0.Group(listOf(item))
+            }
+        }
+    }
+    return out
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,16 +121,13 @@ fun SectionScreen(
     val raw: List<Item> = section?.items ?: template.header
     val (ordered, results) = remember(raw) { arrange(raw) }
     val rows = remember(ordered, results) {
-        val groups = RoundEntryRules.groups(ordered)
-        val grouped = groups.values.flatten().map { it.id }.toSet()
-        ordered.filterNot { it.id in grouped }.map<Item, Row0> { item ->
-            if (item is HeadingItem && item.id in groups) Row0.Round(item, groups.getValue(item.id)) else Row0.Entry(item)
-        } + if (results.isEmpty()) emptyList() else listOf(Row0.ResultsTitle) + results.map { Row0.Result(it) }
+        segments(ordered, RoundEntryRules.groups(ordered)) +
+            if (results.isEmpty()) emptyList() else listOf(Row0.ResultsTitle, Row0.Results(results))
     }
     val listState: LazyListState = rememberLazyListState()
 
     LaunchedEffect(focus) {
-        val at = rows.indexOfFirst { (it is Row0.Entry && it.item.id == focus) || (it is Row0.Round && it.fields.any { f -> f.id == focus }) }
+        val at = rows.indexOfFirst { it.holds(focus) }
         if (at >= 0) listState.scrollToItem(at + (if (section?.note != null) 1 else 0))
     }
     // Leaving a section backs the record up when something changed.
@@ -110,20 +143,28 @@ fun SectionScreen(
                 actions = { if (!env.reviewMode) SectionMenu(sectionId, controller) },
             )
         },
+        // Pinned: previous / check (k/N) / next, so the next section never needs a scroll to the end.
         bottomBar = {
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Row(
-                    Modifier.navigationBarsPadding().fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    Modifier.navigationBarsPadding().fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val oneHand = LocalUiPrefs.current.oneHand
-                    val touch = if (oneHand) Modifier.heightIn(min = TOUCH_ONE_HAND) else Modifier
-                    TextButton(modifier = touch, enabled = index > 0, onClick = { onSwitchSection(ids[index - 1]) }) { Text("‹ " + stringResource(R.string.section_prev)) }
-                    // One-hand mode: the review shortcut sits in the middle of the bottom bar.
-                    if (oneHand) OutlinedButton(modifier = touch, onClick = onReview) { Text(stringResource(R.string.action_review)) }
-                    else Text("${index + 1}/${ids.size}", style = MaterialTheme.typography.titleSmall)
-                    TextButton(modifier = touch, enabled = index in 0 until ids.lastIndex, onClick = { onSwitchSection(ids[index + 1]) }) { Text(stringResource(R.string.section_next) + " ›") }
+                    val touch = Modifier.weight(1f).then(if (LocalUiPrefs.current.oneHand) Modifier.heightIn(min = TOUCH_ONE_HAND) else Modifier)
+                    val pad = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), enabled = index > 0, onClick = { onSwitchSection(ids[index - 1]) }) {
+                        Text("‹ " + stringResource(R.string.section_prev), maxLines = 1)
+                    }
+                    FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), onClick = onReview) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(stringResource(R.string.action_review), maxLines = 1)
+                            Text("${index + 1}/${ids.size}", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), enabled = index in 0 until ids.lastIndex, onClick = { onSwitchSection(ids[index + 1]) }) {
+                        Text(stringResource(R.string.section_next) + " ›", maxLines = 1)
+                    }
                 }
             }
         },
@@ -132,37 +173,49 @@ fun SectionScreen(
             state = listState,
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            section?.note?.let { note -> item(key = "note") { Text(note, style = MaterialTheme.typography.bodyMedium) } }
-            items(rows, key = { r ->
-                when (r) {
-                    is Row0.Entry -> r.item.id
-                    is Row0.Round -> r.heading.id
-                    Row0.ResultsTitle -> "results-title"
-                    is Row0.Result -> "result-" + r.field.id
+            section?.note?.let { note -> item(key = "note") { Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            items(rows, key = { it.key }) { row ->
+                val field: @Composable (Field) -> Unit = { f ->
+                    BringIntoViewWhen(f.id == focus) { Box(Modifier.trackTouch { track(f.id) }) { FieldCard(f, env.scope, env) } }
                 }
-            }) { row ->
                 when (row) {
-                    is Row0.Entry -> Box(Modifier.trackTouch { track(row.item.id) }) {
-                        when (val item = row.item) {
-                            is Field -> FieldCard(item, env.scope, env)
-                            is HeadingItem -> Text(item.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-                            is TableItem -> TableCard(item, env) { rowId -> track(item.id); onOpenRow(item.id, rowId) }
-                        }
+                    is Row0.Heading -> Box(Modifier.trackTouch { track(row.heading.id) }) { SectionHeading(row.heading) }
+                    is Row0.Group -> FieldGroupCard(row.fields) { field(it) }
+                    is Row0.Table -> Box(Modifier.trackTouch { track(row.table.id) }) {
+                        TableCard(row.table, env) { rowId -> track(row.table.id); onOpenRow(row.table.id, rowId) }
                     }
                     is Row0.Round -> RoundGroup(row.heading, row.fields, env, focus, ::track)
                     Row0.ResultsTitle -> Text(
                         stringResource(R.string.results_title),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
                     )
-                    is Row0.Result -> FieldCard(row.field, env.scope, env)
+                    is Row0.Results -> FieldGroupCard(row.fields) { field(it) }
                 }
             }
         }
     }
+}
+
+/** Group title (bold, larger) above the block of fields that follow it. */
+@Composable
+internal fun SectionHeading(heading: HeadingItem) {
+    Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(heading.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        heading.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** Scrolls [content] into view when [active] (the focused field inside a grouped block, after the list jumped to the block). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun BringIntoViewWhen(active: Boolean, content: @Composable () -> Unit) {
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(active) { if (active) requester.bringIntoView() }
+    Box(Modifier.bringIntoViewRequester(requester)) { content() }
 }
 
 /** Reports touches without consuming them (so inputs still work). */
