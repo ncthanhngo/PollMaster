@@ -97,6 +97,6 @@ struct PinnedStopwatchScroll<Content: View>: View {
     private func open(_ c: ActiveCue) {
         cue = nil
         guard let idx = model.sectionIndex(containing: c.field) else { return }
-        env.recordsPath.append(.section(record: model.record.id, index: idx, focus: c.field))
+        env.editorPath.append(.section(record: model.record.id, index: idx, focus: c.field))
     }
 }

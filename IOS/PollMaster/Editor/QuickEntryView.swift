@@ -103,7 +103,7 @@ struct QuickEntryView: View {
     private func next() {
         focused = nil
         let id = model.addRow(table.id)
-        env.recordsPath.removeLast()
-        env.recordsPath.append(.row(record: model.record.id, table: table.id, row: id))
+        env.editorPath.removeLast()
+        env.editorPath.append(.row(record: model.record.id, table: table.id, row: id))
     }
 }

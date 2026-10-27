@@ -60,7 +60,7 @@ struct AddRowButton: View {
         Button {
             let id = model.addRow(table.id)
             model.setPosition(section: sectionId, field: table.id)
-            env.recordsPath.append(.row(record: model.record.id, table: table.id, row: id))
+            env.editorPath.append(.row(record: model.record.id, table: table.id, row: id))
         } label: {
             Label(table.addTitle, systemImage: table.quickEntry ? "stopwatch" : "plus.circle.fill")
                 .frame(maxWidth: .infinity, minHeight: max(table.quickEntry ? 36 : 24, theme.minTouch))

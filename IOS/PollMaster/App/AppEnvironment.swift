@@ -86,6 +86,11 @@ final class AppEnvironment {
     var selectedTab: AppTab = .records
     /// Closing a record's editor stack (its routes leave the path) saves and drops its editor model.
     var recordsPath: [Route] = [] { didSet { releaseClosedEditors() } }
+    /// Template draft open in the editor (full screen, `TemplateEditorHost`); nil when none.
+    var editingDraftId: String?
+    /// "Xem trước" of a draft: a real record editor on a scratch store; its screens navigate on `previewPath` (see `editorPath`).
+    var previewModel: RecordEditorModel?
+    var previewPath: [Route] = []
     var errorMessage: String?
     /// Plain notice (title "Thông báo").
     var infoMessage: String?

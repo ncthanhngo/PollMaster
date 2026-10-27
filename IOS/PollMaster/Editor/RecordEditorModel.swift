@@ -31,6 +31,8 @@ final class RecordEditorModel {
     @ObservationIgnored var dirty = false
     /// Editor stack closed: later changes (a photo finishing, a backup stamp) are saved at once, never debounced.
     @ObservationIgnored var closed = false
+    /// Template preview: a scratch record; never backed up, exported or synced.
+    @ObservationIgnored var isPreview = false
     /// Record deleted / moved / wiped: nothing of this model may be written any more.
     @ObservationIgnored var discarded = false
     @ObservationIgnored var saveTask: Task<Void, Never>?

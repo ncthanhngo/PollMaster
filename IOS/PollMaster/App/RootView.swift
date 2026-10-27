@@ -24,6 +24,9 @@ struct RootView: View {
                 .tabItem { Label("Cài đặt", systemImage: "gearshape") }
                 .tag(AppTab.settings)
         }
+        .fullScreenCover(isPresented: Binding(get: { env.editingDraftId != nil }, set: { if !$0 { env.editingDraftId = nil } })) {
+            TemplateEditorHost(draftId: env.editingDraftId ?? "")
+        }
         .sheet(item: $env.incomingBundle) { ProjectImportSheet(incoming: $0) }
         .sheet(item: $env.addToProjectsFor) { AddToProjectsSheet(template: $0) }
         .alert("Tên người khảo sát", isPresented: Binding(get: { env.askSurveyorFor != nil }, set: { _ in })) {

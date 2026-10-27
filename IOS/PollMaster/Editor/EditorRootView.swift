@@ -69,15 +69,15 @@ struct EditorRootView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button(model.showAllErrors && !model.issues.isEmpty ? "Kiểm tra · \(model.issues.count)" : "Kiểm tra") {
                     model.showAllErrors = true
-                    env.recordsPath.append(.review(record: model.record.id))
+                    env.editorPath.append(.review(record: model.record.id))
                 }
                 .font(.subheadline)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Menu {
-                    Button("Xuất", systemImage: "square.and.arrow.up") { exporting = true }
+                    if !model.isPreview { Button("Xuất", systemImage: "square.and.arrow.up") { exporting = true } }
                     Button("Hướng dẫn mẫu", systemImage: "book") { showInstructions = true }
-                    Button("Lịch sử sửa", systemImage: "clock.arrow.circlepath") { env.recordsPath.append(.history(model.record.id)) }
+                    if !model.isPreview { Button("Lịch sử sửa", systemImage: "clock.arrow.circlepath") { env.editorPath.append(.history(model.record.id)) } }
                     if model.canReview {
                         Button(model.reviewMode ? "Thoát chế độ kiểm tra" : "Chế độ kiểm tra", systemImage: "text.badge.checkmark") {
                             model.reviewMode.toggle()
@@ -86,7 +86,7 @@ struct EditorRootView: View {
                     Button(scheme == .dark ? "Giao diện sáng" : "Giao diện tối", systemImage: scheme == .dark ? "sun.max" : "moon") {
                         env.settings.appearance = AppearanceMode.toggled(displayingDark: scheme == .dark)
                     }
-                    Button("Sao lưu ngay", systemImage: "externaldrive") { Task { await model.backup(force: true) } }
+                    if !model.isPreview { Button("Sao lưu ngay", systemImage: "externaldrive") { Task { await model.backup(force: true) } } }
                 } label: { Image(systemName: "ellipsis.circle") }
             }
         }

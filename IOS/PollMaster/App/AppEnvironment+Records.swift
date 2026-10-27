@@ -70,6 +70,7 @@ extension AppEnvironment {
     }
 
     func editor(for id: String) -> RecordEditorModel? {
+        if let p = previewModel, p.record.id == id { return p }
         if let m = editors[id] { return m }
         let onStack = recordsPath.contains { $0.recordId == id }
         if let m = closingEditors[id] {
@@ -101,5 +102,13 @@ extension AppEnvironment {
             closingEditors[id] = m
             requestRecordSync(project: m.record.projectId)
         }
+    }
+}
+
+extension AppEnvironment {
+    /// Navigation path of the record screens on top: the template preview's while it is open, else the records tab's.
+    var editorPath: [Route] {
+        get { previewModel != nil ? previewPath : recordsPath }
+        set { if previewModel != nil { previewPath = newValue } else { recordsPath = newValue } }
     }
 }

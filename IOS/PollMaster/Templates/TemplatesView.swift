@@ -13,6 +13,7 @@ struct TemplatesView: View {
     @State private var sheet: ImportSheet?
     @State private var deleting: Template?
     @State private var loadingURL = false
+    @State private var cloning = false
 
     private enum ImportSheet: Identifiable {
         case ai, paste, errors([String])
@@ -27,6 +28,7 @@ struct TemplatesView: View {
                 Section { aiRow }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
+                TemplateDraftsSection()
                 Section {
                     if env.templates.isEmpty {
                         ContentUnavailableView("Chưa có mẫu", systemImage: "doc.text",
@@ -52,6 +54,12 @@ struct TemplatesView: View {
                         Button("Nhập từ URL", systemImage: "link") { urlText = ""; askingURL = true }
                         Button("Dán JSON", systemImage: "doc.on.clipboard") { sheet = .paste }
                         Button("Tạo mẫu bằng AI", systemImage: "sparkles") { sheet = .ai }
+                        if env.canCreateTemplate {
+                            Menu("Tạo mẫu mới", systemImage: "square.and.pencil") {
+                                Button("Mẫu trống", systemImage: "doc") { env.createTemplate() }
+                                Button("Nhân bản từ mẫu…", systemImage: "doc.on.doc") { cloning = true }
+                            }
+                        }
                     } label: { Image(systemName: "plus") }
                 }
             }
@@ -64,6 +72,7 @@ struct TemplatesView: View {
                 case .failure(let e): fail(e)
                 }
             }
+            .sheet(isPresented: $cloning) { CloneTemplateSheet() }
             .sheet(item: $sheet) { s in
                 switch s {
                 case .ai: AIGuideSheet { sheet = .paste }

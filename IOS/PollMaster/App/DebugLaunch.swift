@@ -16,6 +16,10 @@ extension AppEnvironment {
     /// `-pmSwitcher 1` open the project switcher; `-pmImportBundle <path>` preview a .pmproject.
     /// `-pmSyncStates 1` (with `-pmSeedProjects 1`) gives the first project's records a creator and sync state: someone else's synced (view-only),
     /// mine waiting, mine in conflict + an error on one; `-pmOpenRecord <0-2>` opens one of them; `-pmHistory 1` pushes the history screen with a sample log.
+    /// Template editor: `-pmManage <n>` the first n seeded projects are managed by the account (default 0 = none); `-pmTemplateEditor <templateId>` open the draft
+    /// of that template, `-pmNewTemplate blank` a new one; `-pmEditorRoute a,b` pushes screens (`info`, `header`, `signatures`, `section:1`, `item:sections[1].items[0]`,
+    /// `json:<path>` / `json:` whole template) or opens `issues` / `publish` / `preview`; `-pmEditorBreak 1` adds a duplicate code and a dangling reference;
+    /// `-pmDrafts 1` leaves a draft on the templates tab; `-pmTab templates` shows it.
     /// `-pmAccount 1` signed in as a sample ERP user (no network); `-pmLogin 1` show the sign-in screen.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
@@ -33,6 +37,10 @@ extension AppEnvironment {
         if let path = d.string(forKey: "pmImportBundle") { openIncoming(URL(fileURLWithPath: path)) }
         if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings, "projects": .projects][tab] ?? .records }
         if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reloadNow() }
+        if d.integer(forKey: "pmManage") > 0 { for p in projects.prefix(d.integer(forKey: "pmManage")) { var m = p; m.canManage = true; try? projectStore.save(m) }; reloadNow() }
+        if let tid = d.string(forKey: "pmTemplateEditor"), let t = newestTemplates.first(where: { $0.id == tid }) { selectedTab = .templates; editContent(of: t) }
+        if d.string(forKey: "pmNewTemplate") != nil, let p = defaultTarget() { selectedTab = .templates; createTemplate(project: p) }
+        if d.bool(forKey: "pmDrafts"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { _ = try? startDraft(from: t) }
         guard let tid = d.string(forKey: "pmCreate"), let t = newestTemplates.first(where: { $0.id == tid }) else { return }
         var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
         if d.bool(forKey: "pmFill") || d.bool(forKey: "pmReview") { fillRequired(t, &r) }
@@ -154,6 +162,35 @@ extension AppEnvironment {
         var fresh = RecordFactory.make(template: t, now: Date().addingTimeInterval(-3600), projectId: projectId)
         fresh.values["A-04"] = FieldValue(v: GPSValue(lat: 10.7700, lng: 106.7100, accuracy: 9).json)
         for r in [done, returned, fresh].prefix(count) { try? recordStore.save(r) }
+    }
+}
+
+extension TemplateEditorModel {
+    /// `-pmEditorRoute` / `-pmEditorBreak` (see `AppEnvironment.applyDebugLaunchArguments`).
+    func applyDebugLaunch() {
+        let d = UserDefaults.standard
+        if d.bool(forKey: "pmEditorBreak") {
+            apply(.set(path: ["sections", 0, "items", 1], key: "id", value: node(["sections", 0, "items", 0])?.object?["id"]),
+                  .set(path: ["sections", 0, "items", 0], key: "photoRef", value: "ZZ-99"))
+            relint()
+        }
+        guard let spec = d.string(forKey: "pmEditorRoute") else { return }
+        for part in spec.split(separator: ",").map(String.init) {
+            let bits = part.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+            let arg = bits.count > 1 ? bits[1] : ""
+            switch bits[0] {
+            case "info": path.append(.info)
+            case "header": path.append(.header)
+            case "signatures": path.append(.signatures)
+            case "section": path.append(.section(Int(arg) ?? 0))
+            case "item": path.append(.item(DocPath.parse(arg) ?? []))
+            case "json": path.append(.json(DocPath.parse(arg) ?? []))
+            case "issues": relint(); sheet = .issues
+            case "publish": relint(); sheet = .publish
+            case "preview": sheet = .preview
+            default: break
+            }
+        }
     }
 }
 #else

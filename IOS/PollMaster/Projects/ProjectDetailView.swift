@@ -8,6 +8,8 @@ struct ProjectDetailView: View {
     @State private var exportingSummary = false
     @State private var share: ShareItems?
     @State private var removing: TemplateRef?
+    @State private var rollingBack: TemplateRef?
+    @State private var cloning = false
 
     private var project: Project? { env.projects.first { $0.id == projectId } }
 
@@ -61,6 +63,11 @@ struct ProjectDetailView: View {
         }
         .navigationTitle(p.name)
         .sheet(isPresented: $addingTemplates) { AddProjectTemplatesSheet(project: p) }
+        .sheet(isPresented: $cloning) { CloneTemplateSheet(project: p) }
+        .confirmationDialog("Đổi dự án về bản trước của mẫu \(rollingBack?.id ?? "")?", isPresented: Binding(get: { rollingBack != nil }, set: { if !$0 { rollingBack = nil } }),
+                            titleVisibility: .visible) {
+            Button("Quay lại bản trước") { if let r = rollingBack { env.rollBackTemplate(r, in: p) }; rollingBack = nil }
+        } message: { Text("Phiếu đã tạo giữ phiên bản của nó. Phiếu mới sẽ dùng bản cũ hơn này.") }
         .sheet(isPresented: $exportingSummary) { ProjectSummarySheet(project: p) }
         .sheet(item: $share) { ActivityView(items: $0.urls).presentationDetents([.medium, .large]) }
         .confirmationDialog("Gỡ mẫu \(removing?.id ?? "") khỏi dự án? Phiếu đã tạo vẫn mở được.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
@@ -78,6 +85,12 @@ struct ProjectDetailView: View {
                     Text("\(ref.id) · v\(ref.version)\(t == nil ? " · thiếu trong thư viện" : "")").font(.caption).secondaryText()
                 }
                 .swipeActions { Button("Gỡ", systemImage: "minus.circle", role: .destructive) { if env.guardTemplates(p) { removing = ref } } }
+                if let previous = env.previousVersion(of: ref) {
+                    Button { if env.guardTemplates(p) { rollingBack = ref } } label: {
+                        Label("Quay lại bản trước (v\(previous.version))", systemImage: "arrow.uturn.backward.circle").font(.subheadline).frame(minHeight: 44, alignment: .leading)
+                    }
+                    .opacity(env.canChangeTemplates(in: p) ? 1 : 0.45)
+                }
             }
             ForEach(env.newerVersions(for: p), id: \.self) { newer in
                 let old = p.templates.first { $0.id == newer.id }?.version ?? ""
@@ -86,6 +99,12 @@ struct ProjectDetailView: View {
                         .font(.subheadline).multilineTextAlignment(.leading)
                 }
                 .opacity(env.canChangeTemplates(in: p) ? 1 : 0.45)
+            }
+            if env.canCreateTemplate && (env.account == nil || p.canManage) {
+                Menu {
+                    Button("Mẫu trống", systemImage: "doc") { env.createTemplate(project: p) }
+                    Button("Nhân bản từ mẫu…", systemImage: "doc.on.doc") { cloning = true }
+                } label: { Label("Tạo mẫu mới", systemImage: "square.and.pencil").frame(minHeight: 44) }
             }
             Button("Thêm mẫu từ thư viện", systemImage: "plus.circle") { if env.guardTemplates(p) { addingTemplates = true } }
                 .opacity(env.canChangeTemplates(in: p) ? 1 : 0.45)

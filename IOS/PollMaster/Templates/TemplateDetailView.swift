@@ -13,6 +13,7 @@ struct TemplateDetailView: View {
 
     @State private var choosing = false
     @State private var editing = false
+    @State private var discarding = false
 
     private var isNewest: Bool { env.newestTemplates.contains { $0.key == template.key } }
     /// Active projects that use exactly this template version.
@@ -34,6 +35,7 @@ struct TemplateDetailView: View {
                         .font(.footnote).foregroundStyle(theme.warning)
                 }
             }
+            if env.canDraft(template) { Section { editContentRows } footer: { Text("Sửa nhãn, trường, bảng… rồi phát hành thành phiên bản mới. Nháp lưu trên máy, sửa được khi không có mạng.") } }
             if let i = template.instructions {
                 Section { DisclosureGroup("Hướng dẫn") { Text(i).font(.footnote) } }
             }
@@ -69,6 +71,9 @@ struct TemplateDetailView: View {
             ForEach(projects) { p in Button("\(p.name) (\(p.code))") { env.startCreate(from: template, in: p) } }
         }
         .sheet(isPresented: $editing) { TemplateEditSheet(template: template) }
+        .confirmationDialog("Bỏ bản nháp?", isPresented: $discarding, titleVisibility: .visible) {
+            Button("Bỏ bản nháp", role: .destructive) { if let d = env.draft(forTemplateId: template.id) { env.discardDraft(d.draftId) } }
+        } message: { Text("Mọi thay đổi chưa phát hành sẽ mất.") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Sửa tên và màu", systemImage: "pencil") {
@@ -79,6 +84,17 @@ struct TemplateDetailView: View {
         }
         .navigationTitle(template.id)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder private var editContentRows: some View {
+        if let d = env.draft(forTemplateId: template.id) {
+            Button { env.resume(d) } label: {
+                Label("Tiếp tục nháp (\(env.editedAtText(d)))", systemImage: "square.and.pencil").frame(minHeight: 44, alignment: .leading)
+            }
+            Button("Bỏ nháp", systemImage: "trash", role: .destructive) { discarding = true }.frame(minHeight: 44)
+        } else {
+            Button { env.editContent(of: template) } label: { Label("Sửa nội dung", systemImage: "square.and.pencil").frame(minHeight: 44, alignment: .leading) }
+        }
     }
 
     private var summary: some View {

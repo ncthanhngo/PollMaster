@@ -82,7 +82,7 @@ struct FillOneByOneView: View {
     private func openButton(_ step: FillStep, title: String) -> some View {
         Button {
             guard let idx = model.sectionIndex(of: step.sectionId) else { return }
-            env.recordsPath.append(.section(record: model.record.id, index: idx, focus: step.fieldId))
+            env.editorPath.append(.section(record: model.record.id, index: idx, focus: step.fieldId))
         } label: { Label(title, systemImage: "arrow.up.right.square").frame(maxWidth: .infinity, minHeight: max(32, theme.minTouch)) }
             .buttonStyle(.bordered)
     }

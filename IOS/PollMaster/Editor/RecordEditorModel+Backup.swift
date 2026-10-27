@@ -6,6 +6,7 @@ extension RecordEditorModel {
     /// running). True when a copy was written; false when none was needed or it failed (`backupError` says why).
     @discardableResult
     func backup(force: Bool = false) async -> Bool {
+        guard !isPreview else { return false }
         if let running = backupTask {
             guard force else { return false }
             _ = await running.value

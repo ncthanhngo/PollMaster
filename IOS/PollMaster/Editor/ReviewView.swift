@@ -46,7 +46,7 @@ struct ReviewView: View {
                         Text("Còn \(missingCount) mục bắt buộc").font(.title3.weight(.semibold))
                         ProgressView(value: model.progress.fraction)
                         Text("Đã điền \(model.progress.done)/\(model.progress.total)").font(.caption).secondaryText()
-                        Button { env.recordsPath.append(.fill(record: model.record.id)) } label: {
+                        Button { env.editorPath.append(.fill(record: model.record.id)) } label: {
                             Label("Điền lần lượt", systemImage: "arrow.right.circle.fill").font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: max(36, theme.minTouch))
                         }
@@ -123,9 +123,9 @@ struct ReviewView: View {
     private func jump(_ fieldId: String, _ rowId: String?, _ sectionId: String) {
         guard let idx = model.sectionIndex(of: sectionId) else { return }
         if let row = rowId {
-            env.recordsPath.append(.row(record: model.record.id, table: fieldId, row: row))
+            env.editorPath.append(.row(record: model.record.id, table: fieldId, row: row))
         } else {
-            env.recordsPath.append(.section(record: model.record.id, index: idx, focus: fieldId))
+            env.editorPath.append(.section(record: model.record.id, index: idx, focus: fieldId))
         }
     }
 }

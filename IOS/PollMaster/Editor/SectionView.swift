@@ -175,7 +175,7 @@ struct SectionView: View {
                 Button { go(index - 1) } label: { Text("‹ Mục trước").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.disabled(index == 0)
                 Button {
                     model.showAllErrors = true
-                    env.recordsPath.append(.review(record: model.record.id))
+                    env.editorPath.append(.review(record: model.record.id))
                 } label: {
                     VStack(spacing: 0) {
                         Text("Kiểm tra").lineLimit(1)
@@ -193,8 +193,8 @@ struct SectionView: View {
 
     private func go(_ i: Int) {
         focused = nil
-        env.recordsPath.removeLast()
-        env.recordsPath.append(.section(record: model.record.id, index: i, focus: nil))
+        env.editorPath.removeLast()
+        env.editorPath.append(.section(record: model.record.id, index: i, focus: nil))
     }
 
     /// Id of the lazily built block (heading group, field group or table) that holds the field or table `id`.
