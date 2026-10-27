@@ -202,6 +202,18 @@ import Foundation
         #expect(store.load("phx")?.templates.isEmpty == true)      // only when it first arrives
     }
 
+    @Test func newBundledTemplateGoesToPhoenix() throws {
+        let old = TemplateRef(id: "BB-TDP-01", version: "1.2"), new = TemplateRef(id: "KS-VF-SWAP-01", version: "1.0")
+        let phx = ERPProject(id: "phx", code: "PHN", name: "PHOENIX", type: "company"), other = ERPProject(id: "o", code: "O", name: "Khác", type: "company")
+        _ = try ERPProjectSync.apply([phx, other], to: store, library: [old])
+        try store.removeTemplate(old, from: "phx")
+        try ERPProjectSync.addNewTemplates([new], to: store)
+        #expect(store.load("phx")?.templates == [new])          // the removed one stays removed
+        #expect(store.load("o")?.templates.isEmpty == true)
+        try ERPProjectSync.addNewTemplates([TemplateRef(id: "KS-VF-SWAP-01", version: "1.1")], to: store)
+        #expect(store.load("phx")?.templates == [new])          // a newer version is a suggestion, not added
+    }
+
     @Test func missingAvatarFileIsFetchedAgain() throws {
         let a = ERPProject(id: "a", code: "A", name: "A", type: "company", logo: "https://x/a.png")
         _ = try ERPProjectSync.apply([a], to: store)

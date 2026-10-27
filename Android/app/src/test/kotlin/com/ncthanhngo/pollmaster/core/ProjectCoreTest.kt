@@ -160,6 +160,21 @@ class ProjectCoreTest {
         assertTrue(store.get("phx")!!.templates.isEmpty()) // only when it first arrives
     }
 
+    @Test fun newBundledTemplateGoesToPhoenix() {
+        val store = ProjectStore(TestData.tempDir())
+        val old = TemplateRef("BB-TDP-01", "1.2")
+        val new = TemplateRef("KS-VF-SWAP-01", "1.0")
+        val phx = ErpProject("phx", "PHN", "PHOENIX", type = "company")
+        val other = ErpProject("o", "O", "Khác", type = "company")
+        ErpProjectSync.apply(listOf(phx, other), store, NOW, listOf(old))
+        store.setTemplates("phx", emptyList(), NOW)
+        ErpProjectSync.addNewTemplates(listOf(new), store, NOW)
+        assertEquals(listOf(new), store.get("phx")?.templates) // the removed one stays removed
+        assertTrue(store.get("o")!!.templates.isEmpty())
+        ErpProjectSync.addNewTemplates(listOf(TemplateRef("KS-VF-SWAP-01", "1.1")), store, NOW)
+        assertEquals(listOf(new), store.get("phx")?.templates) // a newer version is a suggestion, not added
+    }
+
     @Test fun erpMissingAvatarIsFetchedAgain() {
         val store = ProjectStore(TestData.tempDir())
         val a = ErpProject("a", "A", "A", type = "company", logo = "https://x/a.png")

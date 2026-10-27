@@ -2,7 +2,10 @@ package com.ncthanhngo.pollmaster.data
 
 import android.content.Context
 import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.core.format.nowIso
+import com.ncthanhngo.pollmaster.core.project.ErpProjectSync
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
+import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
@@ -53,17 +56,25 @@ class TemplatesRepository(
     fun find(id: String, version: String): Template? =
         _templates.value.firstOrNull { it.id == id && it.version == version } ?: store.get(id, version)
 
-    /** Installs every bundled template version once (keyed by id@version, so a new version is added next to the old one). */
+    /**
+     * Installs every bundled template version once (keyed by id@version, so a new version is added next to the old one).
+     * A template id never seen on this device is also added to the Phoenix projects already here.
+     */
     suspend fun installBundled() = withContext(Dispatchers.IO) {
         val done = settings.installedBundled.toMutableSet()
+        val known = store.list().map { it.id }.toSet()
+        val fresh = mutableListOf<TemplateRef>()
         val names = context.assets.list("").orEmpty().filter { it.endsWith(".json") }
         for (name in names) {
             val text = context.assets.open(name).use { it.readBytes().decodeToString() }
             val template = runCatching { TemplateParser.parse(text) }.getOrNull() ?: continue
             val key = "${template.id}@${template.version}"
             if (key in done) continue
-            if (store.install(text, overwrite = false) !is InstallResult.Invalid) done += key
+            val result = store.install(text, overwrite = false)
+            if (result !is InstallResult.Invalid) done += key
+            if (result is InstallResult.Installed && template.id !in known) fresh += TemplateRef(template.id, template.version)
         }
+        ErpProjectSync.addNewTemplates(fresh, projects, nowIso())
         settings.installedBundled = done
         reload(store.list())
     }

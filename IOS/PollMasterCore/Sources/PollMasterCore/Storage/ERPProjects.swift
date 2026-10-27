@@ -72,6 +72,11 @@ enum ERPDate {
 }
 
 /// Projects come from the ERP: the device keeps one folder per ERP project (its templates, sites, colour, records).
+extension Project {
+    /// Same rule as `ERPProject.startsWithLibrary`, for a project already on the device.
+    public var startsWithLibrary: Bool { [code, name].contains { $0.localizedCaseInsensitiveContains("phoenix") } }
+}
+
 public enum ERPProjectSync {
     public struct LogoChange: Equatable, Sendable {
         public var projectId: String
@@ -113,6 +118,14 @@ public enum ERPProjectSync {
             if old == nil { all.append(p) }
         }
         return changes
+    }
+
+    /// Templates the app brings that were never on this device also go to every Phoenix project already here
+    /// (`startsWithLibrary`). A template removed from the project stays removed: only first-time templates are added.
+    public static func addNewTemplates(_ refs: [TemplateRef], to store: ProjectStore, now: Date = Date()) throws {
+        for p in store.list() where !p.archived && p.startsWithLibrary {
+            for ref in refs where !p.templates.contains(where: { $0.id == ref.id }) { try store.addTemplate(ref, to: p.id, now: now) }
+        }
     }
 
     /// The id becomes a folder name: only letters, digits and dashes, at most 64 characters (`^[A-Za-z0-9-]{1,64}$`).

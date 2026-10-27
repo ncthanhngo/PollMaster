@@ -120,15 +120,23 @@ final class AppEnvironment {
     // MARK: templates
 
     /// Install shared templates on first launch and whenever a bundled version is missing; installed older versions stay.
+    /// A template id never seen on this device is also added to the Phoenix projects already here.
     func installBundledTemplates() {
         let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "templates") ?? []
+        let known = Set(templateStore.list().map(\.id))
+        var fresh: [TemplateRef] = []
         for url in urls {
             do {
                 let data = try Data(contentsOf: url)
                 let t = try TemplateLoader.decode(data)
-                if !templateStore.exists(id: t.id, version: t.version) { try templateStore.install(data) }
+                if !templateStore.exists(id: t.id, version: t.version) {
+                    try templateStore.install(data)
+                    if !known.contains(t.id) { fresh.append(TemplateRef(t)) }
+                }
             } catch { errorMessage = "Không cài được mẫu \(url.lastPathComponent): \(error.localizedDescription)" }
         }
+        do { try ERPProjectSync.addNewTemplates(fresh, to: projectStore) }
+        catch { errorMessage = "Không thêm được mẫu mới vào dự án Phoenix: \(error.localizedDescription)" }
     }
 
     /// Newest version of each template: what new records are created from.

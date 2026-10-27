@@ -412,6 +412,7 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
   Token: iOS Keychain, Android SharedPreferences mã hóa AES-GCM bằng khóa Android Keystore.
 - `GET /projects?status=active&page_size=100&page=n` (lặp đến `total`): chỉ lấy `project_type` `company` → mục **Dự án công ty**, `internal` → **Nội bộ**
   (bỏ `personal`). Dự án mới về máy: chưa có mẫu, riêng dự án có "Phoenix" trong mã/tên được gán sẵn mọi mẫu của thư viện (bản mới nhất).
+  Mẫu đóng gói lần đầu có trên máy (id chưa từng cài) cũng được thêm vào dự án Phoenix đang có; mẫu đã gỡ khỏi dự án không quay lại.
   Đồng bộ khi đăng nhập, khi mở app, khi kéo để tải lại; mất mạng → dùng danh sách đã lưu.
 - Ảnh đại diện: `customer_logo_url` (tương đối → ghép `https://api.evselab.com`), cắt vuông 256 px nền trắng → `avatar.jpg`.
 - Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình. Đăng xuất hủy lần đồng bộ đang chạy (kết quả cũ bị bỏ).

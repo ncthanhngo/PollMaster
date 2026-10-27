@@ -36,6 +36,9 @@ data class ErpEnvelope<T>(val data: T? = null, val error: String? = null)
 /** A project whose avatar must be downloaded again ([url]) or removed (null). */
 data class LogoChange(val projectId: String, val url: String?)
 
+/** Same rule as [ErpProject.startsWithLibrary], for a project already on the device. */
+val Project.startsWithLibrary: Boolean get() = listOf(code, name).any { it.contains("phoenix", ignoreCase = true) }
+
 /** Projects come from the ERP: the device keeps one folder per ERP project (its templates, sites, colour, records). */
 object ErpProjectSync {
     /**
@@ -71,6 +74,17 @@ object ErpProjectSync {
             if (old == null) all += p
         }
         return changes
+    }
+
+    /**
+     * Templates the app brings that were never on this device also go to every Phoenix project already here
+     * ([Project.startsWithLibrary]). A template removed from the project stays removed: only first-time templates are added.
+     */
+    fun addNewTemplates(refs: List<TemplateRef>, store: ProjectStore, now: String) {
+        for (p in store.list().filter { !it.archived && it.startsWithLibrary }) {
+            val missing = refs.filter { r -> p.templates.none { it.id == r.id } }
+            if (missing.isNotEmpty()) store.setTemplates(p.id, p.templates + missing, now)
+        }
     }
 
     private val SAFE_ID = Regex("^[A-Za-z0-9-]{1,64}$")
