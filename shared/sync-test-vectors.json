@@ -1,0 +1,834 @@
+{
+ "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing.",
+ "plan": [
+  {
+   "name": "server has it, device does not -> create",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 1
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 1
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "create"
+   }
+  },
+  {
+   "name": "clean and server newer -> overwrite",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u2",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "overwrite"
+   }
+  },
+  {
+   "name": "dirty and server newer -> conflict",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "conflict"
+   }
+  },
+  {
+   "name": "dirty, same rev, may edit -> push",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "push"
+   }
+  },
+  {
+   "name": "up to date and clean -> nothing",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "server older than device -> nothing",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 3,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 3
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "gone from server, clean -> deleteLocal",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u2",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {
+    "a": "deleteLocal"
+   }
+  },
+  {
+   "name": "gone from server, dirty -> conflict",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {
+    "a": "conflict"
+   }
+  },
+  {
+   "name": "never synced, no creator -> push as new",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {
+    "a": "push"
+   }
+  },
+  {
+   "name": "never synced, creator is me -> push as new",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {
+    "a": "push"
+   }
+  },
+  {
+   "name": "someone else's dirty copy, not manager -> keep, no push",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u2",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "someone else's dirty copy, manager -> push",
+   "me": "u1",
+   "canPost": true,
+   "canManage": true,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u2",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "push"
+   }
+  },
+  {
+   "name": "cannot post -> nothing pushed",
+   "me": "u1",
+   "canPost": false,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 2,
+     "conflict": false,
+     "dirty": true
+    },
+    {
+     "id": "b",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "sent by build 42, clean, server has it -> push to adopt",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 4
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 4
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "push"
+   }
+  },
+  {
+   "name": "sent by build 42, someone else's, clean -> nothing",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u2",
+     "serverRev": null,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 4
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 4
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "conflict flagged waits for the user",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": true,
+     "dirty": true
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 5
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 5
+    }
+   ],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "pending delete is not brought back",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 1
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 1
+    }
+   ],
+   "deleted": [
+    "a"
+   ],
+   "expect": {}
+  },
+  {
+   "name": "mixed run",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": true
+    },
+    {
+     "id": "b",
+     "createdBy": "u2",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    },
+    {
+     "id": "c",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    },
+    {
+     "id": "d",
+     "createdBy": "u2",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "changed": [
+    {
+     "id": "a",
+     "rev": 2
+    },
+    {
+     "id": "b",
+     "rev": 2
+    },
+    {
+     "id": "e",
+     "rev": 1
+    }
+   ],
+   "ids": [
+    {
+     "id": "a",
+     "rev": 2
+    },
+    {
+     "id": "b",
+     "rev": 2
+    },
+    {
+     "id": "c",
+     "rev": 0
+    },
+    {
+     "id": "e",
+     "rev": 1
+    }
+   ],
+   "deleted": [],
+   "expect": {
+    "a": "conflict",
+    "b": "overwrite",
+    "c": "push",
+    "d": "deleteLocal",
+    "e": "create"
+   }
+  }
+ ],
+ "accountSwitch": [
+  {
+   "name": "clean records of another account go",
+   "me": "u2",
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    },
+    {
+     "id": "b",
+     "createdBy": "u2",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "expect": [
+    "a"
+   ]
+  },
+  {
+   "name": "dirty records of the old account stay",
+   "me": "u2",
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": true
+    },
+    {
+     "id": "b",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "clean without creator stays (sent by an older build)",
+   "me": "u2",
+   "local": [
+    {
+     "id": "a",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": false
+    }
+   ],
+   "expect": []
+  }
+ ],
+ "lostProject": [
+  {
+   "name": "clean records of the lost project go, dirty stay",
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": false
+    },
+    {
+     "id": "b",
+     "createdBy": "u1",
+     "serverRev": 1,
+     "conflict": false,
+     "dirty": true
+    },
+    {
+     "id": "c",
+     "createdBy": null,
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "expect": [
+    "a"
+   ]
+  }
+ ],
+ "sameContent": [
+  {
+   "name": "identical",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "expect": true
+  },
+  {
+   "name": "bookkeeping differs",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    },
+    "updatedAt": "2026-01-01T00:00:00+07:00",
+    "serverRev": 3,
+    "createdBy": "u1",
+    "createdByName": "A",
+    "erpUploadedAt": "x",
+    "backupAt": "y",
+    "lastPosition": {
+     "section": "s"
+    },
+    "syncConflict": true,
+    "seq": 2
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    },
+    "updatedAt": "2026-02-02T00:00:00+07:00",
+    "seq": 5
+   },
+   "expect": true
+  },
+  {
+   "name": "null keys ignored",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    },
+    "completedAt": null
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "expect": true
+  },
+  {
+   "name": "value differs",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 2
+     }
+    }
+   },
+   "expect": false
+  },
+  {
+   "name": "status differs",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "completed",
+    "values": {
+     "P1": {
+      "v": 1
+     }
+    }
+   },
+   "expect": false
+  },
+  {
+   "name": "nested bookkeeping-named key is content",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1,
+      "seq": 1
+     }
+    }
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 1,
+      "seq": 2
+     }
+    }
+   },
+   "expect": false
+  },
+  {
+   "name": "integer and decimal 3 are equal",
+   "a": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 3
+     }
+    }
+   },
+   "b": {
+    "id": "r1",
+    "templateId": "T",
+    "status": "draft",
+    "values": {
+     "P1": {
+      "v": 3.0
+     }
+    }
+   },
+   "expect": true
+  }
+ ],
+ "isVideo": [
+  {
+   "name": "media/a.mp4",
+   "expect": true
+  },
+  {
+   "name": "media/a.MOV",
+   "expect": true
+  },
+  {
+   "name": "media/clip.m4v",
+   "expect": true
+  },
+  {
+   "name": "media/a.jpg",
+   "expect": false
+  },
+  {
+   "name": "media/a.m4a",
+   "expect": false
+  },
+  {
+   "name": "media/sig_x.png",
+   "expect": false
+  },
+  {
+   "name": "media/noext",
+   "expect": false
+  }
+ ]
+}

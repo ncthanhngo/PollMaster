@@ -215,10 +215,17 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
     public var projectId: String?
     /// Number among the project's records of the same template ("01 - …" in the title); nil for records made before numbering.
     public var seq: Int?
+    /// ERP `user.id` of the creator (schema §10.1); nil = not on the server yet (the signed-in account is the creator).
+    public var createdBy: String?
+    public var createdByName: String?
+    /// `rev` of the server copy this one is based on; nil = never on the server.
+    public var serverRev: Int?
+    /// Device and server both changed (or the server deleted a record still edited here); waits for the user's choice.
+    public var syncConflict: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, id, templateId, templateVersion, status, createdAt, updatedAt, completedAt, values, tables, signatures
-        case returned, lastPosition, backupAt, erpUploadedAt, projectId, seq
+        case returned, lastPosition, backupAt, erpUploadedAt, projectId, seq, createdBy, createdByName, serverRev, syncConflict
     }
 
     /// Every key except `id` is optional on read (Android omits keys).
@@ -242,6 +249,10 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         erpUploadedAt = c.lenient(Date.self, .erpUploadedAt)
         projectId = c.lenient(String.self, .projectId)?.nilIfEmpty
         seq = c.lenient(Int.self, .seq)
+        createdBy = c.lenient(String.self, .createdBy)?.nilIfEmpty
+        createdByName = c.lenient(String.self, .createdByName)?.nilIfEmpty
+        serverRev = c.lenient(Int.self, .serverRev)
+        syncConflict = c.lenient(Bool.self, .syncConflict) ?? false
         rawTimes = RawTimes(created: c.lenient(String.self, .createdAt), updated: c.lenient(String.self, .updatedAt),
                             completed: c.lenient(String.self, .completedAt))
     }
@@ -269,6 +280,9 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         try c.encodeIfPresent(erpUploadedAt, forKey: .erpUploadedAt)
         try c.encodeIfPresent(projectId, forKey: .projectId)
         try c.encodeIfPresent(seq, forKey: .seq)
+        try c.encodeIfPresent(createdBy, forKey: .createdBy); try c.encodeIfPresent(createdByName, forKey: .createdByName)
+        try c.encodeIfPresent(serverRev, forKey: .serverRev)
+        if syncConflict { try c.encode(true, forKey: .syncConflict) }
     }
 
     /// Edited since the last automatic backup (or never backed up).
@@ -276,6 +290,9 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
 
     /// Sent to the ERP before and edited since ("Có thay đổi chưa gửi"); never sent is false.
     public var hasUnsentErpChanges: Bool { erpUploadedAt.map { updatedAt > $0 } ?? false }
+
+    /// Has changes the server does not know yet (schema §10.1): never uploaded, or edited after the last upload / pull.
+    public var isSyncDirty: Bool { erpUploadedAt.map { updatedAt > $0 } ?? true }
 
     public func value(_ id: String) -> FieldValue { values[id] ?? FieldValue() }
     public func rows(_ tableId: String) -> [Row] { tables[tableId] ?? [] }

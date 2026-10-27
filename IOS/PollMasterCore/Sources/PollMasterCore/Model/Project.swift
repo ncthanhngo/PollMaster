@@ -43,6 +43,11 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
     public var logo: String?
     public var templates: [TemplateRef]
     public var archived: Bool
+    /// What the signed-in account may do here, from `poll-sync` (schema §10.1); a project never synced is treated as writable.
+    public var canPost: Bool = true
+    public var canManage: Bool = false
+    /// `server_time` of the last complete record sync: the `since` of the next pull (kept as the server wrote it).
+    public var recordsSyncedAt: String?
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -52,7 +57,9 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         self.color = color; self.kind = kind; self.templates = templates; self.archived = archived; createdAt = now; updatedAt = now
     }
 
-    enum CodingKeys: String, CodingKey { case schemaVersion, id, code, name, client, description, color, kind, logo, templates, archived, createdAt, updatedAt }
+    enum CodingKeys: String, CodingKey { case schemaVersion, id, code, name, client, description, color, kind, logo, templates, archived, createdAt, updatedAt
+        case canPost, canManage, recordsSyncedAt
+    }
 
     /// Only `id` and `code` are required on read; the rest falls back to defaults.
     public init(from decoder: Decoder) throws {
@@ -68,6 +75,9 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         logo = c.lenient(String.self, .logo)
         templates = c.lenient([TemplateRef].self, .templates) ?? []
         archived = c.lenient(Bool.self, .archived) ?? false
+        canPost = c.lenient(Bool.self, .canPost) ?? true
+        canManage = c.lenient(Bool.self, .canManage) ?? false
+        recordsSyncedAt = c.lenient(String.self, .recordsSyncedAt)
         createdAt = c.lenient(Date.self, .createdAt) ?? Date()
         updatedAt = c.lenient(Date.self, .updatedAt) ?? createdAt
     }
@@ -80,6 +90,8 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         try c.encodeIfPresent(color, forKey: .color); try c.encodeIfPresent(kind, forKey: .kind)
         try c.encodeIfPresent(logo, forKey: .logo); try c.encode(templates, forKey: .templates)
         try c.encode(archived, forKey: .archived)
+        try c.encode(canPost, forKey: .canPost); try c.encode(canManage, forKey: .canManage)
+        try c.encodeIfPresent(recordsSyncedAt, forKey: .recordsSyncedAt)
         try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
     }
 
