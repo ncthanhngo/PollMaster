@@ -12,7 +12,7 @@ class PollMasterApp : Application() {
         container = AppContainer(this)
         container.scope.launch {
             container.templates.installBundled()
-            container.projects.migrate()
+            container.projects.refresh()
             container.records.refresh()
         }
     }

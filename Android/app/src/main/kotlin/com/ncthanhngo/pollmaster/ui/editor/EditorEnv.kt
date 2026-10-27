@@ -15,8 +15,6 @@ import com.ncthanhngo.pollmaster.core.model.Row
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.tables
-import com.ncthanhngo.pollmaster.core.project.Project
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.sites.Site
 import com.ncthanhngo.pollmaster.core.validation.Issue
 import com.ncthanhngo.pollmaster.core.validation.Warning
@@ -112,9 +110,8 @@ fun rememberRecordState(controller: EditorController): State<Record> {
 fun rememberEditorEnv(controller: EditorController): EditorEnv {
     val container = LocalContainer.current
     val allSites by container.sites.all.collectAsState()
-    val projects by container.projects.projects.collectAsState()
     val record by rememberRecordState(controller)
-    val projectId = ProjectRules.effectiveProjectId(record, projects.firstOrNull { it.id == Project.CHUNG_ID }?.id)
+    val projectId = record.projectId
     val sites = allSites[projectId].orEmpty()
     val showErrors by controller.showErrors.collectAsState()
     val touched by controller.touched.collectAsState()

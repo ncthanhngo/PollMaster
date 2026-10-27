@@ -4,7 +4,6 @@ public enum ProjectError: Error, LocalizedError, Equatable {
     case emptyName
     case invalidCode(String)
     case codeTaken(String)
-    case hasRecords(Int)
     case notFound
 
     public var errorDescription: String? {
@@ -12,7 +11,6 @@ public enum ProjectError: Error, LocalizedError, Equatable {
         case .emptyName: return "Cần nhập tên dự án."
         case .invalidCode: return "Mã dự án chỉ gồm chữ A-Z, số và dấu gạch ngang, tối đa \(ProjectCode.maxLength) ký tự."
         case .codeTaken(let c): return "Mã \(c) đã có dự án khác dùng."
-        case .hasRecords(let n): return "Dự án còn \(n) phiếu. Hãy chuyển phiếu sang dự án khác hoặc lưu trữ dự án."
         case .notFound: return "Không tìm thấy dự án."
         }
     }
@@ -53,9 +51,6 @@ public struct ProjectStore: Sendable {
         guard let d = try? Data(contentsOf: folder(id).appendingPathComponent("project.json")) else { return nil }
         return try? JSONCoding.makeDecoder().decode(Project.self, from: d)
     }
-
-    /// The "Chung" project, if it exists.
-    public func general() -> Project? { list().last { $0.isGeneral } }
 
     public func codes(excluding id: String? = nil) -> Set<String> { Set(list().filter { $0.id != id }.map(\.code)) }
 
@@ -98,12 +93,6 @@ public struct ProjectStore: Sendable {
         guard var p = load(id) else { throw ProjectError.notFound }
         p.archived = archived; p.updatedAt = now
         try save(p)
-    }
-
-    /// Only an empty project can go; with records the caller gets `hasRecords` (suggest move / archive).
-    public func delete(_ id: String, recordCount: Int) throws {
-        guard recordCount == 0 else { throw ProjectError.hasRecords(recordCount) }
-        try FileManager.default.removeItem(at: folder(id))
     }
 
     public func addTemplate(_ ref: TemplateRef, to id: String, now: Date = Date()) throws {

@@ -7,7 +7,6 @@ import com.ncthanhngo.pollmaster.core.export.ZipExporter
 import com.ncthanhngo.pollmaster.core.export.ZipRecord
 import com.ncthanhngo.pollmaster.core.format.fileStamp
 import com.ncthanhngo.pollmaster.core.project.ProjectNames
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +47,6 @@ class ProjectExportService(
     }
 
     private fun select(projectId: String, completedOnly: Boolean) = recordStore.list().filter {
-        ProjectRules.effectiveProjectId(it, projects.chungId()) == projectId && (!completedOnly || it.isCompleted)
+        it.projectId == projectId && (!completedOnly || it.isCompleted)
     }
 }

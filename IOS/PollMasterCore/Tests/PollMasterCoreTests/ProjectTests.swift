@@ -27,7 +27,6 @@ import Foundation
         #expect(ProjectCode.base(from: "Khảo sát tủ đổi pin Hà Nội") == "KHAO-SAT-TU-DOI")
         #expect(ProjectCode.base(from: "V-Green Hà Nội") == "V-GREEN-HA-NOI")
         #expect(ProjectCode.base(from: "  Đường   Điện (đợt 2)! ") == "DUONG-DIEN-DOT-2")
-        #expect(ProjectCode.base(from: "Chung") == "CHUNG")
         #expect(ProjectCode.base(from: "???") == "DU-AN")
     }
 
@@ -81,17 +80,12 @@ import Foundation
         #expect(throws: ProjectError.notFound) { try store.update(Project(code: "QQ", name: "q")) }
     }
 
-    @Test func archiveAndDelete() throws {
+    @Test func archive() throws {
         let a = try store.create(Project(code: "AA", name: "A"))
         try store.setArchived(a.id, true)
         #expect(store.load(a.id)?.archived == true)
         try store.setArchived(a.id, false)
         #expect(store.load(a.id)?.archived == false)
-        #expect(throws: ProjectError.hasRecords(3)) { try store.delete(a.id, recordCount: 3) }
-        #expect(store.load(a.id) != nil)
-        try store.sites(a.id).save([Site(code: "S1")])
-        try store.delete(a.id, recordCount: 0)
-        #expect(store.load(a.id) == nil && store.list().isEmpty)
     }
 
     @Test func templatesOfProject() throws {
@@ -147,7 +141,7 @@ import Foundation
         #expect(back.projectId == "p-1")
         r.projectId = nil
         let none = try JSONCoding.makeDecoder().decode(Record.self, from: JSONCoding.makeEncoder().encode(r))
-        #expect(none.projectId == nil)      // read as "Chung" by the migration
+        #expect(none.projectId == nil)
         let legacy = try JSONCoding.makeDecoder().decode(Record.self, from: Data(#"{"id":"x","projectId":""}"#.utf8))
         #expect(legacy.projectId == nil)
     }
@@ -159,87 +153,76 @@ import Foundation
     }
 }
 
-@Suite struct ProjectMigrationTests {
+@Suite struct ERPProjectSyncTests {
     let root = Fixtures.tempDir()
+    var store: ProjectStore { ProjectStore(root: root) }
 
-    private func seedOldData() throws -> (old: Record, newer: Record) {
-        _ = try Fixtures.install(Fixtures.templateData(), root: root)                                       // BB-TDP-01 1.2
-        _ = try Fixtures.install(Fixtures.variantData(version: "1.1"), root: root)                          // older version
-        _ = try Fixtures.install(Fixtures.variantData(id: "BB-TDP-02", version: "1.0"), root: root)
-        let store = RecordStore(root: root)
-        let a = Record(templateId: "BB-TDP-01", templateVersion: "1.1"), b = Record(templateId: "BB-TDP-02", templateVersion: "1.0")
-        try store.save(a); try store.save(b)
-        try SiteStore(root: root).save([Site(code: "S1", address: "a", lat: 1, lng: 2), Site(code: "S2")])
-        return (a, b)
+    @Test func decodesListRow() throws {
+        let json = #"{"id":"p1","code":"EVS-01","name":"Trạm sạc Đà Nẵng","short_name":" ","project_type":"internal","customer_name":null,"#
+            + #""customer_logo_url":"/uploads/a.png","created_at":"2026-05-01T08:00:00.123+07:00","member_count":3}"#
+        let e = try JSONDecoder().decode(ERPProject.self, from: Data(json.utf8))
+        #expect(e.id == "p1" && e.code == "EVS-01" && e.type == "internal" && e.customerName == nil && e.logo == "/uploads/a.png")
+        #expect(e.displayName == "Trạm sạc Đà Nẵng" && e.createdAt != nil)
+        let page = try JSONDecoder().decode(ERPEnvelope<ERPPage<ERPProject>>.self, from: Data(#"{"data":{"items":[\#(json)],"total":1}}"#.utf8))
+        #expect(page.data?.items.count == 1 && page.data?.total == 1)
+        #expect(ERPProject(id: "x", code: "C", name: "Long", shortName: "Ngắn").displayName == "Ngắn")
     }
 
-    @Test func movesEverythingIntoChung() throws {
-        let (a, b) = try seedOldData()
-        let result = try ProjectMigration(root: root).run()
-        let general = try #require(result.general)
-        #expect(general.id == "chung" && general.code == "CHUNG" && general.name == "Chung" && result.recordsAssigned == 2 && result.sitesMoved)
-        #expect(Set(general.templates.map(\.key)) == ["BB-TDP-01@1.2", "BB-TDP-02@1.0"])      // newest version of each id
-        let store = RecordStore(root: root)
-        #expect(store.load(a.id)?.projectId == general.id && store.load(b.id)?.projectId == general.id)
-        #expect(ProjectStore(root: root).sites(general.id).load().map(\.code) == ["S1", "S2"])
-        #expect(!FileManager.default.fileExists(atPath: SiteStore(root: root).url.path))
-        #expect(abs(try #require(store.load(a.id)).updatedAt.timeIntervalSince(a.updatedAt)) < 1)      // not touched (ISO has second precision)
+    @Test func createsUpdatesAndHides() throws {
+        let t = TemplateRef(id: "BB-TDP-01", version: "1.2")
+        let a = ERPProject(id: "a", code: "evs a/1", name: "Dự án A", type: "company", customerName: "V-Green", logo: "/uploads/a.png")
+        let b = ERPProject(id: "b", code: "B", name: "Nội bộ B", type: "internal")
+        let me = ERPProject(id: "c", code: "C", name: "Cá nhân", type: "personal")
+        let changes = try ERPProjectSync.apply([a, b, me], to: store)
+        #expect(changes == [ERPProjectSync.LogoChange(projectId: "a", url: "/uploads/a.png")])
+        let pa = try #require(store.load("a")), pb = try #require(store.load("b"))
+        #expect(pa.code == "EVS-A-1" && pa.name == "Dự án A" && pa.client == "V-Green" && pa.kind == "company" && pa.logo == "/uploads/a.png")
+        #expect(pb.kind == "internal" && pa.color != pb.color && store.load("c") == nil)
+
+        try store.addTemplate(t, to: "a")
+        try store.sites("a").save([Site(code: "S1")])
+        var renamed = a; renamed.name = "Dự án A mới"; renamed.logo = nil
+        let again = try ERPProjectSync.apply([renamed], to: store)
+        #expect(again == [ERPProjectSync.LogoChange(projectId: "a", url: nil)])
+        let pa2 = try #require(store.load("a"))
+        #expect(pa2.name == "Dự án A mới" && pa2.templates == [t] && pa2.color == pa.color && !pa2.archived)    // device fields kept
+        #expect(store.sites("a").load().count == 1 && store.load("b")?.archived == true)                        // dropped from ERP: hidden
+
+        _ = try ERPProjectSync.apply([b], to: store)
+        #expect(store.load("b")?.archived == false && store.load("a")?.archived == true)
     }
 
-    @Test func randomIdChungFromEarlierRunMovesToFixedId() throws {
-        _ = try seedOldData()
-        let projects = ProjectStore(root: root)
-        let old = try projects.create(Project(code: "CHUNG", name: "Chung", templates: [TemplateRef(id: "BB-TDP-01", version: "1.2")]))
-        try projects.sites(old.id).save([Site(code: "S1")])
-        let store = RecordStore(root: root)
-        let mine = Record(templateId: "BB-TDP-01", templateVersion: "1.2", projectId: old.id), foreign = Record(templateId: "BB-TDP-01", templateVersion: "1.2", projectId: "other")
-        try store.save(mine); try store.save(foreign)
-        let g = try #require(try ProjectMigration(root: root).run().general)
-        #expect(g.id == "chung" && projects.load("chung")?.templates.count == 1 && projects.load(old.id) == nil)
-        #expect(projects.sites("chung").load().map(\.code) == ["S1"])
-        #expect(store.load(mine.id)?.projectId == "chung" && store.load(foreign.id)?.projectId == "other")
-        #expect(store.list().filter { $0.projectId == nil }.isEmpty)
-        let again = try ProjectMigration(root: root).run()
-        #expect(again.general?.id == "chung" && projects.list().count == 1)
+    @Test func phoenixStartsWithTheLibrary() throws {
+        let lib = [TemplateRef(id: "BB-TDP-01", version: "1.2")]
+        let phx = ERPProject(id: "phx", code: "PHN-01", name: "Dự án Phoenix", type: "company"), other = ERPProject(id: "o", code: "O", name: "Khác", type: "company")
+        _ = try ERPProjectSync.apply([phx, other], to: store, library: lib)
+        #expect(store.load("phx")?.templates == lib && store.load("o")?.templates.isEmpty == true)
+        try store.removeTemplate(lib[0], from: "phx")
+        _ = try ERPProjectSync.apply([phx, other], to: store, library: lib)
+        #expect(store.load("phx")?.templates.isEmpty == true)      // only when it first arrives
     }
 
-    @Test func idempotent() throws {
-        _ = try seedOldData()
-        let first = try #require(try ProjectMigration(root: root).run().general)
-        let again = try ProjectMigration(root: root).run()
-        #expect(again.general?.id == first.id && again.recordsAssigned == 0 && !again.sitesMoved)
-        #expect(ProjectStore(root: root).list().count == 1)
+    @Test func missingAvatarFileIsFetchedAgain() throws {
+        let a = ERPProject(id: "a", code: "A", name: "A", type: "company", logo: "https://x/a.png")
+        _ = try ERPProjectSync.apply([a], to: store)
+        #expect(try ERPProjectSync.apply([a], to: store).count == 1)
+        try store.setAvatar(Data([1]), for: "a")
+        #expect(try ERPProjectSync.apply([a], to: store).isEmpty)
     }
 
-    @Test func keepsRecordsOfOtherProjectsAndLaterOrphans() throws {
-        _ = try seedOldData()
-        let general = try #require(try ProjectMigration(root: root).run().general)
-        let other = try ProjectStore(root: root).create(Project(code: "OTHER", name: "Other"))
-        let mine = Record(templateId: "BB-TDP-01", templateVersion: "1.2", projectId: other.id)
-        let orphan = Record(templateId: "BB-TDP-01", templateVersion: "1.2")
-        try RecordStore(root: root).save(mine); try RecordStore(root: root).save(orphan)
-        let r = try ProjectMigration(root: root).run()
-        #expect(r.recordsAssigned == 1)
-        #expect(RecordStore(root: root).load(mine.id)?.projectId == other.id)
-        #expect(RecordStore(root: root).load(orphan.id)?.projectId == general.id)
+    @Test func fileURLs() {
+        let host = URL(string: "https://api.evselab.com")!
+        #expect(ERPProjectSync.fileURL("/uploads/a.png", host: host)?.absoluteString == "https://api.evselab.com/uploads/a.png")
+        #expect(ERPProjectSync.fileURL("https://cdn/x.png", host: host)?.absoluteString == "https://cdn/x.png")
     }
 
-    @Test func freshInstallGetsEmptyChungOnce() throws {
+    @Test func resetKeepsTemplates() throws {
         _ = try Fixtures.install(Fixtures.templateData(), root: root)
-        let g = try #require(try ProjectMigration(root: root).run().general)
-        #expect(g.templates.count == 1)
-        _ = try ProjectMigration(root: root).run()
-        #expect(ProjectStore(root: root).list().count == 1)
-    }
-
-    @Test func existingChungKeepsItsOwnTemplatesAndSites() throws {
-        _ = try seedOldData()
-        let g = try #require(try ProjectMigration(root: root).run().general)
-        try ProjectStore(root: root).removeTemplate(TemplateRef(id: "BB-TDP-02", version: "1.0"), from: g.id)
-        try SiteStore(root: root).save([Site(code: "LEGACY")])      // a stray legacy file must not overwrite the project's list
-        _ = try ProjectMigration(root: root).run()
-        #expect(ProjectStore(root: root).load(g.id)?.templates.count == 1)
-        #expect(ProjectStore(root: root).sites(g.id).load().map(\.code) == ["S1", "S2"])
+        _ = try store.create(Project(code: "OLD", name: "Old"))
+        try RecordStore(root: root).save(Record(templateId: "BB-TDP-01", templateVersion: "1.2", projectId: "x"))
+        try ERPProjectSync.resetLocalData(root: root)
+        #expect(store.list().isEmpty && RecordStore(root: root).list().isEmpty && TemplateStore(root: root).list().count == 1)
+        try ERPProjectSync.resetLocalData(root: root)      // nothing left: no error
     }
 }
 

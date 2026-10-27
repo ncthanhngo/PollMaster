@@ -8,6 +8,8 @@ import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.data.BackupService
+import com.ncthanhngo.pollmaster.data.ErpClient
+import com.ncthanhngo.pollmaster.data.ErpSession
 import com.ncthanhngo.pollmaster.data.ExportService
 import com.ncthanhngo.pollmaster.data.ProjectBundleService
 import com.ncthanhngo.pollmaster.data.ProjectExportService
@@ -30,8 +32,8 @@ class AppContainer(context: Context) {
     val projectStore = ProjectStore(context.filesDir)
     val templates = TemplatesRepository(context, templateStore, recordStore, settings, projectStore)
     val sites = SitesRepository(projectStore)
-    val projects = ProjectsRepository(context.filesDir, projectStore, templateStore, recordStore, sites, settings)
-    val records = RecordsRepository(scope, recordStore, templates, settings, projects::chungId)
+    val projects = ProjectsRepository(projectStore, sites, settings)
+    val records = RecordsRepository(scope, recordStore, templates, settings) { projects.projects.value.map { it.id }.toSet() }
     val backup = BackupService(context, scope, recordStore, templates, records, settings, projects)
     init {
         records.onBackupTick = backup::requestIfNeeded
@@ -42,6 +44,7 @@ class AppContainer(context: Context) {
     /** Package the user opened from another app, waiting for the preview dialog. */
     val pendingBundle = MutableStateFlow<Uri?>(null)
     val media = MediaProcessor(context, settings)
+    val erp = ErpSession(context, context.filesDir, ErpClient(context), projects, records, templates, recordStore, media)
 }
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }

@@ -6,7 +6,6 @@ import com.ncthanhngo.pollmaster.core.editor.RecordFactory
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.Record
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.mediaItems
@@ -37,7 +36,7 @@ data class RecordItem(
     val thumbnail: File? = null,
     /** `{template id} · {record code}` (second line of a list row). */
     val subtitle: String = "",
-    /** Owning project; records stored without one belong to "Chung". */
+    /** Owning project. */
     val projectId: String? = record.projectId,
 ) {
     val needsBackup: Boolean get() = Backup.needsBackup(record)
@@ -50,8 +49,8 @@ class RecordsRepository(
     private val store: RecordStore,
     private val templates: TemplatesRepository,
     private val settings: Settings,
-    /** Id of the "Chung" project (where records without a project belong), read lazily. */
-    private val chungId: () -> String? = { null },
+    /** Ids of the ERP projects the account sees: records of other projects stay on the device, hidden. */
+    private val visibleProjects: () -> Set<String> = { emptySet() },
 ) {
     private val _items = MutableStateFlow<List<RecordItem>>(emptyList())
     val items: StateFlow<List<RecordItem>> = _items.asStateFlow()
@@ -87,7 +86,8 @@ class RecordsRepository(
         val stored = withContext(Dispatchers.IO) { store.listAll() }
         _broken.value = stored.filterIsInstance<StoredRecord.Broken>()
         _items.value = withContext(Dispatchers.IO) {
-            stored.filterIsInstance<StoredRecord.Loaded>().map { it.record }.map { r ->
+            val visible = visibleProjects()
+            stored.filterIsInstance<StoredRecord.Loaded>().map { it.record }.filter { it.projectId in visible }.map { r ->
                 val t = templates.find(r.templateId, r.templateVersion)
                 RecordItem(
                     r, t,
@@ -95,7 +95,6 @@ class RecordsRepository(
                     t?.let { Validator(it).requiredProgress(r) } ?: Progress(0, 0),
                     thumbnail = t?.let { thumbnailOf(it, r) },
                     subtitle = listOfNotNull(r.templateId, t?.recordCode(r)).joinToString(" · "),
-                    projectId = ProjectRules.effectiveProjectId(r, chungId()),
                 )
             }
         }
@@ -109,7 +108,7 @@ class RecordsRepository(
 
     suspend fun create(template: Template, projectId: String?): Record = withContext(Dispatchers.IO) {
         val existing = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
-            .filter { ProjectRules.effectiveProjectId(it, chungId()) == projectId } // codes are numbered per project
+            .filter { it.projectId == projectId } // codes are numbered per project
         RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId)
             .also { store.save(it) }
     }
@@ -170,6 +169,13 @@ class RecordsRepository(
     }
 
     fun flushAll() = editors.values.forEach { it.flush() }
+
+    /** Drops every open editor without saving (their records were just wiped). */
+    fun discardAll() {
+        tickers.values.forEach { it.cancel() }
+        tickers.clear()
+        editors.clear()
+    }
 
     fun clearSaveError() {
         _saveError.value = null

@@ -21,7 +21,11 @@ struct PollMasterApp: App {
                 .alert("Thông báo", isPresented: Binding(get: { env.infoMessage != nil }, set: { if !$0 { env.infoMessage = nil } })) {
                     Button("OK") { env.infoMessage = nil }
                 } message: { Text(env.infoMessage ?? "") }
-                .onChange(of: phase) { _, p in if p != .active { env.reload() }; if p == .background { env.backupOpenEditors() } }
+                .onChange(of: phase) { _, p in
+                    if p != .active { env.reload() }
+                    if p == .background { env.backupOpenEditors() }
+                    if p == .active { Task { await env.syncProjects() } }
+                }
         }
     }
 }

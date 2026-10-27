@@ -8,12 +8,14 @@ object ProjectCodes {
     private val valid = Regex("[A-Z0-9]+(-[A-Z0-9]+)*")
 
     /** Strips diacritics (đ -> d), upper-cases, turns every run of other characters into one `-`, trims to 16 at a `-` boundary. */
-    fun fromName(name: String): String {
-        val plain = Normalizer.normalize(name.replace('đ', 'd').replace('Đ', 'D'), Normalizer.Form.NFD)
+    fun fromName(name: String): String = trim(normalize(name), MAX_LENGTH)
+
+    /** Strips diacritics (đ -> d), upper-cases and turns every run of other characters into one `-`; no length limit (ERP codes). */
+    fun normalize(text: String): String {
+        val plain = Normalizer.normalize(text.replace('đ', 'd').replace('Đ', 'D'), Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
             .uppercase()
-        val slug = plain.replace(Regex("[^A-Z0-9]+"), "-").trim('-')
-        return trim(slug, MAX_LENGTH)
+        return plain.replace(Regex("[^A-Z0-9]+"), "-").trim('-')
     }
 
     /** Cuts [slug] to [max] characters, preferring the last `-` boundary when the cut would split a word. */

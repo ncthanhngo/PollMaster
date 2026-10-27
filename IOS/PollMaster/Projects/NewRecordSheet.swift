@@ -19,7 +19,7 @@ struct NewRecordSheet: View {
                         }
                     }
                 }
-                .overlay { if env.activeProjects.isEmpty { ContentUnavailableView("Chưa có dự án", systemImage: "folder", description: Text("Tạo dự án ở tab Dự án.")) } }
+                .overlay { if env.activeProjects.isEmpty { ContentUnavailableView("Chưa có dự án", systemImage: "folder", description: Text("Chưa có dự án ERP nào. Kéo xuống ở tab Dự án để tải lại.")) } }
                 .navigationTitle("Chọn dự án").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } } }
             }

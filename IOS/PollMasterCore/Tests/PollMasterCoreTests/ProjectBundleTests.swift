@@ -45,50 +45,47 @@ import Foundation
         #expect(throws: ProjectBundleError.self) { try ProjectBundle.make(p, templates: TemplateStore(root: src), sites: []) }
     }
 
-    @Test func importIntoEmptyDevice() throws {
+    /// The ERP project the bundle is imported into on the receiving device.
+    private func target(_ id: String = "erp-1", templates: [TemplateRef] = []) throws -> Project {
+        try ProjectStore(root: dst).create(Project(id: id, code: "ERP-1", name: "Dự án ERP", kind: "company", templates: templates))
+    }
+
+    @Test func importIntoChosenProject() throws {
         let (p, file) = try makeSource()
+        let erp = try target(templates: [TemplateRef(id: "OTHER", version: "1")])
         let importer = ProjectImporter(root: dst)
         let bundle = try ProjectBundle.read(from: file)
         let plan = importer.plan(bundle)
         #expect(plan.existing == nil && plan.conflicts.isEmpty && plan.newTemplates.count == 2)
-        let r = try importer.apply(bundle, overwriteTemplates: false)
-        #expect(!r.updated && r.installed.count == 2 && r.droppedRefs.isEmpty && r.siteCount == 2)
-        #expect(r.project.id == p.id && r.project.code == "VGREEN-HN" && !r.project.archived)
+        let r = try importer.apply(bundle, into: erp.id, overwriteTemplates: false)
+        #expect(r.installed.count == 2 && r.droppedRefs.isEmpty && r.siteCount == 2)
+        #expect(r.project.id == erp.id && r.project.name == "Dự án ERP" && r.project.code == "ERP-1")     // ERP identity stays
         #expect(TemplateStore(root: dst).exists(id: "BB-TDP-01", version: "1.2") && TemplateStore(root: dst).exists(id: "BB-TDP-02", version: "1.0"))
-        #expect(ProjectStore(root: dst).sites(p.id).load().count == 2)
-        #expect(ProjectStore(root: dst).load(p.id)?.templates == p.templates)
-    }
-
-    @Test func sameIdUpdatesWithoutTouchingRecords() throws {
-        let (p, file) = try makeSource()
-        let importer = ProjectImporter(root: dst)
-        _ = try importer.apply(ProjectBundle.read(from: file), overwriteTemplates: false)
-        let rec = Record(templateId: "BB-TDP-01", templateVersion: "1.2", projectId: p.id)
-        try RecordStore(root: dst).save(rec)
-        try ProjectStore(root: dst).setArchived(p.id, true)
-
-        var changed = try ProjectBundle.read(from: file)
-        changed.project.name = "Tên mới"; changed.project.code = "OTHER"
-        changed.project.templates = [TemplateRef(id: "BB-TDP-01", version: "1.2")]
-        changed.sites = [Site(code: "ONLY")]
-        let plan = importer.plan(changed)
-        #expect(plan.existing?.name == "Khảo sát Hà Nội")
-        let r = try importer.apply(changed, overwriteTemplates: false)
-        #expect(r.updated && r.project.id == p.id && r.project.name == "Tên mới")
-        #expect(r.project.code == "VGREEN-HN" && r.project.archived)       // code and archive state stay
-        #expect(r.project.templates.count == 1 && ProjectStore(root: dst).sites(p.id).load().map(\.code) == ["ONLY"])
-        #expect(RecordStore(root: dst).load(rec.id)?.projectId == p.id)
+        #expect(ProjectStore(root: dst).sites(erp.id).load().count == 2)
+        #expect(ProjectStore(root: dst).load(erp.id)?.templates == [TemplateRef(id: "OTHER", version: "1")] + p.templates)
         #expect(ProjectStore(root: dst).list().count == 1)
     }
 
-    @Test func codeClashGetsSuffix() throws {
+    @Test func sameProjectIsProposedAndVersionsReplaced() throws {
+        let (p, file) = try makeSource()
+        let erp = try target(p.id, templates: [TemplateRef(id: "BB-TDP-01", version: "1.1")])
+        let importer = ProjectImporter(root: dst)
+        let rec = Record(templateId: "BB-TDP-01", templateVersion: "1.1", projectId: erp.id)
+        try RecordStore(root: dst).save(rec)
+        var changed = try ProjectBundle.read(from: file)
+        changed.sites = [Site(code: "ONLY")]
+        #expect(importer.plan(changed).existing?.id == erp.id)
+        let r = try importer.apply(changed, into: erp.id, overwriteTemplates: false)
+        #expect(r.project.templates == p.templates)                    // 1.1 replaced by the bundled 1.2, BB-TDP-02 added
+        #expect(ProjectStore(root: dst).sites(erp.id).load().map(\.code) == ["ONLY"])
+        #expect(RecordStore(root: dst).load(rec.id)?.projectId == erp.id)
+        try ProjectStore(root: dst).setArchived(erp.id, true)
+        #expect(importer.plan(changed).existing == nil)                 // hidden projects are not proposed
+    }
+
+    @Test func importNeedsAnExistingTarget() throws {
         let (_, file) = try makeSource()
-        _ = try ProjectStore(root: dst).create(Project(code: "VGREEN-HN", name: "Another"))
-        let r = try ProjectImporter(root: dst).apply(ProjectBundle.read(from: file), overwriteTemplates: false)
-        #expect(!r.updated && r.project.code == "VGREEN-HN-2")
-        let again = try ProjectBundle.read(from: file)
-        var second = again; second.project.id = UUID().uuidString
-        #expect(try ProjectImporter(root: dst).apply(second, overwriteTemplates: false).project.code == "VGREEN-HN-3")
+        #expect(throws: ProjectError.notFound) { try ProjectImporter(root: dst).apply(ProjectBundle.read(from: file), into: "missing", overwriteTemplates: false) }
     }
 
     @Test func templateConflictNeedsOverwrite() throws {
@@ -98,9 +95,10 @@ import Foundation
         let bundle = try ProjectBundle.read(from: file)
         let plan = importer.plan(bundle)
         #expect(plan.conflicts.map(\.key) == ["BB-TDP-01@1.2"] && plan.newTemplates.map(\.key) == ["BB-TDP-02@1.0"])
-        let keep = try importer.apply(bundle, overwriteTemplates: false)
+        let erp = try target()
+        let keep = try importer.apply(bundle, into: erp.id, overwriteTemplates: false)
         #expect(keep.skippedConflicts.count == 1 && TemplateStore(root: dst).load(id: "BB-TDP-01", version: "1.2")?.title == "Bản địa phương")
-        let over = try importer.apply(bundle, overwriteTemplates: true)
+        let over = try importer.apply(bundle, into: erp.id, overwriteTemplates: true)
         #expect(over.skippedConflicts.isEmpty && TemplateStore(root: dst).load(id: "BB-TDP-01", version: "1.2")?.title != "Bản địa phương")
         #expect(importer.plan(bundle).conflicts.isEmpty)       // identical content is not a conflict
     }
@@ -127,7 +125,7 @@ import Foundation
         let (_, file) = try makeSource()
         var bundle = try ProjectBundle.read(from: file)
         bundle.project.templates.append(TemplateRef(id: "GHOST", version: "9"))
-        let r = try ProjectImporter(root: dst).apply(bundle, overwriteTemplates: false)
+        let r = try ProjectImporter(root: dst).apply(bundle, into: try target().id, overwriteTemplates: false)
         #expect(r.droppedRefs == [TemplateRef(id: "GHOST", version: "9")] && r.project.templates.count == 2)
     }
 }

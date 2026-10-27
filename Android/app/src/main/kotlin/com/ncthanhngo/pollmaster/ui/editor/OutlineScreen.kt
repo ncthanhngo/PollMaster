@@ -64,7 +64,6 @@ import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.text.font.FontWeight
 import com.ncthanhngo.pollmaster.core.project.Project
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.ui.common.IconBadge
 import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
@@ -197,7 +196,7 @@ fun OutlineScreen(
                 }
             }
             item {
-                val project = container.projects.get(ProjectRules.effectiveProjectId(record, container.projects.chungId()))
+                val project = container.projects.get(record.projectId)
                 ProgressHero(project, progress, resume?.takeIf { !record.isCompleted }?.let { (pos, text) -> text to { onOpenSection(pos.section, pos.field) } })
             }
             item {

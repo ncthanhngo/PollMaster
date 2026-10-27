@@ -40,9 +40,10 @@ class ProjectBundleService(
         ProjectImporter.plan(contents, projects.store, templateStore)
     }
 
-    suspend fun import(contents: BundleContents, overwriteTemplates: Boolean): ImportOutcome {
+    /** Adds the package's templates and sites to the ERP project [targetId]. */
+    suspend fun import(contents: BundleContents, targetId: String, overwriteTemplates: Boolean): ImportOutcome {
         val outcome = withContext(Dispatchers.IO) {
-            ProjectImporter.apply(contents, projects.store, templateStore, overwriteTemplates, nowIso())
+            ProjectImporter.apply(contents, targetId, projects.store, templateStore, overwriteTemplates, nowIso())
         }
         templates.refresh()
         projects.refresh()

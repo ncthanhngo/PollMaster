@@ -19,18 +19,18 @@ data class Project(
     val client: String? = null,
     val description: String? = null,
     val color: String? = null,
+    /** ERP `project_type`: "company" or "internal". */
+    val kind: String? = null,
+    /** ERP avatar/logo URL the local `avatar.jpg` was downloaded from. */
+    val logo: String? = null,
     @EncodeDefault val templates: List<TemplateRef> = emptyList(),
     @EncodeDefault val archived: Boolean = false,
     val createdAt: String = "",
     val updatedAt: String = "",
 ) {
-    val isDefault: Boolean get() = code == CHUNG_CODE
-
     companion object {
-        /** Fixed id, code and name of the project that receives records created before projects existed (schema 9.2). */
-        const val CHUNG_ID = "chung"
-        const val CHUNG_CODE = "CHUNG"
-        const val CHUNG_NAME = "Chung"
+        /** ERP `project_type` values the app lists, in section order ("Dự án công ty", "Nội bộ"). */
+        val KINDS = listOf("company", "internal")
 
         /** Identity colours offered in the project form, all dark enough for white initials (>= 4.5:1); same set as iOS. */
         val COLORS = listOf(

@@ -99,7 +99,7 @@ private enum class StatusFilter { ALL, DRAFT, COMPLETED }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordsScreen(onOpenRecord: (String) -> Unit, onNewProject: () -> Unit) {
+fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
     val items by container.records.items.collectAsState()
@@ -246,9 +246,8 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit, onNewProject: () -> Unit) {
         val records = items.map { it.record }
         ProjectSwitcherSheet(
             projects = projects, currentId = currentId,
-            statsOf = { ProjectStats.of(it.id, records, container.projects.chungId()) },
+            statsOf = { ProjectStats.of(it.id, records) },
             onSelect = { container.projects.select(it); switcher = false },
-            onNew = { switcher = false; onNewProject() },
             onImport = { switcher = false; pickBundle() },
             onDismiss = { switcher = false },
         )

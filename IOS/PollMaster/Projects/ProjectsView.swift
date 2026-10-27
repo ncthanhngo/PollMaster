@@ -9,30 +9,28 @@ extension UTType {
 
 struct ProjectRoute: Hashable { let id: String }
 
-/// "Dự án" tab: active projects first, "Đã lưu trữ" collapsed at the end.
+/// Section titles of the ERP project kinds, in list order.
+let projectKindSections: [(kind: String, title: String)] = [("company", "Dự án công ty"), ("internal", "Nội bộ")]
+
+/// "Dự án" tab: the ERP projects of the signed-in account, "Dự án công ty" then "Nội bộ" (like the ERP). Pull to refresh.
 struct ProjectsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var importing = false
-    @State private var showArchived = false
-
-    private var active: [Project] { env.activeProjects }
-    private var archived: [Project] { env.projects.filter(\.archived) }
 
     var body: some View {
         @Bindable var env = env
         NavigationStack(path: $env.projectsPath) {
             List {
+                if let e = env.syncError { Label(e, systemImage: "wifi.exclamationmark").font(.footnote).foregroundStyle(.orange) }
                 if env.projects.isEmpty {
-                    ContentUnavailableView("Chưa có dự án", systemImage: "folder",
-                                           description: Text("Nhấn + để tạo dự án hoặc nhập gói dự án."))
+                    ContentUnavailableView(env.syncing ? "Đang tải dự án…" : "Chưa có dự án", systemImage: "folder",
+                                           description: Text("Dự án lấy từ ERP: chỉ hiện dự án bạn tham gia. Kéo xuống để tải lại."))
                 }
-                ForEach(active) { p in
-                    NavigationLink(value: ProjectRoute(id: p.id)) { ProjectCard(project: p) }
-                }
-                if !archived.isEmpty {
-                    Section {
-                        DisclosureGroup("Đã lưu trữ (\(archived.count))", isExpanded: $showArchived) {
-                            ForEach(archived) { p in
+                ForEach(projectKindSections, id: \.kind) { s in
+                    let list = env.projects(ofKind: s.kind)
+                    if !list.isEmpty {
+                        Section("\(s.title) (\(list.count))") {
+                            ForEach(list) { p in
                                 NavigationLink(value: ProjectRoute(id: p.id)) { ProjectCard(project: p) }
                             }
                         }
@@ -40,18 +38,15 @@ struct ProjectsView: View {
                 }
             }
             .listRowSpacing(10)
+            .refreshable { await env.syncProjects() }
             .navigationTitle("Dự án")
             .navigationDestination(for: ProjectRoute.self) { ProjectDetailView(projectId: $0.id) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { AppearanceToggleButton() }
                 ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button("Dự án mới", systemImage: "folder.badge.plus") { env.showNewProject = true }
-                        Button("Nhập gói dự án", systemImage: "square.and.arrow.down") { importing = true }
-                    } label: { Image(systemName: "plus") }.accessibilityLabel("Thêm dự án")
+                    Button("Nhập gói dự án", systemImage: "square.and.arrow.down") { importing = true }
                 }
             }
-            .sheet(isPresented: $env.showNewProject) { ProjectFormView(project: nil) }
             .projectBundlePicker(isPresented: $importing)
             .onAppear { env.reload() }
         }
@@ -68,10 +63,7 @@ struct ProjectCard: View {
         HStack(spacing: 12) {
             ProjectAvatar(project: project, size: 44)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(project.name).font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
-                    if project.archived { StatusPill(text: "Lưu trữ", neutral: true).fixedSize() }
-                }
+                Text(project.name).font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
                 // drop the less useful parts instead of cutting a word in half
                 let head = [project.code, project.client].compactMap { $0 }
                 let extra = ["\(project.templates.count) mẫu", "\(env.sites(forProject: project.id).count) điểm"]
@@ -90,7 +82,6 @@ struct ProjectCard: View {
             }
         }
         .padding(.vertical, 4)
-        .opacity(project.archived ? 0.7 : 1)
     }
 }
 

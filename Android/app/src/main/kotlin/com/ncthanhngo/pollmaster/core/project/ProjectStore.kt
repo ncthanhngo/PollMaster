@@ -46,8 +46,6 @@ class ProjectStore(root: File) {
         return runCatching { PollJson.decodeFromString(Project.serializer(), file.readText()) }.getOrNull()
     }
 
-    fun byCode(code: String): Project? = list().firstOrNull { it.code.equals(code, ignoreCase = true) }
-
     fun save(project: Project) {
         writeAtomically(File(dir(project.id), FILE), PollJson.encodeToString(Project.serializer(), project).toByteArray(Charsets.UTF_8))
     }
@@ -69,22 +67,11 @@ class ProjectStore(root: File) {
         ).also(::save)
     }
 
-    /** Re-keys a project (folder and `id`), e.g. a "Chung" created with a random id. False when [newId] is taken or [oldId] is missing. */
-    fun changeId(oldId: String, newId: String): Boolean {
-        val project = get(oldId) ?: return false
-        if (dir(newId).exists() || !dir(oldId).renameTo(dir(newId))) return false
-        save(project.copy(id = newId))
-        return true
-    }
-
     fun setArchived(id: String, archived: Boolean, now: String): Project? =
         get(id)?.copy(archived = archived, updatedAt = now)?.also(::save)
 
     fun setTemplates(id: String, templates: List<TemplateRef>, now: String): Project? =
         get(id)?.copy(templates = templates.distinct(), updatedAt = now)?.also(::save)
-
-    /** Removes the project folder (its sites included); callers make sure no record still belongs to it. */
-    fun delete(id: String): Boolean = dir(id).deleteRecursively()
 
     /** Codes in use (upper case), optionally without the project [except]. */
     fun codes(except: String? = null): Set<String> = list().filter { it.id != except }.map { it.code.uppercase() }.toSet()

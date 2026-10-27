@@ -13,6 +13,7 @@ import com.ncthanhngo.pollmaster.core.model.tables
 import com.ncthanhngo.pollmaster.core.project.BundleException
 import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectBundle
+import com.ncthanhngo.pollmaster.core.project.ProjectException
 import com.ncthanhngo.pollmaster.core.project.ProjectImporter
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
@@ -79,85 +80,83 @@ class ProjectBundleTest {
         assertTrue(bad.any { it.startsWith("sites.csv") })
     }
 
-    @Test fun importCreatesProjectInstallsTemplatesAndSites() {
+    /** The ERP project a bundle is imported into on the receiving device. */
+    private fun target(projects: ProjectStore, id: String = "erp-1", templates: List<TemplateRef> = emptyList()): Project =
+        Project(id = id, code = "ERP-1", name = "Dự án ERP", kind = "company", templates = templates, createdAt = NOW, updatedAt = NOW)
+            .also(projects::save)
+
+    @Test fun importAddsTemplatesAndSitesToTheChosenProject() {
         val root = TestData.tempDir()
         val projects = ProjectStore(root)
         val templates = TemplateStore(root)
+        val other = TemplateRef("OTHER", "1")
+        target(projects, templates = listOf(other))
         val contents = ProjectBundle.read(bundle())
         val plan = ProjectImporter.plan(contents, projects, templates)
-        assertNull(plan.updates)
-        assertEquals("VG-HN", plan.code)
-        val out = ProjectImporter.apply(contents, projects, templates, false, NOW)
+        assertNull(plan.proposed)
+        val out = ProjectImporter.apply(contents, "erp-1", projects, templates, false, NOW)
         assertEquals(listOf(ref), out.installed)
         assertNotNull(templates.get(t.id, t.version))
-        assertEquals("p-1", projects.get("p-1")?.id)
-        assertEquals(listOf("S1", "S2"), projects.sites("p-1").load().map { it.code })
-        assertEquals("1 Phố, \"Cổ\"", projects.sites("p-1").load().first().address)
+        val p = projects.get("erp-1")!!
+        assertEquals("Dự án ERP" to "ERP-1", p.name to p.code) // ERP identity stays
+        assertEquals(listOf(other, ref), p.templates)
+        assertEquals(1, projects.list().size)
+        assertEquals(listOf("S1", "S2"), projects.sites("erp-1").load().map { it.code })
+        assertEquals("1 Phố, \"Cổ\"", projects.sites("erp-1").load().first().address)
     }
 
-    @Test fun sameIdUpdatesWithoutTouchingRecordsAndCodeClashGetsSuffix() {
+    @Test fun ownProjectIsProposedAndVersionsReplacedWithoutTouchingRecords() {
         val root = TestData.tempDir()
         val projects = ProjectStore(root)
         val templates = TemplateStore(root)
         val records = RecordStore(root)
-        ProjectImporter.apply(ProjectBundle.read(bundle()), projects, templates, false, NOW)
+        target(projects, id = "p-1", templates = listOf(TemplateRef(t.id, "0.9")))
         val rec = RecordFactory.create(t, null, NOW, projectId = "p-1").also(records::save)
-        projects.setArchived("p-1", true, NOW)
         projects.sites("p-1").save(listOf(Site("OLD")))
-
-        val renamed = ProjectBundle.read(bundle(project.copy(name = "Tên mới"), withSites = false))
-        val plan = ProjectImporter.plan(renamed, projects, templates)
-        assertEquals("Tên mới", renamed.project.name)
-        assertEquals("Tủ đổi pin", plan.updates?.name)
-        assertEquals("VG-HN", plan.code) // its own code is not a clash
-        assertTrue(plan.conflicts.isEmpty())
-        ProjectImporter.apply(renamed, projects, templates, false, NOW)
-        assertEquals(1, projects.list().size)
-        assertEquals("Tên mới", projects.get("p-1")?.name)
-        assertTrue(projects.get("p-1")!!.archived) // state kept
+        val contents = ProjectBundle.read(bundle(withSites = false))
+        assertEquals("p-1", ProjectImporter.plan(contents, projects, templates).proposed?.id)
+        ProjectImporter.apply(contents, "p-1", projects, templates, false, NOW)
+        assertEquals(listOf(ref), projects.get("p-1")?.templates) // 0.9 replaced by the bundled version
         assertEquals(listOf("OLD"), projects.sites("p-1").load().map { it.code }) // no sites.csv -> sites kept
         assertEquals("p-1", records.load(rec.id)?.projectId)
-
-        val clash = ProjectBundle.read(bundle(project.copy(id = "p-2")))
-        assertEquals("VG-HN-2", ProjectImporter.plan(clash, projects, templates).code)
-        assertEquals("VG-HN-2", ProjectImporter.apply(clash, projects, templates, false, NOW).project.code)
-        assertEquals(2, projects.list().size)
+        projects.setArchived("p-1", true, NOW)
+        assertNull(ProjectImporter.plan(contents, projects, templates).proposed) // hidden projects are not proposed
     }
 
     @Test fun refsMissingFromBundleAndLibraryAreDroppedAndReported() {
         val root = TestData.tempDir()
         val projects = ProjectStore(root)
         val templates = TemplateStore(root)
+        target(projects)
         val ghost = TemplateRef("GHOST", "1")
         val contents = ProjectBundle.read(bundle(project.copy(templates = listOf(ref, ghost))))
         assertEquals(listOf(ghost), ProjectImporter.plan(contents, projects, templates).dropped)
-        val out = ProjectImporter.apply(contents, projects, templates, false, NOW)
+        val out = ProjectImporter.apply(contents, "erp-1", projects, templates, false, NOW)
         assertEquals(listOf(ghost), out.dropped)
-        assertEquals(listOf(ref), projects.get("p-1")?.templates)
+        assertEquals(listOf(ref), projects.get("erp-1")?.templates)
     }
 
-    @Test fun existingProjectKeepsLocalCode() {
+    @Test fun importNeedsAnExistingTarget() {
         val root = TestData.tempDir()
-        val projects = ProjectStore(root)
-        val templates = TemplateStore(root)
-        ProjectImporter.apply(ProjectBundle.read(bundle()), projects, templates, false, NOW)
-        val recoded = ProjectBundle.read(bundle(project.copy(code = "NEW-CODE")))
-        assertEquals("VG-HN", ProjectImporter.plan(recoded, projects, templates).code)
-        assertEquals("VG-HN", ProjectImporter.apply(recoded, projects, templates, false, NOW).project.code)
+        try {
+            ProjectImporter.apply(ProjectBundle.read(bundle()), "missing", ProjectStore(root), TemplateStore(root), false, NOW)
+            fail("imported into nothing")
+        } catch (_: ProjectException) {}
     }
 
     @Test fun differingInstalledTemplateIsAConflictResolvedByTheUser() {
         val root = TestData.tempDir()
         val projects = ProjectStore(root)
         val templates = TemplateStore(root)
+        target(projects)
         val changed = TestData.templateText.replace("\"title\": \"", "\"title\": \"X ")
         templates.install(changed, false)
         val contents = ProjectBundle.read(bundle())
         assertEquals(listOf(ref), ProjectImporter.plan(contents, projects, templates).conflicts)
-        val kept = ProjectImporter.apply(contents, projects, templates, false, NOW)
+        val kept = ProjectImporter.apply(contents, "erp-1", projects, templates, false, NOW)
         assertEquals(listOf(ref), kept.kept)
         assertTrue(templates.get(t.id, t.version)!!.title.startsWith("X "))
-        ProjectImporter.apply(contents, projects, templates, true, NOW)
+        ProjectImporter.apply(contents, "erp-1", projects, templates, true, NOW)
         assertEquals(t.title, templates.get(t.id, t.version)!!.title)
     }
 

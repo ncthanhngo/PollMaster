@@ -133,3 +133,6 @@ fun ProjectChoiceDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel) } },
     )
 }
+
+/** ERP project kinds in list order with their section title ("Dự án công ty", "Nội bộ"). */
+val projectKindSections: List<Pair<String, Int>> = listOf("company" to R.string.project_kind_company, "internal" to R.string.project_kind_internal)

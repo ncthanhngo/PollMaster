@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.ncthanhngo.pollmaster.ui.theme.PollMasterTheme
 import com.ncthanhngo.pollmaster.ui.theme.UiPrefs
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private companion object {
@@ -71,6 +72,11 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(LIGHT_SCRIM, DARK_SCRIM) { dark },
         )
         window.setBackgroundDrawable(ColorDrawable(if (dark) DARK_BG else LIGHT_BG))
+    }
+
+    override fun onStart() {
+        super.onStart()
+        container.scope.launch { container.erp.sync() }
     }
 
     override fun onStop() {

@@ -11,10 +11,8 @@ public struct TemplateRef: Codable, Equatable, Hashable, Sendable {
 
 /// `<AppData>/projects/<projectId>/project.json`.
 public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
-    /// Fixed on every device so a shared "Chung" bundle updates the same project everywhere.
-    public static let generalId = "chung"
-    public static let generalCode = "CHUNG"
-    public static let generalName = "Chung"
+    /// ERP `project_type` values the app lists, in section order ("Dự án công ty", "Nội bộ").
+    public static let kinds = ["company", "internal"]
     /// Identity colours, all dark enough for white initials (>= 4.5:1). The first six are the original set.
     public static let palette = ["#1B6B5A", "#1F5FA8", "#7B4FA3", "#C2571A", "#B8312F", "#5F6B73",
                                  "#0E7490", "#A3367A", "#8A6D0B", "#3F4BA8"]
@@ -39,18 +37,22 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
     public var client: String?
     public var description: String?
     public var color: String?
+    /// ERP `project_type`: "company" or "internal".
+    public var kind: String?
+    /// ERP avatar/logo URL the local `avatar.jpg` was downloaded from.
+    public var logo: String?
     public var templates: [TemplateRef]
     public var archived: Bool
     public var createdAt: Date
     public var updatedAt: Date
 
     public init(id: String = UUID().uuidString, code: String, name: String, client: String? = nil, description: String? = nil,
-                color: String? = nil, templates: [TemplateRef] = [], archived: Bool = false, now: Date = Date()) {
+                color: String? = nil, kind: String? = nil, templates: [TemplateRef] = [], archived: Bool = false, now: Date = Date()) {
         self.id = id; self.code = code; self.name = name; self.client = client; self.description = description
-        self.color = color; self.templates = templates; self.archived = archived; createdAt = now; updatedAt = now
+        self.color = color; self.kind = kind; self.templates = templates; self.archived = archived; createdAt = now; updatedAt = now
     }
 
-    enum CodingKeys: String, CodingKey { case schemaVersion, id, code, name, client, description, color, templates, archived, createdAt, updatedAt }
+    enum CodingKeys: String, CodingKey { case schemaVersion, id, code, name, client, description, color, kind, logo, templates, archived, createdAt, updatedAt }
 
     /// Only `id` and `code` are required on read; the rest falls back to defaults.
     public init(from decoder: Decoder) throws {
@@ -62,6 +64,8 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         client = c.lenient(String.self, .client)
         description = c.lenient(String.self, .description)
         color = c.lenient(String.self, .color)
+        kind = c.lenient(String.self, .kind)
+        logo = c.lenient(String.self, .logo)
         templates = c.lenient([TemplateRef].self, .templates) ?? []
         archived = c.lenient(Bool.self, .archived) ?? false
         createdAt = c.lenient(Date.self, .createdAt) ?? Date()
@@ -73,12 +77,12 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         try c.encode(schemaVersion, forKey: .schemaVersion); try c.encode(id, forKey: .id)
         try c.encode(code, forKey: .code); try c.encode(name, forKey: .name)
         try c.encodeIfPresent(client, forKey: .client); try c.encodeIfPresent(description, forKey: .description)
-        try c.encodeIfPresent(color, forKey: .color); try c.encode(templates, forKey: .templates)
+        try c.encodeIfPresent(color, forKey: .color); try c.encodeIfPresent(kind, forKey: .kind)
+        try c.encodeIfPresent(logo, forKey: .logo); try c.encode(templates, forKey: .templates)
         try c.encode(archived, forKey: .archived)
         try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
     }
 
-    public var isGeneral: Bool { code == Self.generalCode }
     /// "Tên (MÃ)" as written under export titles.
     public var label: String { "\(name) (\(code))" }
 }

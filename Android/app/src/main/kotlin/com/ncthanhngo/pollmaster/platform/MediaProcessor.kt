@@ -58,17 +58,17 @@ class MediaProcessor(private val context: Context, private val settings: Setting
         return Media("media/${dest.name}", takenAt, location?.latitude, location?.longitude)
     }
 
-    /** Centre square crop of a picked image, [side] px, as JPEG (project avatar). Deletes [src]. */
-    fun squareJpeg(src: File, side: Int = 256): ByteArray {
-        try {
-            val full = decode(src, side * 4)
-            val edge = minOf(full.width, full.height)
-            val crop = Bitmap.createBitmap(full, (full.width - edge) / 2, (full.height - edge) / 2, edge, edge)
-            val square = Bitmap.createScaledBitmap(crop, side, side, true)
-            return java.io.ByteArrayOutputStream().also { square.compress(Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
-        } finally {
-            src.delete()
+    /** Centre square crop scaled to [side] px as JPEG, on white so transparent logos stay readable; null when not an image. */
+    fun squareJpeg(bytes: ByteArray, side: Int = 256): ByteArray? {
+        val full = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        val edge = minOf(full.width, full.height)
+        val crop = Bitmap.createBitmap(full, (full.width - edge) / 2, (full.height - edge) / 2, edge, edge)
+        val square = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(square).apply {
+            drawColor(android.graphics.Color.WHITE)
+            drawBitmap(Bitmap.createScaledBitmap(crop, side, side, true), 0f, 0f, null)
         }
+        return java.io.ByteArrayOutputStream().also { square.compress(Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
     }
 
     /** Moves a video into the record media folder. */

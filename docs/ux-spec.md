@@ -192,20 +192,20 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
 ## M. Dự án
 - **Tab**: `Phiếu khảo sát · Dự án · Mẫu · Cài đặt`.
 - **Dự án hiện tại**: tiêu đề tab Phiếu khảo sát = tên dự án (chấm màu dự án) + ▾. Chạm → sheet chọn dự án (tìm kiếm, mỗi dòng: tên, mã,
-  số phiếu Nháp/Hoàn thành), mục "Tất cả dự án", nút "+ Dự án mới", "Nhập gói dự án". Lựa chọn được nhớ. Danh sách phiếu, bản đồ, nút +
+  số phiếu Nháp/Hoàn thành), mục "Tất cả dự án", hai nhóm "Dự án công ty" / "Nội bộ", nút "Nhập gói dự án". Lựa chọn được nhớ. Danh sách phiếu, bản đồ, nút +
   đều theo dự án hiện tại (nút + hỏi dự án khi đang xem "Tất cả dự án"). **Mỗi phiếu luôn hiện avatar + tên dự án** (danh sách và đầu màn mục lục).
   Thẻ phiếu 3 dòng không xuống dòng: tiêu đề · avatar + tên dự án (không đủ chỗ → mã dự án) · ngày · trạng thái + ☁̸ chưa sao lưu + tiến độ.
-- **Tab Dự án**: danh sách dự án (đang hoạt động trước, "Đã lưu trữ" thu gọn cuối), mỗi thẻ 3 dòng: avatar · tên · "mã · khách hàng ·
-  N mẫu · N điểm" (bớt phần cuối khi không đủ chỗ) · số phiếu nháp / cần sửa / hoàn thành · ngày gần nhất. Nút + "Dự án mới" / "Nhập gói dự án".
-- **Tạo/Sửa dự án**: Tên (bắt buộc), Mã (tự sinh từ tên: bỏ dấu, in hoa, khoảng trắng → `-`, tối đa 16 ký tự; sửa được; kiểm trùng),
-  Khách hàng, Mô tả, Màu (10 màu chọn sẵn; dự án mới tự nhận màu chưa dự án nào dùng), **Ảnh đại diện** (chọn từ thư viện ảnh,
-  cắt vuông 256 px, lưu `avatar.jpg` cạnh project.json, không đi kèm gói dự án; không có ảnh → chữ cái đầu trên nền màu dự án).
+- **Đăng nhập ERP** (bắt buộc, schema §9.5): email + mật khẩu ERP; tài khoản EVSELab và tổ chức đối tác (Kimsen…). Lần đầu cảnh báo
+  dự án/phiếu cũ trên máy sẽ bị xóa (mẫu giữ). Cài đặt: mục "Tài khoản ERP" (tên, email · tổ chức) + Đăng xuất (hỏi lại; không xóa phiếu).
+- **Tab Dự án**: dự án ERP của tài khoản, chia **Dự án công ty (N)** rồi **Nội bộ (N)** như ERP; kéo xuống để tải lại; lỗi mạng → dòng báo,
+  vẫn hiện danh sách đã lưu. Mỗi thẻ 3 dòng: avatar · tên · "mã · khách hàng · N mẫu · N điểm" (bớt phần cuối khi không đủ chỗ) ·
+  số phiếu nháp / cần sửa / hoàn thành · ngày gần nhất. Nút "Nhập gói dự án". **Không tạo/sửa/xóa/lưu trữ dự án** trong app.
+- **Ảnh đại diện**: ảnh ERP (`avatar.jpg`, không đi kèm gói); không có → chữ cái đầu trên nền màu dự án (máy tự gán, 10 màu).
 - **Chi tiết dự án**: thống kê (Nháp/Hoàn thành/Cần sửa, phiếu gần nhất) · **Mẫu của dự án** (thêm từ thư viện, gỡ, gợi ý bản mới) ·
   **Danh sách điểm** (nạp CSV, số điểm, xem/tìm, xóa; số điểm đã có phiếu / chưa) · Hành động: **Chia sẻ gói dự án**, **Xuất tổng hợp
-  (Excel)** (+ tùy chọn kèm zip phiếu, lọc Hoàn thành), **Mở danh sách phiếu**, **Lưu trữ / Bỏ lưu trữ**, **Xóa dự án** (chỉ khi không còn
-  phiếu; còn phiếu → gợi ý chuyển phiếu sang dự án khác hoặc lưu trữ).
+  (Excel)** (+ tùy chọn kèm zip phiếu, lọc Hoàn thành), **Mở danh sách phiếu**. Đầu màn: loại (Dự án công ty / Nội bộ), khách hàng.
 - **Chuyển phiếu sang dự án khác**: menu phiếu → "Chuyển dự án" (chỉ tới dự án có cùng mẫu; nếu không có → báo).
 - **Mẫu (thư viện)**: trên cùng là dải "Tạo mẫu bằng AI · Bắt đầu ›" cao 1 hàng (chạm → sheet 2 bước Gửi / Dán); dưới là danh sách mẫu,
   mỗi mẫu đúng 2 dòng không xuống dòng: tên mẫu · "BB-TDP-01 · v1.2 · 180 trường" + avatar các dự án đang dùng; sau khi nhập/dán mẫu mới → hỏi "Thêm vào dự án …?" (chọn nhiều).
 - Settings "Danh sách điểm" chuyển vào chi tiết dự án (Cài đặt bỏ mục này).
-- Mở tệp `.pmproject` từ app khác → mở app, hiện xem trước (tên, mã, số mẫu, số điểm) + nút Nhập.
+- Mở tệp `.pmproject` từ app khác → mở app, hiện xem trước (tên, mã, số mẫu, số điểm) + **chọn dự án ERP để nhập vào** + nút Nhập.

@@ -9,7 +9,6 @@ import com.ncthanhngo.pollmaster.core.export.ZipExporter
 import com.ncthanhngo.pollmaster.core.format.fileStamp
 import com.ncthanhngo.pollmaster.core.model.recordCode
 import com.ncthanhngo.pollmaster.core.project.ProjectNames
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.export.PdfExporter
@@ -39,7 +38,7 @@ class ExportService(
         val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
         val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
         val dir = File(context.cacheDir, "exports").also { it.deleteRecursively(); it.mkdirs() }
-        val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
+        val project = projects.get(record.projectId)
         val base = ProjectNames.recordBase(project?.code, template.recordCode(record), record.id, fileStamp())
         val recordDir = store.dir(recordId)
         val builder = ExportBuilder(template, record, project?.ref())

@@ -7,13 +7,16 @@ import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectCodes
 import com.ncthanhngo.pollmaster.core.project.ProjectDraft
 import com.ncthanhngo.pollmaster.core.project.ProjectException
-import com.ncthanhngo.pollmaster.core.project.ProjectMigration
+import com.ncthanhngo.pollmaster.core.project.ErpProject
+import com.ncthanhngo.pollmaster.core.project.ErpProjectSync
+import com.ncthanhngo.pollmaster.core.project.ErpEnvelope
+import com.ncthanhngo.pollmaster.core.project.ErpPage
+import com.ncthanhngo.pollmaster.core.project.LogoChange
 import com.ncthanhngo.pollmaster.core.project.ProjectNames
 import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.sites.Site
-import com.ncthanhngo.pollmaster.core.sites.SitesStore
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
@@ -24,7 +27,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import java.io.File
 
 private const val NOW = "2026-10-23T10:00:00+07:00"
 
@@ -93,10 +95,6 @@ class ProjectCoreTest {
         assertEquals(listOf("BETA", "ALPHA"), store.list().map { it.code }) // archived last
         store.setTemplates(a.id, listOf(TemplateRef("T", "1"), TemplateRef("T", "1")), NOW)
         assertEquals(1, store.get(a.id)?.templates?.size)
-        store.sites(a.id).save(listOf(Site("S1")))
-        assertTrue(store.delete(a.id))
-        assertNull(store.get(a.id))
-        assertEquals("ALPHA", store.byCode("alpha")?.code)
     }
 
     @Test fun recordProjectIdRoundTripsAndDefaultsOnRead() {
@@ -106,59 +104,85 @@ class ProjectCoreTest {
         assertEquals("p1", PollJson.decodeFromString(Record.serializer(), json).projectId)
         val old = PollJson.decodeFromString(Record.serializer(), "{\"id\":\"r\",\"templateId\":\"X\"}")
         assertNull(old.projectId)
-        assertEquals("chung", ProjectRules.effectiveProjectId(old, "chung"))
         assertFalse(PollJson.encodeToString(Record.serializer(), old).contains("projectId"))
     }
 
-    @Test fun migrationAssignsRecordsMovesSitesAndIsIdempotent() {
-        val root = TestData.tempDir()
-        val templates = TemplateStore(root)
-        templates.install(TestData.templateText, false)
-        templates.install(TestData.templateText.replace("\"version\": \"1.2\"", "\"version\": \"1.10\""), false)
-        val records = RecordStore(root)
-        val old = RecordFactory.create(t, null, NOW)
-        records.save(old)
-        SitesStore(root).save(listOf(Site("S1", "Hà Nội", 21.0, 105.8)))
-        val projects = ProjectStore(root)
-
-        val first = ProjectMigration.run(root, projects, templates, records, NOW)
-        val chung = first.chung!!
-        assertEquals("chung", chung.id) // fixed id
-        assertEquals("CHUNG", chung.code)
-        assertEquals(1, first.adopted)
-        assertEquals(chung.id, records.load(old.id)?.projectId)
-        assertEquals(listOf(TemplateRef(t.id, "1.10")), chung.templates) // newest version only
-        assertEquals(listOf("S1"), projects.sites(chung.id).load().map { it.code })
-        assertFalse(File(root, "sites.json").exists())
-
-        val second = ProjectMigration.run(root, projects, templates, records, NOW)
-        assertEquals(0, second.adopted)
-        assertEquals(1, projects.list().size)
-        assertEquals(1, projects.sites(chung.id).load().size)
-        val other = records.save(RecordFactory.create(t, null, NOW, projectId = "gone")).let { records.list().first { it.projectId == "gone" } }
-        assertEquals(1, ProjectMigration.run(root, projects, templates, records, NOW).adopted) // dangling project id
-        assertEquals(chung.id, records.load(other.id)?.projectId)
+    @Test fun erpRowDecodes() {
+        val row = """{"id":"p1","code":"EVS-01","name":"Trạm sạc Đà Nẵng","short_name":" ","project_type":"internal","customer_name":null,""" +
+            """"customer_logo_url":"/uploads/a.png","created_at":"2026-05-01T08:00:00+07:00","member_count":3}"""
+        val e = PollJson.decodeFromString(ErpProject.serializer(), row)
+        assertEquals("internal", e.type)
+        assertEquals("/uploads/a.png", e.logo)
+        assertEquals("Trạm sạc Đà Nẵng", e.displayName)
+        val page = PollJson.decodeFromString(ErpEnvelope.serializer(ErpPage.serializer(ErpProject.serializer())), """{"data":{"items":[$row],"total":1}}""")
+        assertEquals(1, page.data?.total)
+        assertEquals("Ngắn", ErpProject("x", "C", "Long", shortName = "Ngắn").displayName)
     }
 
-    @Test fun chungWithRandomIdIsRekeyedWithItsRecords() {
-        val root = TestData.tempDir()
-        val templates = TemplateStore(root)
-        val records = RecordStore(root)
-        val projects = ProjectStore(root)
-        val old = projects.create(ProjectDraft("Chung", "CHUNG"), NOW, id = "random-uuid")
-        projects.sites(old.id).save(listOf(Site("S1")))
-        val rec = RecordFactory.create(t, null, NOW, projectId = old.id).also(records::save)
-        val result = ProjectMigration.run(root, projects, templates, records, NOW)
-        assertEquals("random-uuid", result.renamedFrom)
-        assertNull(projects.get("random-uuid"))
-        assertEquals("chung", projects.get("chung")?.id)
-        assertEquals("chung", records.load(rec.id)?.projectId)
-        assertEquals(listOf("S1"), projects.sites("chung").load().map { it.code })
-        assertEquals(1, projects.list().size)
-        assertNull(ProjectMigration.run(root, projects, templates, records, NOW).renamedFrom)
+    @Test fun erpSyncCreatesUpdatesAndHides() {
+        val store = ProjectStore(TestData.tempDir())
+        val t1 = TemplateRef("BB-TDP-01", "1.2")
+        val a = ErpProject("a", "evs a/1", "Dự án A", type = "company", customerName = "V-Green", logo = "/uploads/a.png")
+        val b = ErpProject("b", "B", "Nội bộ B", type = "internal")
+        val me = ErpProject("c", "C", "Cá nhân", type = "personal")
+        assertEquals(listOf(LogoChange("a", "/uploads/a.png")), ErpProjectSync.apply(listOf(a, b, me), store, NOW))
+        val pa = store.get("a")!!
+        assertEquals(listOf("EVS-A-1", "Dự án A", "V-Green", "company"), listOf(pa.code, pa.name, pa.client, pa.kind))
+        assertEquals("internal", store.get("b")?.kind)
+        assertTrue(pa.color != store.get("b")?.color)
+        assertNull(store.get("c"))
+
+        store.setTemplates("a", listOf(t1), NOW)
+        store.sites("a").save(listOf(Site("S1")))
+        assertEquals(listOf(LogoChange("a", null)), ErpProjectSync.apply(listOf(a.copy(name = "Dự án A mới", logo = null)), store, NOW))
+        val pa2 = store.get("a")!!
+        assertEquals("Dự án A mới", pa2.name)
+        assertEquals(listOf(t1), pa2.templates) // device fields kept
+        assertEquals(pa.color, pa2.color)
+        assertEquals(1, store.sites("a").load().size)
+        assertTrue(store.get("b")!!.archived) // dropped from the ERP list: hidden
+
+        ErpProjectSync.apply(listOf(b), store, NOW)
+        assertFalse(store.get("b")!!.archived)
+        assertTrue(store.get("a")!!.archived)
     }
 
-    @Test fun moveTargetsAndDeleteRules() {
+    @Test fun erpPhoenixStartsWithTheLibrary() {
+        val store = ProjectStore(TestData.tempDir())
+        val lib = listOf(TemplateRef("BB-TDP-01", "1.2"))
+        val phx = ErpProject("phx", "PHN-01", "Dự án Phoenix", type = "company")
+        val other = ErpProject("o", "O", "Khác", type = "company")
+        ErpProjectSync.apply(listOf(phx, other), store, NOW, lib)
+        assertEquals(lib, store.get("phx")?.templates)
+        assertTrue(store.get("o")!!.templates.isEmpty())
+        store.setTemplates("phx", emptyList(), NOW)
+        ErpProjectSync.apply(listOf(phx, other), store, NOW, lib)
+        assertTrue(store.get("phx")!!.templates.isEmpty()) // only when it first arrives
+    }
+
+    @Test fun erpMissingAvatarIsFetchedAgain() {
+        val store = ProjectStore(TestData.tempDir())
+        val a = ErpProject("a", "A", "A", type = "company", logo = "https://x/a.png")
+        ErpProjectSync.apply(listOf(a), store, NOW)
+        assertEquals(1, ErpProjectSync.apply(listOf(a), store, NOW).size)
+        store.setAvatar("a", byteArrayOf(1))
+        assertTrue(ErpProjectSync.apply(listOf(a), store, NOW).isEmpty())
+    }
+
+    @Test fun erpFileUrlAndReset() {
+        assertEquals("https://api.evselab.com/uploads/a.png", ErpProjectSync.fileUrl("/uploads/a.png", "https://api.evselab.com"))
+        assertEquals("https://cdn/x.png", ErpProjectSync.fileUrl("https://cdn/x.png", "https://api.evselab.com"))
+        val root = TestData.tempDir()
+        TemplateStore(root).install(TestData.templateText, false)
+        ProjectStore(root).create(ProjectDraft("Old", "OLD"), NOW)
+        RecordStore(root).save(RecordFactory.create(t, null, NOW, projectId = "x"))
+        ErpProjectSync.resetLocalData(root)
+        assertTrue(ProjectStore(root).list().isEmpty())
+        assertTrue(RecordStore(root).list().isEmpty())
+        assertEquals(1, TemplateStore(root).list().size)
+    }
+
+    @Test fun moveTargetsAndNewerVersion() {
         val rec = RecordFactory.create(t, null, NOW, projectId = "a")
         val ref = TemplateRef(t.id, "1.0")
         val a = Project(id = "a", code = "A", templates = listOf(ref))
@@ -168,9 +192,6 @@ class ProjectCoreTest {
             Project(id = "d", code = "D", templates = listOf(ref), archived = true),
         )
         assertEquals(listOf("b"), ProjectRules.moveTargets(rec, projects).map { it.id })
-        assertFalse(ProjectRules.canDelete("a", listOf(rec), null))
-        assertTrue(ProjectRules.canDelete("b", listOf(rec), null))
-        assertFalse(ProjectRules.canDelete("chung", listOf(rec.copy(projectId = null)), "chung"))
         assertEquals("1.3", ProjectRules.newerVersion(ref, listOf(TemplateRef(t.id, "1.3"), TemplateRef(t.id, "1.2"), TemplateRef(t.id, "0.9")), ::cmp))
         assertNull(ProjectRules.newerVersion(ref, listOf(TemplateRef(t.id, "1.0")), ::cmp))
     }

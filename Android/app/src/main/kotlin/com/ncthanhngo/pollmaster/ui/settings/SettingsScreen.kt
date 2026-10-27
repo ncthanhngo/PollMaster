@@ -52,6 +52,7 @@ import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.data.PhotoQuality
+import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,6 +68,9 @@ fun SettingsScreen() {
     val contrast by container.settings.highContrast.collectAsState()
     val oneHand by container.settings.oneHand.collectAsState()
     val themeMode by container.settings.themeMode.collectAsState()
+    val account by container.erp.account.collectAsState()
+    val scope = rememberCoroutineScope()
+    var confirmLogout by remember { mutableStateOf(false) }
     var used by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { container.recordStore.usedBytes() } }
 
@@ -75,6 +79,18 @@ fun SettingsScreen() {
             Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            account?.let { a ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.account_title), style = MaterialTheme.typography.titleSmall)
+                    Text(a.name, style = MaterialTheme.typography.bodyLarge)
+                    Text(listOfNotNull(a.email, a.org).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.account_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { confirmLogout = true }, Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.account_logout), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                HorizontalDivider()
+            }
             OutlinedTextField(
                 value = name,
                 onValueChange = container.settings::setSurveyorName,
@@ -121,6 +137,15 @@ fun SettingsScreen() {
             InfoRow(Icons.Filled.Storage, stringResource(R.string.settings_storage), Formatter.formatShortFileSize(context, used))
             InfoRow(Icons.Filled.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
         }
+    }
+    if (confirmLogout) {
+        ConfirmDialog(
+            title = stringResource(R.string.account_logout),
+            message = stringResource(R.string.account_logout_confirm),
+            confirmLabel = stringResource(R.string.account_logout),
+            onConfirm = { confirmLogout = false; scope.launch { container.erp.logout() } },
+            onDismiss = { confirmLogout = false },
+        )
     }
 }
 

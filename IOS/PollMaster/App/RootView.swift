@@ -5,8 +5,12 @@ struct RootView: View {
     @State private var surveyorName = ""
 
     var body: some View {
+        if env.account == nil { LoginView() } else { tabs }
+    }
+
+    private var tabs: some View {
         @Bindable var env = env
-        TabView(selection: $env.selectedTab) {
+        return TabView(selection: $env.selectedTab) {
             RecordsListView()
                 .tabItem { Label("Phiếu khảo sát", systemImage: "list.clipboard") }
                 .tag(AppTab.records)

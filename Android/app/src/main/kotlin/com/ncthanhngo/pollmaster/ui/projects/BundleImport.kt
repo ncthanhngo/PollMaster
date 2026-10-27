@@ -7,7 +7,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,11 +50,14 @@ fun rememberBundlePicker(): () -> Unit {
 
 private sealed interface BundleState {
     data class Preview(val contents: BundleContents, val plan: ImportPlan) : BundleState
-    data class Conflicts(val contents: BundleContents, val plan: ImportPlan) : BundleState
+    data class Conflicts(val contents: BundleContents, val plan: ImportPlan, val targetId: String) : BundleState
     data class Failed(val message: String) : BundleState
 }
 
-/** Shows the preview (name, code, templates, sites) of the package waiting in `pendingBundle` and imports it on "Nhập". */
+/**
+ * Shows the preview (name, code, templates, sites) of the package waiting in `pendingBundle`, asks for the ERP project to import it
+ * into (the package's own project when this account sees it) and imports it on "Nhập".
+ */
 @Composable
 fun ImportBundleHost(onImported: (String) -> Unit) {
     val container = LocalContainer.current
@@ -63,10 +71,10 @@ fun ImportBundleHost(onImported: (String) -> Unit) {
         container.pendingBundle.value = null
     }
 
-    fun import(contents: BundleContents, overwrite: Boolean) {
+    fun import(contents: BundleContents, targetId: String, overwrite: Boolean) {
         scope.launch {
             try {
-                val outcome = container.bundles.import(contents, overwrite)
+                val outcome = container.bundles.import(contents, targetId, overwrite)
                 Toast.makeText(context, context.getString(R.string.bundle_done, outcome.project.name), Toast.LENGTH_SHORT).show()
                 close()
                 onImported(outcome.project.id)
@@ -90,44 +98,52 @@ fun ImportBundleHost(onImported: (String) -> Unit) {
         is BundleState.Failed -> ImportErrorDialog(s.message) { close() }
         is BundleState.Preview -> PreviewDialog(
             s.contents, s.plan,
-            onImport = { if (s.plan.conflicts.isEmpty()) import(s.contents, false) else state = BundleState.Conflicts(s.contents, s.plan) },
+            onImport = { target -> if (s.plan.conflicts.isEmpty()) import(s.contents, target, false) else state = BundleState.Conflicts(s.contents, s.plan, target) },
             onDismiss = ::close,
         )
         is BundleState.Conflicts -> AlertDialog(
             onDismissRequest = ::close,
             title = { Text(stringResource(R.string.overwrite_title)) },
             text = { Text(stringResource(R.string.bundle_conflict, s.plan.conflicts.size, s.plan.conflicts.joinToString { "${it.id} v${it.version}" })) },
-            confirmButton = { TextButton(onClick = { import(s.contents, true) }) { Text(stringResource(R.string.bundle_overwrite_templates)) } },
-            dismissButton = { TextButton(onClick = { import(s.contents, false) }) { Text(stringResource(R.string.bundle_keep_templates)) } },
+            confirmButton = { TextButton(onClick = { import(s.contents, s.targetId, true) }) { Text(stringResource(R.string.bundle_overwrite_templates)) } },
+            dismissButton = { TextButton(onClick = { import(s.contents, s.targetId, false) }) { Text(stringResource(R.string.bundle_keep_templates)) } },
         )
         null -> Unit
     }
 }
 
 @Composable
-private fun PreviewDialog(contents: BundleContents, plan: ImportPlan, onImport: () -> Unit, onDismiss: () -> Unit) {
+private fun PreviewDialog(contents: BundleContents, plan: ImportPlan, onImport: (targetId: String) -> Unit, onDismiss: () -> Unit) {
     val p = contents.project
+    val projects by LocalContainer.current.projects.projects.collectAsState()
+    var target by remember { mutableStateOf(plan.proposed?.id) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.bundle_preview_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ProjectAvatar(p, 40.dp)
                     Text(p.name, style = MaterialTheme.typography.titleMedium)
                 }
-                Text(stringResource(R.string.bundle_preview_info, plan.code, contents.templates.size, contents.sites?.size ?: 0), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.bundle_preview_info, p.code, contents.templates.size, contents.sites?.size ?: 0), style = MaterialTheme.typography.bodyMedium)
                 p.client?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 contents.templates.forEach {
                     Text("${it.template.title} · ${it.template.id} v${it.template.version}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (plan.dropped.isNotEmpty()) Text(stringResource(R.string.bundle_dropped, plan.dropped.joinToString { "${it.id} v${it.version}" }), color = MaterialTheme.colorScheme.error)
-                if (plan.updates != null) Text(stringResource(R.string.bundle_update), Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.primary)
-                else if (plan.code != p.code) Text(stringResource(R.string.bundle_code_suffix, plan.code), Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.tertiary)
+                Text(stringResource(R.string.bundle_target), Modifier.padding(top = 4.dp), style = MaterialTheme.typography.titleSmall)
+                for ((kind, _) in projectKindSections) projects.filter { it.kind == kind }.forEach { project ->
+                    Row(Modifier.fillMaxWidth().selectable(target == project.id) { target = project.id }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(target == project.id, onClick = null)
+                        Text(project.name, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                Text(stringResource(R.string.bundle_target_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = {
-            TextButton(onClick = onImport) { Text(stringResource(if (plan.updates != null) R.string.bundle_update_action else R.string.bundle_import)) }
+            TextButton(onClick = { target?.let(onImport) }, enabled = target != null) { Text(stringResource(R.string.bundle_import)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )

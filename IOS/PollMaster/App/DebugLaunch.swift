@@ -13,18 +13,20 @@ extension AppEnvironment {
     /// review screen of the draft; `-pmFillStep 1` open "Điền lần lượt"; `-pmMap 1` records tab as map; `-pmSites 1` install sample planned sites;
     /// `-pmOneHand 0|1` set one-hand mode; `-pmScrollDown 1` scroll a stopwatch form to its end.
     /// Projects: `-pmSeedProjects 1` two sample projects with sites/records; `-pmProject <code>` current project; `-pmProjectDetail <code>`;
-    /// `-pmSwitcher 1` open the project switcher; `-pmNewProject 1` open the create form; `-pmImportBundle <path>` preview a .pmproject.
+    /// `-pmSwitcher 1` open the project switcher; `-pmImportBundle <path>` preview a .pmproject.
+    /// `-pmAccount 1` signed in as a sample ERP user (no network); `-pmLogin 1` show the sign-in screen.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
+        if d.bool(forKey: "pmAccount") { account = ERPAccount(name: "Nguyễn Văn A", email: "a@evselab.com", org: "EVSELab") }
+        if d.bool(forKey: "pmLogin") { account = nil }
         if let a = d.string(forKey: "pmAppearance").flatMap(AppearanceMode.init) { settings.appearance = a }
         if d.object(forKey: "pmOneHand") != nil { settings.oneHand = d.bool(forKey: "pmOneHand") }
         if d.bool(forKey: "pmMap") { recordsShowMap = true }
         if d.bool(forKey: "pmSeedProjects") { seedProjects() }
-        if d.bool(forKey: "pmSites"), let p = currentProject ?? project(id: nil) { try? projectStore.sites(p.id).save(sampleSites); reload() }
+        if d.bool(forKey: "pmSites"), let p = currentProject ?? projects.first { try? projectStore.sites(p.id).save(sampleSites); reload() }
         if let code = d.string(forKey: "pmProject") { currentProjectId = projects.first { $0.code == code }?.id }
         if let code = d.string(forKey: "pmProjectDetail"), let p = projects.first(where: { $0.code == code }) { selectedTab = .projects; projectsPath = [ProjectRoute(id: p.id)] }
         if d.bool(forKey: "pmSwitcher") { showProjectSwitcher = true }
-        if d.bool(forKey: "pmNewProject") { selectedTab = .projects; showNewProject = true }
         if let path = d.string(forKey: "pmImportBundle") { openIncoming(URL(fileURLWithPath: path)) }
         if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings, "projects": .projects][tab] ?? .records }
         if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reload() }
@@ -88,20 +90,21 @@ extension AppEnvironment {
         r.values["HD-code"] = FieldValue(v: .string("001/A"))
     }
 
-    /// Two projects with the sample template, sites and a few records each (skipped when they already exist).
+    /// Three ERP-like projects (two company, one internal) with the sample template, sites and a few records each.
     private func seedProjects() {
         guard let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) else { return }
-        let seeds = [("Khảo sát tủ đổi pin Hà Nội", "V-Green", Project.palette[1]), ("Trạm sạc Đà Nẵng", "EVN", Project.palette[3])]
-        for (i, (name, client, color)) in seeds.enumerated() {
-            let code = ProjectCode.base(from: name)
-            guard !projects.contains(where: { $0.code == code }) else { continue }
-            guard let p = try? projectStore.create(Project(code: code, name: name, client: client, description: "Đợt khảo sát mẫu", color: color,
-                                                           templates: [TemplateRef(t)])) else { continue }
-            if i == 0 { try? projectStore.sites(p.id).save(sampleSites) }
-            seed(t, projectId: p.id, count: i == 0 ? 3 : 1)
+        let seeds = [ERPProject(id: "seed-hn", code: "VGREEN-HN", name: "Khảo sát tủ đổi pin Hà Nội", type: "company", customerName: "V-Green"),
+                     ERPProject(id: "seed-dn", code: "EVN-DN", name: "Trạm sạc Đà Nẵng", type: "company", customerName: "EVN"),
+                     ERPProject(id: "seed-lab", code: "LAB-01", name: "Thử nghiệm phòng lab", type: "internal")]
+        let fresh = seeds.filter { projectStore.load($0.id) == nil }
+        _ = try? ERPProjectSync.apply(seeds, to: projectStore)
+        for (i, e) in seeds.enumerated() where fresh.contains(e) {
+            try? projectStore.addTemplate(TemplateRef(t), to: e.id)
+            if i == 0 { try? projectStore.sites(e.id).save(sampleSites) }
+            seed(t, projectId: e.id, count: i == 0 ? 3 : 1)
         }
         reload()
-        if let first = projects.first(where: { $0.code == ProjectCode.base(from: seeds[0].0) }) { currentProjectId = first.id }
+        currentProjectId = seeds[0].id
     }
 
     private func seed(_ t: Template, projectId: String? = nil, count: Int = 3) {

@@ -44,13 +44,12 @@ struct ProjectSummarySheet: View {
         env.reload()
         working = true; error = nil; note = nil
         let project = project, filter = filter, withRecords = withRecords, store = env.recordStore, library = env.templates
-        let general = env.project(id: nil)?.id
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("exports/\(UUID().uuidString)")
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) { () -> ([URL], ProjectSummaryExport.Output) in
                     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-                    let records = store.list().filter { ($0.projectId ?? general) == project.id }
+                    let records = store.list().filter { $0.projectId == project.id }
                     let xlsx = dir.appendingPathComponent(ProjectSummaryExport.fileName(project))
                     let out = try ProjectSummaryExport.write(project: project, records: records, library: library, filter: filter, to: xlsx)
                     var urls = [xlsx]

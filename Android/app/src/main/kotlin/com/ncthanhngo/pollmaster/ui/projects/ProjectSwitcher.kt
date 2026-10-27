@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
@@ -40,7 +39,7 @@ import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectStats
 import com.ncthanhngo.pollmaster.ui.common.IconBadge
 
-/** Sheet to pick the current project of the records tab: search, "Tất cả dự án", new project, import package. */
+/** Sheet to pick the current project of the records tab: search, "Tất cả dự án", the ERP projects by kind, import package. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectSwitcherSheet(
@@ -48,7 +47,6 @@ fun ProjectSwitcherSheet(
     currentId: String?,
     statsOf: (Project) -> ProjectStats,
     onSelect: (String?) -> Unit,
-    onNew: () -> Unit,
     onImport: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -67,15 +65,18 @@ fun ProjectSwitcherSheet(
                 item(key = "all") {
                     SwitcherRow(stringResource(R.string.project_all), null, null, currentId == null, null) { onSelect(null) }
                 }
-                items(shown, key = { it.id }) { p ->
-                    SwitcherRow(p.name, p.code, p, currentId == p.id, projectCounts(statsOf(p))) { onSelect(p.id) }
+                for ((kind, title) in projectKindSections) {
+                    val group = shown.filter { it.kind == kind }
+                    if (group.isEmpty()) continue
+                    item(key = "h-$kind") {
+                        Text(stringResource(title), Modifier.padding(top = 12.dp, bottom = 2.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    items(group, key = { it.id }) { p ->
+                        SwitcherRow(p.name, p.code, p, currentId == p.id, projectCounts(statsOf(p))) { onSelect(p.id) }
+                    }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onNew, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Filled.Add, null)
-                    Text(stringResource(R.string.project_new), Modifier.padding(start = 4.dp))
-                }
                 OutlinedButton(onClick = onImport, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Download, null)
                     Text(stringResource(R.string.project_import), Modifier.padding(start = 4.dp), maxLines = 1)

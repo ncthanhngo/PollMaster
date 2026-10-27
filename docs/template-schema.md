@@ -355,31 +355,33 @@ giữ độ dài số 0 đứng đầu (001 → 002; chưa có phiếu → `001`
 ## 9. Dự án (project)
 
 Mỗi phiếu thuộc **đúng 1 dự án**. Mẫu nằm trong **thư viện chung** (`templates/<id>@<version>.json`); dự án tham chiếu mẫu theo id+version.
+**Dự án lấy từ ERP** (§9.5), app không tạo/sửa/xóa dự án.
 
 ### 9.1 Project — `<AppData>/projects/<projectId>/project.json`
 ```jsonc
 {
   "schemaVersion": 1,
-  "id": "uuid",
-  "code": "VGREEN-HN",            // in hoa, A-Z 0-9 -, duy nhất trên máy; dùng trong tên tệp
-  "name": "Khảo sát tủ đổi pin Hà Nội",
-  "client": "V-Green",             // optional
+  "id": "uuid",                   // id dự án ERP
+  "code": "VGREEN-HN",            // mã ERP chuẩn hóa: in hoa, A-Z 0-9 -; dùng trong tên tệp
+  "name": "Khảo sát tủ đổi pin Hà Nội",   // short_name ERP, không có thì name
+  "client": "V-Green",             // optional, customer_name ERP
   "description": "…",              // optional
-  "color": "#1B6B5A",              // optional, màu nhận diện
+  "color": "#1B6B5A",              // optional, màu nhận diện (máy tự gán lần đầu)
+  "kind": "company",               // project_type ERP: company | internal
+  "logo": "/uploads/…",            // optional, URL ảnh đại diện ERP đã tải về avatar.jpg
   "templates": [ { "id": "BB-TDP-01", "version": "1.2" } ],
-  "archived": false,
+  "archived": false,               // true = ERP không còn trả về cho tài khoản này: ẩn cùng phiếu, không xóa
   "createdAt": ISO, "updatedAt": ISO
 }
 ```
 - Danh sách điểm của dự án: `<AppData>/projects/<projectId>/sites.json` (định dạng §7.3). Bỏ `sites.json` toàn cục.
-- Record thêm khóa `"projectId"` (bắt buộc khi ghi; đọc thiếu → dự án "Chung").
+- Record thêm khóa `"projectId"` (bắt buộc khi ghi). Chỉ hiện phiếu của dự án đang hiện.
 - Tạo phiếu chỉ được chọn trong `templates` của dự án. Khi thư viện có bản mới hơn của mẫu đang dùng → dự án hiện gợi ý
   "Có bản v1.3 — dùng cho phiếu mới?"; phiếu cũ giữ bản của nó.
 - Xóa mẫu khỏi dự án: được, phiếu cũ vẫn mở được (mẫu vẫn còn trong thư viện). Xóa mẫu khỏi thư viện: chặn khi còn phiếu hoặc dự án dùng.
 
-### 9.2 Di chuyển dữ liệu cũ (lần đầu chạy bản có dự án)
-Tạo dự án `{"id":"chung","code":"CHUNG","name":"Chung"}` (id **cố định** `chung` trên mọi máy để gói dự án Chung khớp nhau) chứa mọi mẫu đã cài (bản mới nhất mỗi id) + `sites.json` toàn cục cũ; gán mọi phiếu chưa có
-`projectId` vào dự án này. Idempotent.
+### 9.2 Dữ liệu cũ
+Lần đăng nhập ERP đầu tiên trên máy xóa `projects/` và `records/` tạo trước đó (mẫu giữ nguyên); làm một lần. Bỏ dự án "Chung".
 
 ### 9.3 Gói dự án `.pmproject` (zip)
 ```
@@ -387,7 +389,8 @@ project.json          // như 9.1 (id giữ nguyên để cập nhật lại đ�
 templates/<id>@<version>.json   // mọi mẫu dự án tham chiếu
 sites.csv             // code,address,lat,lng (UTF-8 BOM) — có thể vắng
 ```
-Nhập: dự án cùng `id` đã có → hỏi "Cập nhật dự án <name>?" (cập nhật tên/mẫu/điểm, không đụng phiếu); `code` trùng dự án khác → tự thêm hậu tố `-2`.
+Nhập **vào một dự án ERP người dùng chọn** (gợi ý sẵn dự án cùng `id` nếu tài khoản thấy nó): mẫu trong gói thêm vào dự án (thay bản cũ
+cùng id mẫu), `sites.csv` có thì thay danh sách điểm; tên/mã dự án và phiếu không đổi. Không tạo dự án mới.
 Mẫu: cài như import thường (cùng id+version đã có và nội dung khác → hỏi ghi đè). Lỗi → danh sách lỗi + "Sao chép lỗi".
 MIME: `application/zip`; iOS khai báo UTType `com.evselab.pollmaster.project` (đuôi `pmproject`) để mở trực tiếp từ Zalo/Mail/Tệp;
 Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/zip` + `application/octet-stream`.
@@ -400,3 +403,14 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
   hiển thị §6.5, computed gồm cả) một cột; hàng 1 = mã trường, hàng 2 = nhãn. Mỗi bảng của mẫu thêm sheet `{templateId}-{tableId}`
   (cột `Mã phiếu` + các cột bảng, mỗi dòng bảng 1 hàng). Tùy chọn kèm: zip "JSON + media" của mọi phiếu (`{projectCode}_phieu_{…}.zip`).
   Lọc: tất cả / chỉ Hoàn thành.
+
+### 9.5 ERP (đăng nhập & danh sách dự án)
+- API `https://api.evselab.com/api/v1`, header `X-Client-App: evs-mobile` (như app ERP). Tài khoản EVSELab và tổ chức đối tác (vd. Kimsen) cùng endpoint.
+- `POST /auth/login {email,password}` → `{token, refresh_token, user{name,display_name,email,org_name}, must_change_password}`; bắt buộc đăng nhập để dùng app.
+  Access 4 h; `POST /auth/refresh {refresh_token}` khi 401 (refresh token xoay vòng, lưu mới). Chỉ 400/401 ở refresh mới đăng xuất; lỗi mạng giữ phiên.
+  Token: iOS Keychain, Android SharedPreferences mã hóa AES-GCM bằng khóa Android Keystore.
+- `GET /projects?status=active&page_size=100&page=n` (lặp đến `total`): chỉ lấy `project_type` `company` → mục **Dự án công ty**, `internal` → **Nội bộ**
+  (bỏ `personal`). Dự án mới về máy: chưa có mẫu, riêng dự án có "Phoenix" trong mã/tên được gán sẵn mọi mẫu của thư viện (bản mới nhất).
+  Đồng bộ khi đăng nhập, khi mở app, khi kéo để tải lại; mất mạng → dùng danh sách đã lưu.
+- Ảnh đại diện: `customer_logo_url` (tương đối → ghép `https://api.evselab.com`), cắt vuông 256 px nền trắng → `avatar.jpg`.
+- Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình.

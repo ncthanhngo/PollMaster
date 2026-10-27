@@ -2,15 +2,11 @@ import SwiftUI
 import PollMasterCore
 
 struct ProjectDetailView: View {
-    @Environment(\.pmTheme) private var theme
     let projectId: String
     @Environment(AppEnvironment.self) private var env
-    @Environment(\.dismiss) private var dismiss
-    @State private var editing = false
     @State private var addingTemplates = false
     @State private var exportingSummary = false
     @State private var share: ShareItems?
-    @State private var confirmDelete = false
     @State private var removing: TemplateRef?
 
     private var project: Project? { env.projects.first { $0.id == projectId } }
@@ -36,9 +32,8 @@ struct ProjectDetailView: View {
                         Text(p.code).font(.footnote).secondaryText()
                     }
                 }
+                if let kind = projectKindSections.first(where: { $0.kind == p.kind }) { LabeledContent("Loại", value: kind.title) }
                 if let c = p.client { LabeledContent("Khách hàng", value: c) }
-                if let d = p.description { Text(d).font(.subheadline) }
-                if p.archived { Label("Đã lưu trữ", systemImage: "archivebox").foregroundStyle(theme.attention).font(.subheadline) }
             }
             Section {
                 HStack(spacing: 10) {
@@ -64,11 +59,8 @@ struct ProjectDetailView: View {
                     LabeledContent("Danh sách điểm", value: sites.isEmpty ? "Chưa có" : "\(sites.count) điểm · \(sites.filter { visited.contains($0.code) }.count) đã có phiếu")
                 }
             }
-            actions(p)
         }
         .navigationTitle(p.name)
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button("Sửa") { editing = true } } }
-        .sheet(isPresented: $editing) { ProjectFormView(project: p) }
         .sheet(isPresented: $addingTemplates) { AddProjectTemplatesSheet(project: p) }
         .sheet(isPresented: $exportingSummary) { ProjectSummarySheet(project: p) }
         .sheet(item: $share) { ActivityView(items: $0.urls).presentationDetents([.medium, .large]) }
@@ -76,18 +68,6 @@ struct ProjectDetailView: View {
                             titleVisibility: .visible) {
             Button("Gỡ mẫu", role: .destructive) { if let r = removing { env.removeTemplate(r, from: p) }; removing = nil }
         }
-        .confirmationDialog(deleteTitle(stats), isPresented: $confirmDelete, titleVisibility: .visible) {
-            if stats.total == 0 { Button("Xóa dự án", role: .destructive) { if env.deleteProject(p) { dismiss() } } }
-            else {
-                Button(p.archived ? "Đã lưu trữ" : "Lưu trữ dự án") { env.setArchived(p, true) }
-                Button("Mở danh sách phiếu") { openRecords(p) }
-            }
-        }
-    }
-
-    private func deleteTitle(_ s: ProjectStats) -> String {
-        s.total == 0 ? "Xóa dự án này? Mẫu và danh sách điểm của dự án sẽ bị gỡ (mẫu trong thư viện vẫn còn)."
-            : "Dự án còn \(s.total) phiếu nên chưa xóa được. Hãy chuyển phiếu sang dự án khác (menu phiếu > Chuyển dự án) hoặc lưu trữ dự án."
     }
 
     private func templatesSection(_ p: Project) -> some View {
@@ -110,16 +90,6 @@ struct ProjectDetailView: View {
             Button("Thêm mẫu từ thư viện", systemImage: "plus.circle") { addingTemplates = true }
         } header: { Text("Mẫu của dự án (\(p.templates.count))") } footer: {
             Text("Phiếu mới chỉ chọn được trong các mẫu này. Phiếu cũ giữ phiên bản mẫu của nó.")
-        }
-    }
-
-    private func actions(_ p: Project) -> some View {
-        // Rare, state-changing actions stay at the bottom, away from the everyday ones at the top.
-        Section {
-            Button(p.archived ? "Bỏ lưu trữ" : "Lưu trữ", systemImage: p.archived ? "tray.and.arrow.up" : "archivebox") {
-                env.setArchived(p, !p.archived)
-            }
-            Button("Xóa dự án", systemImage: "trash", role: .destructive) { confirmDelete = true }
         }
     }
 

@@ -16,11 +16,10 @@ extension AppEnvironment {
     var activeProjects: [Project] { projects.filter { !$0.archived } }
     var currentProject: Project? { currentProjectId.flatMap { id in projects.first { $0.id == id } } }
 
-    /// Project by id; a missing id means "Chung".
-    func project(id: String?) -> Project? {
-        if let id { return projects.first { $0.id == id } }
-        return projects.last(where: \.isGeneral)
-    }
+    func project(id: String?) -> Project? { id.flatMap { id in projects.first { $0.id == id } } }
+
+    /// Listed projects of one ERP `project_type` ("company" / "internal"), in list order.
+    func projects(ofKind kind: String) -> [Project] { projects.filter { $0.kind == kind } }
 
     func project(of r: Record) -> Project? { project(id: r.projectId) }
 
@@ -50,43 +49,7 @@ extension AppEnvironment {
     func template(_ ref: TemplateRef) -> Template? { templates.first { $0.id == ref.id && $0.version == ref.version } }
     func templates(of p: Project) -> [Template] { p.templates.compactMap(template) }
 
-    // MARK: project CRUD
-
-    @discardableResult
-    func saveProject(_ p: Project, isNew: Bool) -> Project? {
-        do {
-            let saved = isNew ? try projectStore.create(p) : try projectStore.update(p)
-            reload()
-            return saved
-        } catch { errorMessage = error.localizedDescription; return nil }
-    }
-
-    func setArchived(_ p: Project, _ archived: Bool) {
-        do { try projectStore.setArchived(p.id, archived); reload() } catch { errorMessage = error.localizedDescription }
-    }
-
-    /// Only an empty project can be deleted; otherwise explains what to do instead.
-    @discardableResult
-    /// Square-cropped, 256 px JPEG of the chosen photo; nil removes it (back to initials).
-    func setAvatar(_ image: UIImage?, for p: Project) {
-        do {
-            if let image, let jpeg = image.squareThumbnail(256).jpegData(compressionQuality: 0.85) {
-                try projectStore.setAvatar(jpeg, for: p.id)
-            } else {
-                try projectStore.removeAvatar(p.id)
-            }
-            reload()
-        } catch { errorMessage = error.localizedDescription }
-    }
-
-    func deleteProject(_ p: Project) -> Bool {
-        do {
-            try projectStore.delete(p.id, recordCount: stats(of: p).total)
-            if currentProjectId == p.id { currentProjectId = nil }
-            reload()
-            return true
-        } catch { errorMessage = error.localizedDescription; return false }
-    }
+    // MARK: project templates
 
     func addTemplates(_ list: [Template], to p: Project) {
         do { for t in list { try projectStore.addTemplate(TemplateRef(t), to: p.id) }; reload() } catch { errorMessage = error.localizedDescription }
@@ -168,14 +131,14 @@ extension AppEnvironment {
         selectedTab = .projects
     }
 
-    func importIncoming(overwriteTemplates: Bool) {
+    func importIncoming(into target: Project, overwriteTemplates: Bool) {
         guard let bundle = incomingBundle?.bundle else { return }
         do {
-            let r = try ProjectImporter(root: root).apply(bundle, overwriteTemplates: overwriteTemplates)
+            let r = try ProjectImporter(root: root).apply(bundle, into: target.id, overwriteTemplates: overwriteTemplates)
             incomingBundle = nil
             reload()
             currentProjectId = r.project.id
-            var note = r.updated ? "Đã cập nhật dự án \(r.project.name)." : "Đã nhập dự án \(r.project.name) (\(r.project.code))."
+            var note = "Đã nhập gói vào dự án \(r.project.name)."
             if !r.skippedConflicts.isEmpty { note += " Giữ nguyên \(r.skippedConflicts.count) mẫu đã có trên máy." }
             if !r.droppedRefs.isEmpty { note += " Bỏ \(r.droppedRefs.count) mẫu không có trong gói." }
             infoMessage = note
@@ -184,12 +147,13 @@ extension AppEnvironment {
 }
 
 extension UIImage {
-    /// Centre square crop scaled to `side` points (scale 1).
+    /// Centre square crop scaled to `side` points (scale 1), on white so transparent logos stay readable as JPEG.
     func squareThumbnail(_ side: CGFloat) -> UIImage {
         let edge = min(size.width, size.height)
         let crop = CGRect(x: (size.width - edge) / 2, y: (size.height - edge) / 2, width: edge, height: edge)
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
-        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { c in
+            UIColor.white.setFill(); c.fill(CGRect(x: 0, y: 0, width: side, height: side))
             let k = side / edge
             draw(in: CGRect(x: -crop.minX * k, y: -crop.minY * k, width: size.width * k, height: size.height * k))
         }

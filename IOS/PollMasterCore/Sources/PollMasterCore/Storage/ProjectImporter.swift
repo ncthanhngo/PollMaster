@@ -1,6 +1,7 @@
 import Foundation
 
-/// Installs a `.pmproject` (schema §9.3): templates like a normal import, project created or updated, sites replaced.
+/// Installs a `.pmproject` (schema §9.3) into an ERP project on the device: templates like a normal import, added to the
+/// project (a bundled version replaces the one the project used), sites replaced when the bundle has them.
 public struct ProjectImporter: Sendable {
     public let projects: ProjectStore
     public let templates: TemplateStore
@@ -10,7 +11,7 @@ public struct ProjectImporter: Sendable {
     }
 
     public struct Plan: Sendable {
-        /// Project with the same id already on the device: the import updates it.
+        /// The bundle's own project when it is one of the listed ERP projects: proposed as the target.
         public var existing: Project?
         /// Same id+version already installed with different content (needs "Ghi đè?").
         public var conflicts: [Template]
@@ -19,7 +20,6 @@ public struct ProjectImporter: Sendable {
 
     public struct Result: Sendable {
         public var project: Project
-        public var updated: Bool
         public var installed: [Template]
         public var skippedConflicts: [Template]
         /// References neither in the bundle nor in the library.
@@ -39,10 +39,11 @@ public struct ProjectImporter: Sendable {
             if !templates.exists(id: t.id, version: t.version) { fresh.append(t) }
             else if let old = templates.data(id: t.id, version: t.version), !sameContent(old, e.data) { conflicts.append(t) }
         }
-        return Plan(existing: projects.load(bundle.project.id), conflicts: conflicts, newTemplates: fresh)
+        return Plan(existing: projects.load(bundle.project.id).flatMap { $0.archived ? nil : $0 }, conflicts: conflicts, newTemplates: fresh)
     }
 
-    public func apply(_ bundle: ProjectBundle, overwriteTemplates: Bool, now: Date = Date()) throws -> Result {
+    public func apply(_ bundle: ProjectBundle, into projectId: String, overwriteTemplates: Bool, now: Date = Date()) throws -> Result {
+        guard var p = projects.load(projectId) else { throw ProjectError.notFound }
         let plan = plan(bundle)
         let conflictKeys = Set(plan.conflicts.map(\.key))
         var installed: [Template] = [], skipped: [Template] = []
@@ -55,20 +56,13 @@ public struct ProjectImporter: Sendable {
         let refs = bundle.project.templates.filter { bundled.contains($0) || templates.exists(id: $0.id, version: $0.version) }
         let dropped = bundle.project.templates.filter { !refs.contains($0) }
 
-        var p: Project
-        if var current = plan.existing {
-            current.name = bundle.project.name; current.client = bundle.project.client
-            current.description = bundle.project.description; current.color = bundle.project.color
-            current.templates = refs
-            p = try projects.update(current, now: now)
-        } else {
-            p = bundle.project
-            p.templates = refs; p.archived = false; p.createdAt = now; p.updatedAt = now
-            p.code = ProjectCode.unique(p.code, taken: projects.codes())
-            p = try projects.create(p)
+        for ref in refs {
+            if let i = p.templates.firstIndex(where: { $0.id == ref.id }) { p.templates[i] = ref } else { p.templates.append(ref) }
         }
+        p.updatedAt = now
+        try projects.save(p)
         if let sites = bundle.sites { try projects.sites(p.id).save(sites) }
-        return Result(project: p, updated: plan.existing != nil, installed: installed, skippedConflicts: skipped,
+        return Result(project: p, installed: installed, skippedConflicts: skipped,
                       droppedRefs: dropped, siteCount: bundle.sites?.count ?? projects.sites(p.id).load().count)
     }
 }

@@ -1,16 +1,15 @@
 import SwiftUI
 import PollMasterCore
 
-/// Pick the project the records tab follows: search, "Tất cả dự án", new project, import bundle.
+/// Pick the project the records tab follows: search, "Tất cả dự án", the ERP projects by kind, import bundle.
 struct ProjectSwitcherSheet: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var creating = false
     @State private var importing = false
 
-    private var shown: [Project] {
-        env.activeProjects.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.code.localizedCaseInsensitiveContains(query) }
+    private func shown(_ kind: String) -> [Project] {
+        env.projects(ofKind: kind).filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.code.localizedCaseInsensitiveContains(query) }
     }
 
     var body: some View {
@@ -22,21 +21,28 @@ struct ProjectSwitcherSheet: View {
                             stats: env.summaries.reduce(into: ProjectStats()) { s, r in s.addSummary(r) }, selected: env.currentProjectId == nil)
                     }
                 }
-                ForEach(shown) { p in
-                    Button { pick(p.id) } label: {
-                        row(icon: AnyView(ProjectAvatar(project: p, size: 36)), title: p.name, subtitle: p.code, stats: env.stats(of: p), selected: env.currentProjectId == p.id)
+                ForEach(projectKindSections, id: \.kind) { s in
+                    let list = shown(s.kind)
+                    if !list.isEmpty {
+                        Section(s.title) {
+                            ForEach(list) { p in
+                                Button { pick(p.id) } label: {
+                                    row(icon: AnyView(ProjectAvatar(project: p, size: 36)), title: p.name, subtitle: p.code, stats: env.stats(of: p),
+                                        selected: env.currentProjectId == p.id)
+                                }
+                            }
+                        }
                     }
                 }
                 Section {
-                    Button("Dự án mới", systemImage: "plus") { creating = true }
                     Button("Nhập gói dự án", systemImage: "square.and.arrow.down") { importing = true }
                 }
             }
             .buttonStyle(.plain)
             .searchable(text: $query, prompt: "Tìm dự án")
+            .refreshable { await env.syncProjects() }
             .navigationTitle("Chọn dự án").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } } }
-            .sheet(isPresented: $creating) { ProjectFormView(project: nil) { env.currentProjectId = $0.id; dismiss() } }
             .projectBundlePicker(isPresented: $importing)
         }
         .presentationDetents([.medium, .large])

@@ -9,7 +9,6 @@ import android.provider.MediaStore
 import com.ncthanhngo.pollmaster.core.export.ZipExporter
 import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.recordCode
-import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
@@ -62,7 +61,7 @@ class BackupService(
             val at = nowIso()
             val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
             val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
-            val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
+            val project = projects.get(record.projectId)
             val tmp = File(context.cacheDir, "backup-$recordId.zip")
             try {
                 tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it, project?.ref()) }
@@ -85,7 +84,7 @@ class BackupService(
             records.flushEditor(recordId)
             val record = store.load(recordId) ?: return@withLock true
             val template = templates.find(record.templateId, record.templateVersion) ?: return@withLock true
-            val project = projects.get(ProjectRules.effectiveProjectId(record, projects.chungId()))
+            val project = projects.get(record.projectId)
             remove(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code))
             true
         } catch (e: Exception) { // reported in Settings, never swallowed

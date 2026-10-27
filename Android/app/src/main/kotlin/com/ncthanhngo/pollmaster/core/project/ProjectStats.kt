@@ -7,9 +7,9 @@ data class ProjectStats(val draft: Int, val completed: Int, val returned: Int, v
     val total: Int get() = draft + completed
 
     companion object {
-        /** Stats of [projectId]; records without a project count for "Chung" ([chungId]). `draft` includes the returned ones. */
-        fun of(projectId: String, records: List<Record>, chungId: String?): ProjectStats {
-            val mine = records.filter { ProjectRules.effectiveProjectId(it, chungId) == projectId }
+        /** Stats of [projectId]; `draft` includes the returned ones. */
+        fun of(projectId: String, records: List<Record>): ProjectStats {
+            val mine = records.filter { it.projectId == projectId }
             return ProjectStats(
                 draft = mine.count { !it.isCompleted },
                 completed = mine.count { it.isCompleted },

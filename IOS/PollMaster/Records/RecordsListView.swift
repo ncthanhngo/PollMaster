@@ -102,8 +102,7 @@ extension RecordsListView {
 
     /// One template in a single current project starts right away; otherwise pick project / template first.
     func startNew() {
-        if let p = env.currentProject, !p.archived, p.templates.count == 1, let t = env.template(p.templates[0]) { env.startCreate(from: t, in: p) }
-        else if let p = env.currentProject, p.archived { env.errorMessage = "Dự án đã lưu trữ. Bỏ lưu trữ để tạo phiếu mới." }
+        if let p = env.currentProject, p.templates.count == 1, let t = env.template(p.templates[0]) { env.startCreate(from: t, in: p) }
         else { creating = true }
     }
 }

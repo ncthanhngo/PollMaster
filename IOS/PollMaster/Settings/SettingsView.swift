@@ -6,11 +6,26 @@ struct SettingsView: View {
     @State private var used: Int64 = 0
     @State private var backingUp = false
     @State private var backupMessage: String?
+    @State private var confirmLogout = false
 
     var body: some View {
         @Bindable var settings = env.settings
         NavigationStack {
             Form {
+                if let a = env.account {
+                    Section {
+                        HStack(spacing: 12) {
+                            badge("building.2.fill", .teal)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(a.name).foregroundStyle(Color.primary)
+                                Text([a.email, a.org].compactMap { $0 }.joined(separator: " · ")).font(.caption).secondaryText()
+                            }
+                        }
+                        Button(role: .destructive) { confirmLogout = true } label: { row("Đăng xuất", "rectangle.portrait.and.arrow.right", .red) }
+                    } header: { Text("Tài khoản ERP") } footer: {
+                        Text("Dự án lấy từ ERP. Đăng xuất không xóa phiếu trên máy.")
+                    }
+                }
                 Section {
                     HStack(spacing: 12) { badge("person.fill", .blue); TextField("Tên người khảo sát mặc định", text: $settings.surveyorName) }
                 } header: { Text("Người khảo sát") } footer: { Text("Tự điền vào trường HD-surveyor khi tạo phiếu mới.") }
@@ -47,6 +62,9 @@ struct SettingsView: View {
             .navigationTitle("Cài đặt")
             .toolbar { ToolbarItem(placement: .primaryAction) { AppearanceToggleButton() } }
             .task { used = env.usedStorage() }
+            .confirmationDialog("Đăng xuất khỏi ERP?", isPresented: $confirmLogout, titleVisibility: .visible) {
+                Button("Đăng xuất", role: .destructive) { Task { await env.logout() } }
+            } message: { Text("Phiếu vẫn nằm trên máy và hiện lại khi đăng nhập tài khoản có dự án đó.") }
         }
     }
 

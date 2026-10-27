@@ -37,6 +37,12 @@ final class AppEnvironment {
     let backups: BackupService
     let settings = AppSettings()
     let location = LocationService()
+    let erp = ERPClient()
+    /// Signed-in ERP user; nil shows the sign-in screen.
+    var account: ERPAccount?
+    var syncing = false
+    /// Why the last ERP project fetch failed (the cached list is shown meanwhile).
+    var syncError: String?
 
     var templates: [Template] = []
     var projects: [Project] = []
@@ -53,7 +59,6 @@ final class AppEnvironment {
     /// Records-tab project switcher sheet.
     var showProjectSwitcher = false
     var projectsPath: [ProjectRoute] = []
-    var showNewProject = false
     /// A `.pmproject` opened from another app, waiting on the preview sheet.
     var incomingBundle: IncomingBundle?
     /// Template just imported: asks which projects should get it.
@@ -78,8 +83,8 @@ final class AppEnvironment {
         projectStore = ProjectStore(root: root)
         backups = BackupService(store: recordStore)
         currentProjectId = UserDefaults.standard.string(forKey: "currentProjectId")
+        account = Self.storedAccount()
         installBundledTemplates()
-        do { try ProjectMigration(root: root).run() } catch { errorMessage = "Không chuyển dữ liệu cũ vào dự án: \(error.localizedDescription)" }
         reload()
     }
 
@@ -101,20 +106,21 @@ final class AppEnvironment {
         editors.values.forEach { $0.flush() }
         templates = templateStore.list()
         let byKey = Dictionary(templates.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
-        projects = projectStore.list()
+        // ERP projects this account sees; the others stay on the device, hidden with their records.
+        projects = projectStore.list().filter { !$0.archived }
         projectAvatars = Dictionary(uniqueKeysWithValues: projects.compactMap { p in
             projectStore.avatarURL(p.id).flatMap { UIImage(contentsOfFile: $0.path) }.map { (p.id, $0) }
         })
         if let id = currentProjectId, !projects.contains(where: { $0.id == id }) { currentProjectId = nil }
-        let general = projects.last(where: \.isGeneral)?.id ?? projects.last?.id ?? ""
+        let visible = Set(projects.map(\.id))
         siteCache = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, projectStore.sites($0.id).load()) })
         var visited: [String: Set<String>] = [:], stats: [String: ProjectStats] = [:]
-        summaries = recordStore.listItems().map { item in
+        summaries = recordStore.listItems().compactMap { item in
             guard let r = item.record else {
                 return RecordSummary(id: item.id, title: item.id, subtitle: item.error ?? "", updatedAt: item.modifiedAt,
-                                     status: .draft, progress: RequiredProgress(done: 0, total: 0), projectId: general, loadError: item.error ?? "Không đọc được")
+                                     status: .draft, progress: RequiredProgress(done: 0, total: 0), loadError: item.error ?? "Không đọc được")
             }
-            let pid = r.projectId ?? general
+            guard let pid = r.projectId, visible.contains(pid) else { return nil }
             stats[pid, default: ProjectStats()].add(r)
             guard let t = byKey["\(r.templateId)@\(r.templateVersion)"] else {
                 return RecordSummary(id: r.id, title: "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"),
@@ -175,7 +181,7 @@ final class AppEnvironment {
     func deleteTemplate(_ t: Template) {
         let n = recordCount(using: t)
         guard n == 0 else { errorMessage = TemplateError.inUse(count: n).localizedDescription; return }
-        let users = projects.filter { $0.templates.contains(TemplateRef(t)) }
+        let users = projectStore.list().filter { $0.templates.contains(TemplateRef(t)) }
         guard users.isEmpty else {
             errorMessage = "Còn \(users.count) dự án dùng mẫu này (\(users.map(\.code).joined(separator: ", "))). Gỡ mẫu khỏi dự án trước."; return
         }

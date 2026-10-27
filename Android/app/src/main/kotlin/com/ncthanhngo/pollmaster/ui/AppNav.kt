@@ -1,14 +1,15 @@
 package com.ncthanhngo.pollmaster.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.ncthanhngo.pollmaster.LocalContainer
+import com.ncthanhngo.pollmaster.ui.auth.LoginScreen
 import com.ncthanhngo.pollmaster.ui.projects.ImportBundleHost
 import com.ncthanhngo.pollmaster.ui.projects.ProjectDetailScreen
-import com.ncthanhngo.pollmaster.ui.projects.ProjectFormScreen
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,7 +25,6 @@ import com.ncthanhngo.pollmaster.ui.templates.TemplateDetailScreen
 private object Routes {
     const val MAIN = "main"
     const val PROJECT = "project/{id}"
-    const val PROJECT_FORM = "project-form?id={id}"
     const val TEMPLATE = "template/{id}/{version}"
     const val OUTLINE = "editor/{recordId}"
     const val SECTION = "editor/{recordId}/section/{sectionId}?focus={focus}"
@@ -33,7 +33,6 @@ private object Routes {
     const val FILL = "editor/{recordId}/fill"
 
     fun project(id: String) = "project/$id"
-    fun projectForm(id: String? = null) = "project-form" + (id?.let { "?id=$it" } ?: "")
     fun template(id: String, version: String) = "template/${enc(id)}/${enc(version)}"
     fun outline(recordId: String) = "editor/$recordId"
     fun section(recordId: String, sectionId: String, focus: String? = null) =
@@ -54,6 +53,12 @@ private val focusArg = navArgument("focus") {
 
 @Composable
 fun AppNav() {
+    val account by LocalContainer.current.erp.account.collectAsState()
+    if (account == null) LoginScreen() else Main()
+}
+
+@Composable
+private fun Main() {
     val nav = rememberNavController()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     ImportBundleHost(onImported = { nav.navigate(Routes.project(it)) })
@@ -65,7 +70,6 @@ fun AppNav() {
                 onOpenRecord = { nav.navigate(Routes.outline(it)) },
                 onOpenTemplate = { t -> nav.navigate(Routes.template(t.id, t.version)) },
                 onOpenProject = { nav.navigate(Routes.project(it)) },
-                onNewProject = { nav.navigate(Routes.projectForm()) },
             )
         }
         composable(Routes.PROJECT) { entry ->
@@ -74,21 +78,10 @@ fun AppNav() {
             ProjectDetailScreen(
                 projectId = id,
                 onBack = { nav.popBackStack() },
-                onEdit = { nav.navigate(Routes.projectForm(id)) },
                 onShowRecords = {
                     container.projects.select(id)
                     tab = 0
                     nav.popBackStack(Routes.MAIN, false)
-                },
-            )
-        }
-        composable(Routes.PROJECT_FORM, arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
-            val id = entry.arguments?.getString("id")
-            ProjectFormScreen(
-                projectId = id,
-                onBack = { nav.popBackStack() },
-                onSaved = { saved ->
-                    if (id == null) nav.navigate(Routes.project(saved)) { popUpTo(Routes.PROJECT_FORM) { inclusive = true } } else nav.popBackStack()
                 },
             )
         }
