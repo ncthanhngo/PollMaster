@@ -1,0 +1,1018 @@
+[
+ {
+  "name": "bb-tdp-01 đóng gói",
+  "template": "templates/bb-tdp-01.json",
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "ks-vf-swap-01 đóng gói",
+  "template": "templates/ks-vf-swap-01.json",
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "mẫu tối thiểu",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử"
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "thiếu schemaVersion và sections vẫn hợp lệ",
+  "template": {
+   "id": "V",
+   "version": "1",
+   "title": "t"
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "section thiếu items, heading thiếu title, bảng thiếu columns vẫn hợp lệ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S",
+     "title": "s"
+    },
+    {
+     "id": "S2",
+     "title": "S2",
+     "items": [
+      {
+       "kind": "heading",
+       "id": "H"
+      },
+      {
+       "kind": "table",
+       "id": "TB"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "trùng mã field trong header",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "text"
+    },
+    {
+     "id": "a",
+     "label": "a",
+     "type": "text"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[1]"
+  ]
+ },
+ {
+  "name": "trùng mã field giữa hai mục",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "a",
+       "label": "a",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "id": "S2",
+     "title": "S2",
+     "items": [
+      {
+       "id": "b",
+       "label": "b",
+       "type": "text"
+      },
+      {
+       "id": "a",
+       "label": "a",
+       "type": "text"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[1].items[1]"
+  ]
+ },
+ {
+  "name": "trùng mã heading",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "heading",
+       "id": "H",
+       "title": "H"
+      },
+      {
+       "kind": "heading",
+       "id": "H",
+       "title": "H"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[1]"
+  ]
+ },
+ {
+  "name": "trùng mã bảng với field",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "TB",
+       "label": "TB",
+       "type": "text"
+      },
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[1]"
+  ]
+ },
+ {
+  "name": "trùng mã mục chỉ cảnh báo",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "a",
+       "label": "a",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "b",
+       "label": "b",
+       "type": "text"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": [],
+  "warningPaths": [
+   "sections[1]"
+  ]
+ },
+ {
+  "name": "cột trùng trong bảng",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        },
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].columns[1]"
+  ]
+ },
+ {
+  "name": "cột trùng giữa hai bảng hợp lệ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "T1",
+       "title": "T1",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ]
+      },
+      {
+       "kind": "table",
+       "id": "T2",
+       "title": "T2",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "singleChoice không options",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "singleChoice"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].options"
+  ]
+ },
+ {
+  "name": "multiChoice options rỗng trong mục",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "a",
+       "label": "a",
+       "type": "multiChoice",
+       "options": []
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].options"
+  ]
+ },
+ {
+  "name": "singleChoice cột bảng không options",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "singleChoice"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].columns[0].options"
+  ]
+ },
+ {
+  "name": "part choice không options",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "composite",
+     "parts": [
+      {
+       "id": "p",
+       "label": "P",
+       "type": "singleChoice"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].parts[0].options"
+  ]
+ },
+ {
+  "name": "part choice có options",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "composite",
+     "parts": [
+      {
+       "id": "p",
+       "label": "P",
+       "type": "singleChoice",
+       "options": [
+        {
+         "value": "a",
+         "label": "A"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "part thiếu label",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "composite",
+     "parts": [
+      {
+       "id": "p"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].parts[0].label"
+  ]
+ },
+ {
+  "name": "part kiểu lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "composite",
+     "parts": [
+      {
+       "id": "p",
+       "label": "P",
+       "type": "bogus"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].parts[0].type"
+  ]
+ },
+ {
+  "name": "kiểu field lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "id": "a",
+       "label": "a",
+       "type": "bogus"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].type"
+  ]
+ },
+ {
+  "name": "kiểu cột lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "bogus"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].columns[0].type"
+  ]
+ },
+ {
+  "name": "kind lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "chart",
+       "id": "a"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].kind"
+  ]
+ },
+ {
+  "name": "schemaVersion 2",
+  "template": {
+   "schemaVersion": 2,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử"
+  },
+  "valid": false,
+  "problemPaths": [
+   "schemaVersion"
+  ]
+ },
+ {
+  "name": "công thức sai cú pháp",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed",
+     "formula": "{a} +"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "công thức hàm lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed",
+     "formula": "foo(1)"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "công thức bảng lạ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed",
+     "formula": "avg(NOPE, {@x})"
+    }
+   ],
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "công thức {@x} ngoài hàm",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed",
+     "formula": "{@x} + 1"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "công thức đúng",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed",
+     "formula": "avg(TB, {@x}, {@x} > 1)"
+    }
+   ],
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "computed thiếu formula",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "c",
+     "label": "c",
+     "type": "computed"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "field thường có formula sai",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "header": [
+    {
+     "id": "a",
+     "label": "a",
+     "type": "number",
+     "formula": "1 +"
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "header[0].formula"
+  ]
+ },
+ {
+  "name": "pairedWith không tồn tại",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ],
+       "pairedWith": "NOPE"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].pairedWith"
+  ]
+ },
+ {
+  "name": "pairedWith chính nó",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ],
+       "pairedWith": "TB"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": false,
+  "problemPaths": [
+   "sections[0].items[0].pairedWith"
+  ]
+ },
+ {
+  "name": "pairedWith hợp lệ",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "T1",
+       "title": "T1",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ],
+       "pairedWith": "T2"
+      },
+      {
+       "kind": "table",
+       "id": "T2",
+       "title": "T2",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "text"
+        }
+       ],
+       "pairedWith": "T1"
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": []
+ },
+ {
+  "name": "cột computed có formula chỉ cảnh báo",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        },
+        {
+         "id": "y",
+         "label": "y",
+         "type": "computed",
+         "formula": "1 + 1"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": [],
+  "warningPaths": [
+   "sections[0].items[0].columns[1].type"
+  ]
+ },
+ {
+  "name": "cột computed không formula chỉ cảnh báo",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "x",
+         "label": "x",
+         "type": "number"
+        },
+        {
+         "id": "y",
+         "label": "y",
+         "type": "computed"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": [],
+  "warningPaths": [
+   "sections[0].items[0].columns[1].type"
+  ]
+ },
+ {
+  "name": "cột signature chỉ cảnh báo",
+  "template": {
+   "schemaVersion": 1,
+   "id": "VEC-01",
+   "version": "1.0",
+   "title": "Mẫu thử",
+   "sections": [
+    {
+     "id": "S1",
+     "title": "S1",
+     "items": [
+      {
+       "kind": "table",
+       "id": "TB",
+       "title": "TB",
+       "columns": [
+        {
+         "id": "y",
+         "label": "y",
+         "type": "signature"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "valid": true,
+  "problemPaths": [],
+  "warningPaths": [
+   "sections[0].items[0].columns[0].type"
+  ]
+ }
+]

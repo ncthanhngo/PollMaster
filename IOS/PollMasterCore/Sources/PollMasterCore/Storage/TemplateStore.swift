@@ -26,6 +26,15 @@ public enum TemplateLoader {
         return t
     }
 
+    /// Every blocking problem of `data` (empty = installable), each starting with its JSON path.
+    /// Decode-level problems (bad JSON, unknown kind/type, missing key) come alone, like on Android (`TemplateParser.problems`).
+    public static func problems(_ data: Data) -> [String] {
+        do { _ = try decode(data); return [] }
+        catch TemplateError.invalid(let list) { return list }
+        catch TemplateError.parse(let m) { return [m] }
+        catch { return [error.localizedDescription] }
+    }
+
     static func describe(_ e: DecodingError) -> String {
         func path(_ c: [CodingKey]) -> String {
             c.reduce("") { acc, k in
@@ -34,20 +43,39 @@ public enum TemplateLoader {
             }
         }
         switch e {
-        case .keyNotFound(let k, let ctx): return "thiếu khóa '\(k.stringValue)' tại \(path(ctx.codingPath))"
+        case .keyNotFound(let k, let ctx):
+            let p = path(ctx.codingPath)
+            return "\(p.isEmpty ? k.stringValue : p + "." + k.stringValue): thiếu khóa '\(k.stringValue)'"
         case .typeMismatch(_, let ctx), .valueNotFound(_, let ctx), .dataCorrupted(let ctx):
-            return "\(path(ctx.codingPath)): \(ctx.debugDescription)"
+            let p = path(ctx.codingPath)
+            return "\(p.isEmpty ? "$" : p): \(ctx.debugDescription)"
         @unknown default: return e.localizedDescription
         }
     }
 
-    /// Unique ids, valid formulas, choice options, supported schema version. Problems start with the JSON path.
+    /// Non-blocking findings of a valid template (rules too risky to reject on, schema 6.6).
+    public static func warnings(_ t: Template) -> [String] {
+        var out: [String] = []
+        var sectionIds = Set<String>()
+        for (i, s) in t.sections.enumerated() {
+            if !sectionIds.insert(s.id).inserted { out.append("sections[\(i)]: Trùng mã mục \(s.id)") }
+            for (j, item) in s.items.enumerated() {
+                guard case .table(let tb) = item else { continue }
+                for (k, c) in tb.columns.enumerated() where c.type == .computed || c.type == .signature {
+                    out.append("sections[\(i)].items[\(j)].columns[\(k)].type: cột không dùng được kiểu \(c.type.rawValue)")
+                }
+            }
+        }
+        return out
+    }
+
+    /// Unique ids, valid formulas, choice options, paired tables, supported schema version. Problems start with the JSON path.
     public static func check(_ t: Template) -> [String] {
         var problems: [String] = []
-        if t.schemaVersion != 1 { problems.append("schemaVersion \(t.schemaVersion) chưa được hỗ trợ") }
+        if t.schemaVersion != 1 { problems.append("schemaVersion: schemaVersion \(t.schemaVersion) chưa được hỗ trợ") }
         let tableIds = Set(t.allTables.map(\.id))
         var seen = Set<String>()
-        func unique(_ id: String) { if !seen.insert(id).inserted { problems.append("Trùng mã: \(id)") } }
+        func unique(_ id: String, _ path: String) { if !seen.insert(id).inserted { problems.append("\(path): Trùng mã: \(id)") } }
 
         func checkField(_ f: Field, _ path: String, requireFormula: Bool) {
             func needsOptions(_ type: FieldType, _ options: [Option]?) -> Bool { [.singleChoice, .multiChoice].contains(type) && (options ?? []).isEmpty }
@@ -62,15 +90,18 @@ public enum TemplateLoader {
             } catch { problems.append("\(path).formula: công thức lỗi – \(error)") }
         }
 
-        for (i, f) in t.header.enumerated() { unique(f.id); checkField(f, "header[\(i)]", requireFormula: true) }
+        for (i, f) in t.header.enumerated() { unique(f.id, "header[\(i)]"); checkField(f, "header[\(i)]", requireFormula: true) }
         for (i, s) in t.sections.enumerated() {
             for (j, item) in s.items.enumerated() {
-                unique(item.id)
                 let path = "sections[\(i)].items[\(j)]"
+                unique(item.id, path)
                 switch item {
                 case .field(let f): checkField(f, path, requireFormula: true)
                 case .heading: break
                 case .table(let tb):
+                    if let other = tb.pairedWith, !tableIds.contains(other) || other == tb.id {
+                        problems.append("\(path).pairedWith: Bảng ghép đôi không tồn tại: \(other)")
+                    }
                     var cols = Set<String>()
                     for (k, c) in tb.columns.enumerated() {
                         if !cols.insert(c.id).inserted { problems.append("\(path).columns[\(k)]: Trùng cột \(c.id) trong bảng \(tb.id)") }

@@ -59,7 +59,7 @@ class TemplateDecodeTest {
             TemplateParser.parse(json)
             fail("expected exception")
         } catch (e: TemplateException) {
-            assertTrue(e.message!!.contains("trùng"))
+            assertTrue(e.message!!.contains("Trùng"))
         }
     }
 }

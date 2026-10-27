@@ -75,7 +75,7 @@ public struct TableDef: Codable, Equatable, Sendable, Identifiable {
         required = try c.decodeIfPresent(Bool.self, forKey: .required) ?? false
         rows = try c.decodeIfPresent([FixedRow].self, forKey: .rows)
         stopwatch = try c.decodeIfPresent(StopwatchDef.self, forKey: .stopwatch)
-        columns = try c.decode([Field].self, forKey: .columns)
+        columns = try c.decodeIfPresent([Field].self, forKey: .columns) ?? []
         pairedWith = try c.decodeIfPresent(String.self, forKey: .pairedWith)
         quickEntry = try c.decodeIfPresent(Bool.self, forKey: .quickEntry) ?? false
         inline = try c.decodeIfPresent(Bool.self, forKey: .inline) ?? false
@@ -121,7 +121,7 @@ public enum Item: Codable, Equatable, Sendable, Identifiable {
         case "heading":
             let c = try decoder.container(keyedBy: Heading.Keys.self)
             self = .heading(Heading(id: try c.decode(String.self, forKey: .id),
-                                    title: try c.decode(String.self, forKey: .title),
+                                    title: try c.decodeIfPresent(String.self, forKey: .title) ?? "",
                                     note: try c.decodeIfPresent(String.self, forKey: .note),
                                     roundEntry: try c.decodeIfPresent(RoundEntry.self, forKey: .roundEntry)))
         case "table": self = .table(try TableDef(from: decoder))
@@ -153,6 +153,18 @@ public struct Section: Codable, Equatable, Sendable, Identifiable {
     public var tables: [TableDef] { items.compactMap { if case .table(let t) = $0 { return t } else { return nil } } }
 }
 
+extension Section {
+    /// `items` defaults to empty, as on Android (the two apps accept the same templates).
+    public init(from decoder: Decoder) throws {
+        enum Keys: String, CodingKey { case id, title, note, items }
+        let c = try decoder.container(keyedBy: Keys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        items = try c.decodeIfPresent([Item].self, forKey: .items) ?? []
+    }
+}
+
 public struct Template: Codable, Equatable, Sendable, Identifiable {
     public var schemaVersion: Int
     public var id: String
@@ -176,7 +188,7 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         id = try c.decode(String.self, forKey: .id)
         version = try c.decode(String.self, forKey: .version)
         title = try c.decode(String.self, forKey: .title)
@@ -187,7 +199,7 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
         recordTitle = try c.decodeIfPresent(String.self, forKey: .recordTitle)
         mediaNamePattern = try c.decodeIfPresent(String.self, forKey: .mediaNamePattern)
         header = try c.decodeIfPresent([Field].self, forKey: .header) ?? []
-        sections = try c.decode([Section].self, forKey: .sections)
+        sections = try c.decodeIfPresent([Section].self, forKey: .sections) ?? []
         signatures = try c.decodeIfPresent([SignatureDef].self, forKey: .signatures) ?? []
     }
 
