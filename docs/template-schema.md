@@ -468,8 +468,8 @@ Record, tất cả optional, đọc lenient, ghi khi có:
 
 | Khoá | Ý nghĩa |
 |---|---|
-| `createdBy` | `user.id` ERP của người tạo (UUID). Vắng = chưa lên server (phiếu mới tạo trên máy này; tài khoản đang đăng nhập là người tạo). |
-| `createdByName` | tên hiển thị người tạo (do server trả; để hiện "của …") |
+| `createdBy` | `user.id` ERP của người tạo (UUID). Ghi **ngay lúc tạo / nhân bản / chuyển dự án** bằng tài khoản đang đăng nhập (kể cả offline), để phiếu offline của tài khoản A không bị tài khoản B đẩy lên dưới tên B sau khi đổi tài khoản trên cùng máy (B không quản lý ⇒ không đẩy, phiếu ẩn như §10.4/ux N). Vắng = phiếu cũ (tạo trước khi có quy tắc này) hoặc lúc tạo chưa biết `user.id`: coi là của tài khoản đang đăng nhập như trước. |
+| `createdByName` | tên hiển thị người tạo (tên tài khoản lúc tạo; server trả bản chuẩn khi đẩy, để hiện "của …") |
 | `serverRev` | `rev` của bản server mà bản máy dựa trên. Vắng = chưa từng lên server. |
 | `syncConflict` | `true` khi máy và server cùng đổi (hoặc phiếu bị xoá trên server khi máy còn sửa). Vắng = false. |
 
@@ -495,6 +495,7 @@ Tóm tắt (chi tiết, mã lỗi, thân JSON: `project-polls.md`):
 | Tải media | `GET …/media/<tên tệp>` | byte tệp |
 | PDF (tuỳ chọn, cho web; chỉ khi phiếu `completed`) | `PUT …/pdf` `application/pdf` ≤ 20 MB | 204, lỗi bỏ qua |
 | Xoá | `DELETE …/poll-records/:recordId` | 204; 404 = đã không còn ⇒ coi như xong |
+| Đọc một phiếu | `GET …/poll-records/:recordId` | 200 `SyncRecord` hiện tại · 404 = không còn / không có quyền (dùng cho "Lấy bản máy chủ") |
 | Lịch sử | `GET …/poll-records/:recordId/changes` | `[{rev, changed_by_name, changed_at, source, created, changes:[{path,label,old,new}]}]`, mới nhất trước |
 
 - `SyncRecord = {id, record_id, rev, seq, status, title, record_code, template_id, template_version, created_by, created_by_name, updated_by_name, created_at, updated_at, can_edit, data, media:[{name, sha256, size}]}`; `data` là record.json đầy đủ.
@@ -531,13 +532,13 @@ tra mẫu cục bộ theo `templateId@templateVersion`: `values.<fid>` ⇒ nhãn
 
 ### 10.4 Quyền
 `canEdit(record) = canPost(project) ∧ (record.createdBy == me ∨ record.createdBy vắng ∨ canManage(project))`.
-Tạo phiếu: `canPost`. Xoá / chuyển dự án / trả lại để sửa / mở lại / sửa giá trị: `canEdit`. Nhân bản: `canPost` (bản mới thuộc mình,
-bỏ `createdBy*`, `serverRev`, `syncConflict`). Server là nguồn quyết định cuối: sai quyền ⇒ 404.
+Tạo phiếu: `canPost`. Xoá / chuyển dự án / trả lại để sửa / mở lại / sửa giá trị: `canEdit`. Nhân bản: `canPost` (bản mới thuộc mình:
+`createdBy*` = tài khoản hiện tại, bỏ `serverRev`, `syncConflict`). Server là nguồn quyết định cuối: sai quyền ⇒ 404.
 - **Đọc** = đọc được dự án; **tạo** = `canPost`; **sửa/xoá/trả** = `canEdit` (ở trên). Sai quyền ⇒ 404 ở mọi endpoint (kể cả media và log).
 
 ### 10.5 Xung đột, seq, xoá, media
 - **Xung đột** = khoá lạc quan `rev`/`base_rev`: không gộp theo trường. Người dùng chọn *Giữ bản của tôi* (đẩy lại với `base_rev = rev` server; có log) hoặc
-  *Lấy bản máy chủ* (bản máy sao lưu zip §A trước khi ghi đè).
+  *Lấy bản máy chủ* (bản máy sao lưu zip §A trước khi ghi đè; bản server đọc bằng `GET …/poll-records/:recordId`, 404 ⇒ xử lý như phiếu đã bị xoá trên máy chủ).
 - **`seq`** do server chốt khi tạo hàng: giữ số app đề xuất nếu còn trống trong (dự án, mẫu), không thì `max+1`; sau đó bất biến.
   App ghi lại `seq` server trả (đổi tiêu đề theo số mới, không coi là thay đổi cần đẩy). Hai máy cùng tạo "01" offline ⇒ sau sync một phiếu thành "02".
 - **Xoá** phiếu ⇒ server xoá luôn log và media (cascade). Phiếu có `serverRev` mà vắng trong `ids`: sạch ⇒ xoá cục bộ; bẩn ⇒ `syncConflict` ("đã bị xoá trên máy chủ"), người dùng chọn Khôi phục (đẩy như tạo mới, cần `canPost`) hoặc Xoá trên máy.
@@ -561,4 +562,9 @@ Mẫu nằm trong **thư viện theo tổ chức** (server khoá org + `template
 - **Khởi tạo lần đầu** (server chưa có dòng nào cho dự án: `assigned` và `removed_ids` rỗng): người quản lý POST các mẫu đang gán trên máy; không quản lý ⇒ giữ danh sách cục bộ đến khi server có.
 - **Quy tắc Phoenix** (dựa dữ liệu server, không hard-code ở Go): người có `canManage` sync dự án có "Phoenix" trong mã/tên ⇒ mọi mẫu đóng gói/thư viện chưa nằm trong `assigned ∪ removed_ids` được POST vào dự án. Mẫu đã gỡ (`removed_ids`) không quay lại.
 - Máy chủ chưa có API mẫu (404) ⇒ giữ hành vi cục bộ §9.1/§9.5.
+- **Thực hiện trên app**: `removedTemplateIds` lưu ở `project.json`; id@version đã có ở máy mà nội dung khác ⇒ ghi đè bằng bản máy chủ (cả tên/viết tắt/màu). Sau POST/PATCH/DELETE thành công app đọc lại GET rồi mới áp
+  (không tự ghi cục bộ). Mẫu chưa từng gán mà muốn gỡ: POST rồi DELETE (DELETE mẫu chưa từng gán ⇒ 404). Dùng bản mới: POST nội dung bản đó (409 `TEMPLATE_VERSION_EXISTS` ⇒ PATCH `version`).
+  Đổi tên/viết tắt/màu: PATCH từ một dự án đang gán đúng id@version mà mình quản lý (áp cho id@version đó trong thư viện tổ chức; các bản khác của cùng id giữ nguyên). Chưa quản lý dự án nào dùng mẫu ⇒ nút mờ, báo
+  "Cần quyền quản lý dự án và có mạng". Quy tắc quyết định (khởi tạo lần đầu, Phoenix, mẫu đã gỡ) nằm ở lõi dùng chung, vector `templates` trong `shared/sync-test-vectors.json`.
+- Phiếu tạo mới/nhân bản ghi `createdBy`/`createdByName` ngay (§10.1); vector `created`.
 

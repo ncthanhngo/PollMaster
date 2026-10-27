@@ -51,6 +51,16 @@ extension AppEnvironment {
                                              lostProjects: Set(all.filter(\.archived).map(\.id)))
             UserDefaults.standard.set(me, forKey: Self.lastUserKey)
             let ids = all.filter { !$0.archived && (only?.contains($0.id) ?? true) }.map(\.id)
+            var templatesChanged = false
+            for pid in ids {                    // the project's templates first: records may use a template this device has not got yet
+                do { templatesChanged = try await syncTemplates(projectId: pid) || templatesChanged }
+                catch ERPError.sessionExpired { throw ERPError.sessionExpired }
+                catch let e as CancellationError { throw e }
+                catch let e as URLError { throw e }
+                catch { continue }              // a templates problem of one project never stops its records
+                guard gen == sessionGen else { return }
+            }
+            if templatesChanged { reload() }
             let reports = try await engine.sync(projects: ids, me: me)
             guard gen == sessionGen else { return }
             var issues = recordSyncIssues

@@ -12,6 +12,8 @@ private final class RevRemote: SyncRemote, @unchecked Sendable {
     func pull(projectId: String, since: String?, cursor: String?) async throws -> SyncPage {
         SyncPage(serverTime: "T1", records: [], ids: server.values.map { SyncRef(recordId: $0.recordId, rev: $0.rev) })
     }
+    private(set) var gets = 0
+    func get(projectId: String, recordId: String) async throws -> SyncRecord? { gets += 1; return server[recordId] }
     func put(projectId: String, body: SyncPutBody, recordId: String) async throws -> SyncPutResult {
         puts.append(body)
         if let cur = server[recordId], body.baseRev != cur.rev {
@@ -64,7 +66,7 @@ private final class Counter: @unchecked Sendable { var n = 0 }
         var withPosition = r; withPosition.lastPosition = LastPosition(section: "A", field: "A-01")
         try RecordStore(root: root).save(withPosition)
         let got = try await SyncEngine(root: root, remote: remote).takeServer(projectId: pid, recordId: r.id)
-        #expect(remote.puts.count == 1 && remote.puts[0].baseRev == 0 && remote.server[r.id]?.rev == 3)      // a probe, nothing written
+        #expect(remote.gets == 1 && remote.puts.isEmpty && remote.server[r.id]?.rev == 3)      // read with GET, nothing written
         let saved = try #require(RecordStore(root: root).load(r.id))
         #expect(saved == got && saved.values["P1"]?.v == "theirs" && saved.serverRev == 3 && !saved.syncConflict && !saved.isSyncDirty)
         #expect(saved.lastPosition == withPosition.lastPosition)
@@ -76,6 +78,14 @@ private final class Counter: @unchecked Sendable { var n = 0 }
         _ = try await SyncEngine(root: root, remote: remote).takeServer(projectId: pid, recordId: r.id)
         let saved = try #require(RecordStore(root: root).load(r.id))
         #expect(saved.serverRev == 3 && !saved.syncConflict && saved.values["P1"]?.v == "mine")
+    }
+
+    @Test func takeServerOfARecordTheServerLostFailsAndKeepsTheDeviceCopy() async throws {
+        let (root, _, remote, r) = try setup()
+        remote.server[r.id] = nil
+        await #expect(throws: SyncRecordFailure.self) { try await SyncEngine(root: root, remote: remote).takeServer(projectId: pid, recordId: r.id) }
+        let kept = try #require(RecordStore(root: root).load(r.id))
+        #expect(kept.values["P1"]?.v == "mine" && kept.syncConflict && remote.puts.isEmpty)
     }
 
     @Test func inspectTellsWhoEditedOrThatTheServerLostIt() async throws {

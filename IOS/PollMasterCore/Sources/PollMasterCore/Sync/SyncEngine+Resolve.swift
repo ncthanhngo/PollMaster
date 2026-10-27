@@ -34,25 +34,16 @@ extension SyncEngine {
     }
 
     /// "Lấy bản máy chủ": replaces the device copy with the server's. The caller backs the device copy up first.
-    /// The server copy is read by a push that cannot win (`base_rev` 0): a record that exists answers 409 with its content.
+    /// The record not being on the server any more (404) is the "deleted" case of the conflict dialog.
     @discardableResult
     public func takeServer(projectId: String, recordId: String) async throws -> Record {
-        let project = try projectOf(projectId)
+        _ = try projectOf(projectId)
         guard let local = records.load(recordId) else { throw SyncRecordFailure("Không tìm thấy phiếu trên máy.") }
-        let template = templates.load(id: local.templateId, version: local.templateVersion)
-        let probe = SyncPutBody(baseRev: 0, title: template.map { RecordNaming.title($0, local) } ?? "Phiếu", recordCode: nil,
-                                templateTitle: template?.title ?? local.templateId, media: [:], data: try SyncApply.pushData(local))
-        switch try await remote.put(projectId: projectId, body: probe, recordId: recordId) {
-        case .conflict(let server):
-            let r = SyncApply.overwrite(local, with: try SyncApply.record(from: server, projectId: projectId))
-            try records.save(r)
-            records.pruneMedia(r)
-            await fetchMedia(projectId, r, info: server.media, includeVideo: false)
-            return r
-        case .ok(let same):                   // identical content: nothing to take
-            let started = now()
-            return await update(recordId) { SyncApply.pushed(&$0, projectId: project.id, response: same, at: started) } ?? local
-        case .mediaMissing: throw SyncRecordFailure("Phiếu đã bị xoá trên máy chủ.")
-        }
+        guard let server = try await remote.get(projectId: projectId, recordId: recordId) else { throw SyncRecordFailure("Phiếu đã bị xoá trên máy chủ.") }
+        let r = SyncApply.overwrite(local, with: try SyncApply.record(from: server, projectId: projectId))
+        try records.save(r)
+        records.pruneMedia(r)
+        await fetchMedia(projectId, r, info: server.media, includeVideo: false)
+        return r
     }
 }

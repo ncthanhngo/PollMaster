@@ -23,7 +23,7 @@ struct ProjectImportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(incoming.bundle == nil ? "Đóng" : "Hủy") { close() } }
                 if incoming.bundle != nil {
-                    ToolbarItem(placement: .confirmationAction) { Button("Nhập") { start() }.disabled(target == nil) }
+                    ToolbarItem(placement: .confirmationAction) { Button("Nhập") { start() }.disabled(target == nil).opacity(target.map(env.canChangeTemplates) ?? true ? 1 : 0.45) }
                 }
             }
             .confirmationDialog("Mẫu đã có trên máy với nội dung khác. Ghi đè?", isPresented: $askOverwrite, titleVisibility: .visible) {

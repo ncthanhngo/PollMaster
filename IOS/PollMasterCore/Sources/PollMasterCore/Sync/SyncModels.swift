@@ -163,6 +163,8 @@ public struct SyncRecordFailure: Error, Equatable, LocalizedError, Sendable {
 /// The ERP side of a sync run. The app implements it over HTTP; tests use a fake. Non-GET calls are only made when allowed.
 public protocol SyncRemote: Sendable {
     func pull(projectId: String, since: String?, cursor: String?) async throws -> SyncPage
+    /// The record as the server has it now (`GET …/poll-records/:id`); nil when it is not there (404).
+    func get(projectId: String, recordId: String) async throws -> SyncRecord?
     func put(projectId: String, body: SyncPutBody, recordId: String) async throws -> SyncPutResult
     func putMedia(projectId: String, recordId: String, name: String, file: URL, sha256: String) async throws
     /// Writes the file to `dest`.

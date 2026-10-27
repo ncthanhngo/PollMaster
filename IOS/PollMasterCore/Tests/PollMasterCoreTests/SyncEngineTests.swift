@@ -24,6 +24,8 @@ private final class FakeRemote: SyncRemote, @unchecked Sendable {
                         ids: n == 0 ? ids : [], nextCursor: n + 1 < pages.count ? String(n + 1) : nil)
     }
 
+    func get(projectId: String, recordId: String) async throws -> SyncRecord? { server[recordId] }
+
     func put(projectId: String, body: SyncPutBody, recordId: String) async throws -> SyncPutResult {
         puts.append(body)
         if let c = conflictOnPut { return .conflict(c) }
@@ -256,6 +258,7 @@ private final class Conflicting: SyncRemote, @unchecked Sendable {
     let inner: FakeRemote
     init(_ inner: FakeRemote) { self.inner = inner }
     func pull(projectId: String, since: String?, cursor: String?) async throws -> SyncPage { try await inner.pull(projectId: projectId, since: since, cursor: cursor) }
+    func get(projectId: String, recordId: String) async throws -> SyncRecord? { try await inner.get(projectId: projectId, recordId: recordId) }
     func put(projectId: String, body: SyncPutBody, recordId: String) async throws -> SyncPutResult {
         if body.baseRev == 0, let cur = inner.server[recordId] {
             return SyncPlanner.sameContent(body.data, cur.data) ? .ok(cur) : .conflict(cur)

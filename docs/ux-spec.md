@@ -243,7 +243,7 @@ Phiếu và mẫu của dự án ERP tự đồng bộ, không còn nút "Gửi 
 - **Số thứ tự**: tiêu đề phiếu "NN - Tên mẫu - ngày" dùng `seq` do máy chủ chốt. Hai máy cùng tạo "01" khi offline → sau đồng bộ máy đẩy sau thấy phiếu đổi thành "02" (không báo lỗi).
 - **Mẫu cần mạng + quyền quản lý**: thêm mẫu vào dự án, gỡ, dùng bản mới, đổi tên / viết tắt / màu — chỉ quản lý dự án (`canManage`) và khi có mạng; ngược lại nút mờ,
   chạm báo "Cần quyền quản lý dự án và có mạng". Thay đổi chỉ hiện trên máy sau khi máy chủ xác nhận. Đổi tên/màu áp toàn thư viện của tổ chức; hộp xác nhận nêu rõ
-  "Áp dụng cho mọi dự án dùng mẫu này". Máy khác thấy sau lần đồng bộ kế (kéo để tải lại).
+  "Áp dụng cho mọi dự án dùng mẫu này". Máy khác thấy sau lần đồng bộ kế (kéo để tải lại). Nhập `.pmproject` vào dự án cũng gán mẫu qua máy chủ nên cần cùng điều kiện (nút Nhập mờ khi dự án đích không quản lý được).
 - **Media**: ảnh + ghi âm của phiếu người khác tải ngay khi đồng bộ; video chỉ tải khi mở phiếu (hiện tiến độ, huỷ được). Đang chờ tải → ô hiện "Đang tải…"; offline → "Chưa tải (cần mạng)".
 - **Đổi tài khoản trên cùng máy**: phiếu sạch của người cũ bị xoá khỏi máy (kéo lại nếu tài khoản mới được xem); phiếu bẩn của người cũ (có `createdBy` khác, chưa đồng bộ) giữ, **ẩn khỏi danh sách** (trừ khi tài khoản hiện tại quản lý dự án đó — khi ấy hiện và đẩy được), không đẩy. Đăng xuất không xoá gì.
 - **Mất quyền dự án** (ERP không còn trả về dự án): phiếu sạch của dự án đó bị xoá khỏi máy; phiếu bẩn giữ ẩn như hiện nay.

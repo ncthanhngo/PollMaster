@@ -48,6 +48,8 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
     public var canManage: Bool = false
     /// `server_time` of the last complete record sync: the `since` of the next pull (kept as the server wrote it).
     public var recordsSyncedAt: String?
+    /// Template ids the server remembers as removed from this project (`removed_ids` of `poll-templates`): they do not come back by themselves.
+    public var removedTemplateIds: [String] = []
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -58,7 +60,7 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey { case schemaVersion, id, code, name, client, description, color, kind, logo, templates, archived, createdAt, updatedAt
-        case canPost, canManage, recordsSyncedAt
+        case canPost, canManage, recordsSyncedAt, removedTemplateIds
     }
 
     /// Only `id` and `code` are required on read; the rest falls back to defaults.
@@ -78,6 +80,7 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         canPost = c.lenient(Bool.self, .canPost) ?? true
         canManage = c.lenient(Bool.self, .canManage) ?? false
         recordsSyncedAt = c.lenient(String.self, .recordsSyncedAt)
+        removedTemplateIds = c.lenient([String].self, .removedTemplateIds) ?? []
         createdAt = c.lenient(Date.self, .createdAt) ?? Date()
         updatedAt = c.lenient(Date.self, .updatedAt) ?? createdAt
     }
@@ -92,6 +95,7 @@ public struct Project: Codable, Equatable, Hashable, Sendable, Identifiable {
         try c.encode(archived, forKey: .archived)
         try c.encode(canPost, forKey: .canPost); try c.encode(canManage, forKey: .canManage)
         try c.encodeIfPresent(recordsSyncedAt, forKey: .recordsSyncedAt)
+        if !removedTemplateIds.isEmpty { try c.encode(removedTemplateIds, forKey: .removedTemplateIds) }
         try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
     }
 

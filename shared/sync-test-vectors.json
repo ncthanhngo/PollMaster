@@ -1,5 +1,5 @@
 {
- "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing. Phase 06 sections: labels/values (ChangeLabels, template file under shared/templates, tableRows = row ids of the record), canEdit, hidden (RecordAccess), syncState (RecordSyncState; text is rendered in UTC+7).",
+ "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing. Phase 06 sections: labels/values (ChangeLabels, template file under shared/templates, tableRows = row ids of the record), canEdit, hidden (RecordAccess), syncState (RecordSyncState; text is rendered in UTC+7). Phase 07: templates (TemplateSyncPlanner: refs are \"id@version\"; post = refs to POST, templates = project list after) and created (RecordFactory.make/duplicate stamp the signed-in account as creator; me null = no account).",
  "plan": [
   {
    "name": "server has it, device does not -> create",
@@ -521,6 +521,46 @@
     "c": "push",
     "d": "deleteLocal",
     "e": "create"
+   }
+  },
+  {
+   "name": "never synced, creator is another account (offline on a shared device) -> nothing",
+   "me": "u2",
+   "canPost": true,
+   "canManage": false,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {}
+  },
+  {
+   "name": "never synced, creator is another account, manager -> push",
+   "me": "u2",
+   "canPost": true,
+   "canManage": true,
+   "local": [
+    {
+     "id": "a",
+     "createdBy": "u1",
+     "serverRev": null,
+     "conflict": false,
+     "dirty": true
+    }
+   ],
+   "changed": [],
+   "ids": [],
+   "deleted": [],
+   "expect": {
+    "a": "push"
    }
   }
  ],
@@ -1510,6 +1550,374 @@
    "syncedAt": null,
    "expect": "failed",
    "text": "Lỗi: Ảnh P05_01.jpg lớn hơn 95 MB."
+  }
+ ],
+ "created": [
+  {
+   "name": "make with an account",
+   "op": "make",
+   "me": {
+    "id": "u1",
+    "name": "An"
+   },
+   "source": null,
+   "expect": {
+    "createdBy": "u1",
+    "createdByName": "An"
+   }
+  },
+  {
+   "name": "make, user id still unknown",
+   "op": "make",
+   "me": {
+    "id": null,
+    "name": "An"
+   },
+   "source": null,
+   "expect": {
+    "createdBy": null,
+    "createdByName": null
+   }
+  },
+  {
+   "name": "make, no account",
+   "op": "make",
+   "me": null,
+   "source": null,
+   "expect": {
+    "createdBy": null,
+    "createdByName": null
+   }
+  },
+  {
+   "name": "make, blank name keeps the id",
+   "op": "make",
+   "me": {
+    "id": "u1",
+    "name": ""
+   },
+   "source": null,
+   "expect": {
+    "createdBy": "u1",
+    "createdByName": null
+   }
+  },
+  {
+   "name": "duplicate belongs to me, not to the source's author",
+   "op": "duplicate",
+   "me": {
+    "id": "u2",
+    "name": "Bình"
+   },
+   "source": {
+    "createdBy": "u1",
+    "createdByName": "An"
+   },
+   "expect": {
+    "createdBy": "u2",
+    "createdByName": "Bình"
+   }
+  },
+  {
+   "name": "duplicate without an account does not inherit",
+   "op": "duplicate",
+   "me": null,
+   "source": {
+    "createdBy": "u1",
+    "createdByName": "An"
+   },
+   "expect": {
+    "createdBy": null,
+    "createdByName": null
+   }
+  }
+ ],
+ "templates": [
+  {
+   "name": "not initialised, not manager: keep the device list",
+   "local": [
+    "A@1",
+    "B@1"
+   ],
+   "assigned": [],
+   "removed": [],
+   "canManage": false,
+   "isPhoenix": false,
+   "library": [],
+   "bundled": [],
+   "expectPost": [],
+   "expectTemplates": [
+    "A@1",
+    "B@1"
+   ]
+  },
+  {
+   "name": "server has data, not manager: the server list wins",
+   "local": [
+    "A@1",
+    "C@1"
+   ],
+   "assigned": [
+    "B@2",
+    "A@1"
+   ],
+   "removed": [],
+   "canManage": false,
+   "isPhoenix": false,
+   "library": [],
+   "bundled": [],
+   "expectPost": [],
+   "expectTemplates": [
+    "B@2",
+    "A@1"
+   ]
+  },
+  {
+   "name": "not initialised, manager: upload the device list",
+   "local": [
+    "A@1",
+    "B@1"
+   ],
+   "assigned": [],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": false,
+   "library": [],
+   "bundled": [],
+   "expectPost": [
+    "A@1",
+    "B@1"
+   ],
+   "expectTemplates": [
+    "A@1",
+    "B@1"
+   ]
+  },
+  {
+   "name": "not initialised, manager, nothing on the device",
+   "local": [],
+   "assigned": [],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": false,
+   "library": [],
+   "bundled": [],
+   "expectPost": [],
+   "expectTemplates": []
+  },
+  {
+   "name": "not initialised, Phoenix manager with no templates: upload the library",
+   "local": [],
+   "assigned": [],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@2",
+    "B@1",
+    "C@1"
+   ],
+   "bundled": [
+    "A@2",
+    "B@1"
+   ],
+   "expectPost": [
+    "A@2",
+    "B@1",
+    "C@1"
+   ],
+   "expectTemplates": [
+    "A@2",
+    "B@1",
+    "C@1"
+   ]
+  },
+  {
+   "name": "not initialised, Phoenix manager with templates: device list plus new bundled",
+   "local": [
+    "A@1"
+   ],
+   "assigned": [],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@1",
+    "B@1",
+    "C@1"
+   ],
+   "bundled": [
+    "A@1",
+    "B@1"
+   ],
+   "expectPost": [
+    "A@1",
+    "B@1"
+   ],
+   "expectTemplates": [
+    "A@1",
+    "B@1"
+   ]
+  },
+  {
+   "name": "Phoenix manager: bundled template the server lacks is uploaded",
+   "local": [
+    "A@1"
+   ],
+   "assigned": [
+    "A@1"
+   ],
+   "removed": [
+    "X"
+   ],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@1",
+    "B@1",
+    "X@1"
+   ],
+   "bundled": [
+    "A@1",
+    "B@1",
+    "X@1"
+   ],
+   "expectPost": [
+    "B@1"
+   ],
+   "expectTemplates": [
+    "A@1",
+    "B@1"
+   ]
+  },
+  {
+   "name": "Phoenix manager: a removed template does not come back",
+   "local": [],
+   "assigned": [
+    "A@1"
+   ],
+   "removed": [
+    "B"
+   ],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@1",
+    "B@1"
+   ],
+   "bundled": [
+    "A@1",
+    "B@1"
+   ],
+   "expectPost": [],
+   "expectTemplates": [
+    "A@1"
+   ]
+  },
+  {
+   "name": "Phoenix manager: a newer bundled version of an assigned id is not uploaded",
+   "local": [
+    "A@1"
+   ],
+   "assigned": [
+    "A@1"
+   ],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@2"
+   ],
+   "bundled": [
+    "A@2"
+   ],
+   "expectPost": [],
+   "expectTemplates": [
+    "A@1"
+   ]
+  },
+  {
+   "name": "Phoenix, not manager: nothing uploaded",
+   "local": [],
+   "assigned": [
+    "A@1"
+   ],
+   "removed": [],
+   "canManage": false,
+   "isPhoenix": true,
+   "library": [
+    "A@1",
+    "B@1"
+   ],
+   "bundled": [
+    "A@1",
+    "B@1"
+   ],
+   "expectPost": [],
+   "expectTemplates": [
+    "A@1"
+   ]
+  },
+  {
+   "name": "manager, not Phoenix, server has data: the server list wins, nothing uploaded",
+   "local": [
+    "A@1",
+    "B@1"
+   ],
+   "assigned": [
+    "A@1"
+   ],
+   "removed": [],
+   "canManage": true,
+   "isPhoenix": false,
+   "library": [
+    "A@1",
+    "B@1"
+   ],
+   "bundled": [
+    "B@1"
+   ],
+   "expectPost": [],
+   "expectTemplates": [
+    "A@1"
+   ]
+  },
+  {
+   "name": "manager removed every template: initialised, not uploaded again",
+   "local": [
+    "A@1"
+   ],
+   "assigned": [],
+   "removed": [
+    "A"
+   ],
+   "canManage": true,
+   "isPhoenix": false,
+   "library": [],
+   "bundled": [],
+   "expectPost": [],
+   "expectTemplates": []
+  },
+  {
+   "name": "Phoenix manager removed every template: stays removed",
+   "local": [],
+   "assigned": [],
+   "removed": [
+    "A",
+    "B"
+   ],
+   "canManage": true,
+   "isPhoenix": true,
+   "library": [
+    "A@1",
+    "B@1"
+   ],
+   "bundled": [
+    "A@1",
+    "B@1"
+   ],
+   "expectPost": [],
+   "expectTemplates": []
   }
  ]
 }

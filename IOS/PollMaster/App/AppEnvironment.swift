@@ -195,13 +195,5 @@ final class AppEnvironment {
         reload()
     }
 
-    /// Sets name, short name and colour on every installed version of the template (records and projects keep their id+version).
-    func editTemplate(_ t: Template, title: String, shortName: String?, color: String?) throws {
-        for v in templates where v.id == t.id {
-            guard let data = templateStore.data(id: v.id, version: v.version) else { continue }
-            try overwriteTemplate(TemplateText.edited(data, title: title, shortName: shortName, color: color))
-        }
-    }
-
     func usedStorage() -> Int64 { RecordStore.directorySize(root) }
 }

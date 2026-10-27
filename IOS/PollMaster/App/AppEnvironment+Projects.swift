@@ -49,19 +49,7 @@ extension AppEnvironment {
     func template(_ ref: TemplateRef) -> Template? { templates.first { $0.id == ref.id && $0.version == ref.version } }
     func templates(of p: Project) -> [Template] { p.templates.compactMap(template) }
 
-    // MARK: project templates
-
-    func addTemplates(_ list: [Template], to p: Project) {
-        do { for t in list { try projectStore.addTemplate(TemplateRef(t), to: p.id) }; reload() } catch { errorMessage = error.localizedDescription }
-    }
-
-    func removeTemplate(_ ref: TemplateRef, from p: Project) {
-        do { try projectStore.removeTemplate(ref, from: p.id); reload() } catch { errorMessage = error.localizedDescription }
-    }
-
-    func useVersion(_ ref: TemplateRef, in p: Project) {
-        do { try projectStore.useVersion(ref, in: p.id); reload() } catch { errorMessage = error.localizedDescription }
-    }
+    // MARK: project templates (add / remove / use version: AppEnvironment+Templates.swift)
 
     func newerVersions(for p: Project) -> [TemplateRef] { ProjectTemplates.newerVersions(of: p, library: templates) }
     func projects(using t: Template) -> [Project] { ProjectTemplates.projects(using: t.id, in: projects) }
@@ -101,7 +89,7 @@ extension AppEnvironment {
         let before = r
         // on the server this is a delete in the old project and a new record in the target (schema §9.6, §10)
         r.projectId = target.id; r.updatedAt = Date(); r.backupAt = nil; r.erpUploadedAt = nil
-        r.serverRev = nil; r.createdBy = nil; r.createdByName = nil; r.syncConflict = false
+        r.serverRev = nil; r.createdBy = creator.id; r.createdByName = creator.name; r.syncConflict = false
         do {
             try recordStore.save(r)
             queueRemoteDelete(before)
@@ -138,9 +126,14 @@ extension AppEnvironment {
     }
 
     func importIncoming(into target: Project, overwriteTemplates: Bool) {
-        guard let bundle = incomingBundle?.bundle else { return }
+        guard let bundle = incomingBundle?.bundle, guardTemplates(target) else { return }
+        let before = Set(target.templates)
         do {
             let r = try ProjectImporter(root: root).apply(bundle, into: target.id, overwriteTemplates: overwriteTemplates)
+            if account != nil {            // the templates the bundle put on the project also go to the server (it decides what stays)
+                let added = r.project.templates.filter { !before.contains($0) }, id = r.project.id
+                if !added.isEmpty { templateAction { try await $0.assign(added, to: id) } }
+            }
             incomingBundle = nil
             reload()
             currentProjectId = r.project.id

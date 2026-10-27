@@ -20,11 +20,14 @@ extension AppEnvironment {
         createRecord(from: pending.template, in: pending.project)
     }
 
+    /// Who a record made now belongs to: the signed-in account (its user id may still be unknown on an old session).
+    var creator: RecordFactory.Creator { RecordFactory.Creator(id: account?.userId, name: account?.name) }
+
     /// The record's own project is scanned once (off the main actor) for the next record number and code.
     func createRecord(from t: Template, in project: Project) {
         guard !creatingRecord else { return }
         creatingRecord = true
-        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName, projectId: project.id)
+        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName, projectId: project.id, creator: creator)
         let store = recordStore, pid = project.id
         Task {
             defer { creatingRecord = false }
@@ -49,7 +52,7 @@ extension AppEnvironment {
     func duplicate(_ id: String) {
         guard let r = recordStore.load(id), canPost(to: r.projectId ?? "") else { return }
         let t = templateStore.load(id: r.templateId, version: r.templateVersion)
-        var copy = RecordFactory.duplicate(r, template: t)
+        var copy = RecordFactory.duplicate(r, template: t, creator: creator)
         copy.seq = RecordNaming.nextSeq(among: recordStore.list(), projectId: copy.projectId, templateId: copy.templateId)
         do { try recordStore.save(copy); upsert(copy) }
         catch { errorMessage = "Không nhân bản được: \(error.localizedDescription)" }

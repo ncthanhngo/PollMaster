@@ -77,7 +77,7 @@ struct ProjectDetailView: View {
                     Text(t?.title ?? ref.id).font(.headline)
                     Text("\(ref.id) · v\(ref.version)\(t == nil ? " · thiếu trong thư viện" : "")").font(.caption).secondaryText()
                 }
-                .swipeActions { Button("Gỡ", systemImage: "minus.circle", role: .destructive) { removing = ref } }
+                .swipeActions { Button("Gỡ", systemImage: "minus.circle", role: .destructive) { if env.guardTemplates(p) { removing = ref } } }
             }
             ForEach(env.newerVersions(for: p), id: \.self) { newer in
                 let old = p.templates.first { $0.id == newer.id }?.version ?? ""
@@ -85,10 +85,13 @@ struct ProjectDetailView: View {
                     Label("\(newer.id): có bản v\(newer.version) (đang dùng v\(old)) — dùng cho phiếu mới?", systemImage: "arrow.up.circle")
                         .font(.subheadline).multilineTextAlignment(.leading)
                 }
+                .opacity(env.canChangeTemplates(in: p) ? 1 : 0.45)
             }
-            Button("Thêm mẫu từ thư viện", systemImage: "plus.circle") { addingTemplates = true }
+            Button("Thêm mẫu từ thư viện", systemImage: "plus.circle") { if env.guardTemplates(p) { addingTemplates = true } }
+                .opacity(env.canChangeTemplates(in: p) ? 1 : 0.45)
         } header: { Text("Mẫu của dự án (\(p.templates.count))") } footer: {
-            Text("Phiếu mới chỉ chọn được trong các mẫu này. Phiếu cũ giữ phiên bản mẫu của nó.")
+            Text("Phiếu mới chỉ chọn được trong các mẫu này. Phiếu cũ giữ phiên bản mẫu của nó."
+                 + (env.account != nil ? " Mẫu của dự án dùng chung cho mọi người trong dự án; chỉ quản lý dự án (khi có mạng) thêm, gỡ hoặc đổi bản mẫu." : ""))
         }
     }
 

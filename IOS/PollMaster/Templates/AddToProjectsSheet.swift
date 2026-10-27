@@ -14,7 +14,11 @@ struct AddToProjectsSheet: View {
                 Section {
                     ForEach(env.activeProjects) { p in
                         let has = p.templates.contains(TemplateRef(template))
-                        Button { if !picked.insert(p.id).inserted { picked.remove(p.id) } } label: {
+                        let allowed = env.canChangeTemplates(in: p)
+                        Button {
+                            guard env.guardTemplates(p) else { return }
+                            if !picked.insert(p.id).inserted { picked.remove(p.id) }
+                        } label: {
                             HStack(spacing: 10) {
                                 ProjectAvatar(project: p, size: 32)
                                 VStack(alignment: .leading) { Text(p.name).font(.headline); Text(p.code).font(.footnote).secondaryText() }
@@ -23,7 +27,7 @@ struct AddToProjectsSheet: View {
                                 else { Image(systemName: picked.contains(p.id) ? "checkmark.circle.fill" : "circle") }
                             }
                         }
-                        .buttonStyle(.plain).disabled(has)
+                        .buttonStyle(.plain).disabled(has).opacity(allowed ? 1 : 0.45)
                     }
                 } header: { Text("Thêm mẫu \(template.id) v\(template.version) vào dự án") }
             }
@@ -37,7 +41,9 @@ struct AddToProjectsSheet: View {
                     }.disabled(picked.isEmpty)
                 }
             }
-            .onAppear { if let c = env.currentProject, !c.templates.contains(TemplateRef(template)) { picked = [c.id] } }
+            .onAppear {
+                if let c = env.currentProject, !c.templates.contains(TemplateRef(template)), env.canChangeTemplates(in: c) { picked = [c.id] }
+            }
         }
         .presentationDetents([.medium, .large])
     }

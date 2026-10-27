@@ -31,6 +31,13 @@ struct ERPSyncRemote: SyncRemote {
         return try decode(SyncPage.self, data)
     }
 
+    func get(projectId: String, recordId: String) async throws -> SyncRecord? {
+        let (data, status) = try await client.rawAuthorized(await client.request(path(projectId, "poll-records/\(recordId)")))
+        if status == 404 { return nil }
+        guard status == 200 else { throw fail(status, data, "Không đọc được phiếu trên máy chủ.") }
+        return try decode(SyncRecord.self, data)
+    }
+
     func put(projectId: String, body: SyncPutBody, recordId: String) async throws -> SyncPutResult {
         let json = try JSONCoding.makeEncoder(pretty: false).encode(body)
         var r = await client.request(path(projectId, "poll-records/\(recordId)"), method: "PUT", body: json)

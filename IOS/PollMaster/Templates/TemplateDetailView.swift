@@ -71,7 +71,10 @@ struct TemplateDetailView: View {
         .sheet(isPresented: $editing) { TemplateEditSheet(template: template) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Sửa tên và màu", systemImage: "pencil") { editing = true }
+                Button("Sửa tên và màu", systemImage: "pencil") {
+                    if env.canEditTemplate(template) { editing = true } else { env.infoMessage = AppEnvironment.templateNeedsManage }
+                }
+                .opacity(env.canEditTemplate(template) ? 1 : 0.45)
             }
         }
         .navigationTitle(template.id)
@@ -119,6 +122,8 @@ struct TemplateEditSheet: View {
     @State private var shortName = ""
     @State private var color = ""
     @State private var error: String?
+    @State private var confirming = false
+    @State private var saving = false
 
     var body: some View {
         NavigationStack {
@@ -148,16 +153,26 @@ struct TemplateEditSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Lưu", action: save).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Lưu") { if env.account == nil { save() } else { confirming = true } }
+                        .disabled(saving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .confirmationDialog("Áp dụng cho mọi dự án dùng mẫu này", isPresented: $confirming, titleVisibility: .visible) {
+                Button("Lưu", action: save)
+                Button("Hủy", role: .cancel) {}
+            } message: { Text("Tên, viết tắt và màu được lưu trên máy chủ cho cả tổ chức; máy khác thấy sau lần đồng bộ kế tiếp.") }
             .onAppear { title = template.title; shortName = template.shortName ?? ""; color = template.badgeColor }
         }
     }
 
     private func save() {
-        do { try env.editTemplate(template, title: title, shortName: shortName, color: color); dismiss() }
-        catch { self.error = TemplateText.errorLines(error).joined(separator: "\n") }
+        saving = true; error = nil
+        Task {
+            defer { saving = false }
+            do { try await env.editTemplate(template, title: title, shortName: shortName, color: color); dismiss() }
+            catch is URLError { error = "Không kết nối được máy chủ ERP. Thử lại khi có mạng." }
+            catch { self.error = TemplateText.errorLines(error).joined(separator: "\n") }
+        }
     }
 }
 
