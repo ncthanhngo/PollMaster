@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "id": "KS-VF-SWAP-01",
+  "version": "1.0",
+  "title": "Phiếu khảo sát một lần đổi pin xe máy điện VinFast",
+  "subtitle": "Mỗi lần đổi pin dùng một phiếu. Điền tại trạm, ngay trong lúc đổi pin.",
+  "instructions": "• Mục đích: ghi lại một lần đổi pin mất bao lâu, phải bấm bao nhiêu lần; số pin ứng dụng báo có đúng thực tế không; khi trục trặc người dùng thấy gì, được giúp ra sao.\n• Tủ VinFast không có cửa: đút pin vào thì chốt giữ tự khóa, đến lượt lấy thì chốt ở ô pin đầy tự nhả. Cần đo kỹ lúc đút pin cũ vào và lúc rút pin đầy ra.\n• Trước khi đi: xem số pin trên ứng dụng, chụp màn hình, điền Phần 1 và 2.\n• Dừng xe trước tủ: bấm Bắt đầu đồng hồ ở Phần 3, xong mỗi bước thì bấm ghi mốc.\n• Đổi xong: chụp màn hình kết quả, xem đồng hồ xe, điền Phần 4. Có trục trặc thì điền Phần 5. Trước khi rời trạm điền Phần 6 và 7.\n• Không mở, tháo tủ hay pin; không cố rút pin khi chốt chưa nhả; không cố tình làm tủ báo lỗi.\n• Không chụp mặt, biển số, màn hình điện thoại của người khác. Bị yêu cầu ngừng quay, chụp thì dừng ngay và ghi vào Phần 6.",
+  "recordTitle": "{HD-code} · {A-01}",
+  "mediaNamePattern": "{recordCode}_{fieldId}_{seq}",
+  "header": [
+    { "id": "HD-code", "label": "Số thứ tự lần đổi pin", "type": "text", "required": true, "prefix": "VF-", "role": "recordCode", "flags": false, "short": true, "hint": "01, 02…" },
+    { "id": "HD-date", "label": "Ngày", "type": "date", "required": true, "default": "$today" },
+    { "id": "HD-operator", "label": "Người đổi pin", "type": "text", "required": true, "flags": false },
+    { "id": "HD-recorder", "label": "Người ghi phiếu", "type": "text", "flags": false }
+  ],
+  "sections": [
+    {
+      "id": "A",
+      "title": "1. Thông tin chung",
+      "items": [
+        { "id": "A-01", "label": "Tên trạm và địa chỉ", "type": "text", "required": true, "flags": false },
+        { "id": "A-02", "label": "Thời gian điền phiếu", "type": "sessionTime", "method": "Ứng dụng tự ghi" },
+        { "id": "A-03", "label": "Vị trí trạm", "type": "gps" },
+        { "id": "A-04", "label": "Đến trạm vào lúc nào trong ngày?", "type": "singleChoice", "required": true, "options": [
+          { "value": "early", "label": "Sáng sớm" },
+          { "value": "noon", "label": "Buổi trưa" },
+          { "value": "rush", "label": "Chiều, giờ tan tầm" },
+          { "value": "late", "label": "Tối muộn, sau 10 giờ đêm" },
+          { "value": "other", "label": "Khác", "withText": true } ] },
+        { "id": "A-05", "label": "Thời tiết", "type": "singleChoice", "options": [
+          { "value": "sunny", "label": "Nắng" },
+          { "value": "cloudy", "label": "Nhiều mây" },
+          { "value": "rain", "label": "Mưa" },
+          { "value": "dark", "label": "Trời tối" } ] },
+        { "id": "A-06", "label": "Lần này là", "type": "singleChoice", "required": true, "options": [
+          { "value": "self", "label": "Nhóm mình tự đổi pin" },
+          { "value": "observe", "label": "Đứng xem một người khác đổi pin" } ] },
+        { "id": "A-07", "label": "Điện thoại dùng", "type": "singleChoice", "options": [
+          { "value": "iphone", "label": "iPhone" },
+          { "value": "android", "label": "Điện thoại Android" } ] },
+        { "id": "A-08", "label": "Tên mẫu xe", "type": "text", "flags": false, "short": true },
+        { "id": "A-09", "label": "Lúc đến có bao nhiêu người đang chờ đổi pin?", "type": "integer", "min": 0, "stepper": true, "unit": "người" }
+      ]
+    },
+    {
+      "id": "B",
+      "title": "2. Số pin còn sẵn: ứng dụng báo và thực tế",
+      "note": "Mục đích: xem ứng dụng báo số pin có đúng không và có bị chậm không.",
+      "items": [
+        { "id": "B-01", "label": "Trước khi đi, ứng dụng báo trạm còn bao nhiêu pin?", "type": "integer", "required": true, "min": 0, "unit": "pin",
+          "parts": [ { "id": "at", "label": "Xem lúc", "type": "time" } ], "photoRef": "B-06" },
+        { "id": "B-02", "label": "Khi đến nơi, thực tế trạm còn bao nhiêu pin?", "type": "integer", "required": true, "min": 0, "unit": "pin",
+          "method": "Nhìn màn hình của tủ",
+          "parts": [ { "id": "at", "label": "Đến lúc", "type": "time" } ] },
+        { "id": "B-03", "label": "Chênh lệch giữa hai số trên", "type": "computed", "unit": "pin", "decimals": 0, "formula": "abs({B-01} - {B-02})" },
+        { "id": "B-04", "label": "Ứng dụng báo trạm đang", "type": "singleChoice", "options": [
+          { "value": "ok", "label": "Hoạt động bình thường" },
+          { "value": "maint", "label": "Đang bảo trì" },
+          { "value": "offline", "label": "Mất kết nối" },
+          { "value": "none", "label": "Không thấy báo gì" } ] },
+        { "id": "B-05", "label": "Ứng dụng có cho đặt giữ pin trước khi đến không?", "type": "yesNo", "allowUnknown": true,
+          "parts": [
+            { "id": "hold", "label": "Giữ được", "type": "integer", "unit": "phút", "showWhen": { "field": "$self", "equals": true } },
+            { "id": "fee", "label": "Phí giữ", "type": "text", "showWhen": { "field": "$self", "equals": true } } ] },
+        { "id": "B-06", "label": "Ảnh chụp màn hình ứng dụng lúc xem số pin", "type": "photo", "required": true }
+      ]
+    },
+    {
+      "id": "C",
+      "title": "3. Bấm giờ từng bước đổi pin",
+      "note": "Bấm Bắt đầu đúng lúc dừng xe trước tủ (bước 0). Xong mỗi bước thì bấm ghi mốc. Lần đầu bị lỗi phải làm lại thì thêm lần thử mới. Ghi thật kỹ bước 2 → 3 (đút pin cũ vào) và bước 5 → 6 (rút pin đầy ra): đây là chỗ tủ không có cửa có thể nhanh hơn tủ có cửa khóa.",
+      "items": [
+        {
+          "kind": "table",
+          "id": "C1",
+          "title": "Bấm giờ các bước",
+          "rowLabel": "Lần thử",
+          "required": true,
+          "minRows": 1,
+          "note": "Bước 0: dừng xe trước tủ, bấm Bắt đầu. Bước 1: bắt đầu mở ứng dụng hoặc quét mã trên tủ. Bước 2: tủ chỉ ra ô trống để bỏ pin cũ vào. Bước 3: đút pin cũ vào ô xong, chốt giữ đã khóa. Bước 4: tủ hoặc ứng dụng báo đã nhận pin cũ. Bước 5: chốt ở ô có pin đầy tự nhả. Bước 6: rút pin đầy ra xong. Bước 7: ứng dụng hoặc màn hình tủ báo đã đổi xong. Bước 8: lắp pin vào xe, xe nhận pin, bắt đầu chạy đi.",
+          "stopwatch": {
+            "columns": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"],
+            "cues": {
+              "t7": { "text": "Chụp màn hình kết quả, ghi phần trăm pin mới", "field": "D-02" },
+              "t8": { "text": "Xem phần trăm pin trên đồng hồ xe", "field": "D-03" }
+            }
+          },
+          "columns": [
+            { "id": "result", "label": "Kết quả lần thử", "type": "singleChoice", "options": [
+              { "value": "ok", "label": "Đổi được" },
+              { "value": "fail", "label": "Bị lỗi" } ] },
+            { "id": "t1", "label": "1. Mở ứng dụng hoặc quét mã", "type": "elapsed" },
+            { "id": "t2", "label": "2. Tủ chỉ ra ô trống", "type": "elapsed" },
+            { "id": "t3", "label": "3. Đút pin cũ vào, chốt khóa", "type": "elapsed" },
+            { "id": "t4", "label": "4. Tủ báo đã nhận pin cũ", "type": "elapsed" },
+            { "id": "t5", "label": "5. Chốt ô pin đầy nhả ra", "type": "elapsed" },
+            { "id": "t6", "label": "6. Rút pin đầy ra xong", "type": "elapsed" },
+            { "id": "t7", "label": "7. Báo đã đổi xong", "type": "elapsed" },
+            { "id": "t8", "label": "8. Lắp pin vào xe, chạy đi", "type": "elapsed" },
+            { "id": "note", "label": "Ghi chú", "type": "text", "flags": false }
+          ],
+          "quickEntry": true
+        },
+        { "id": "C-01", "label": "Thời gian thao tác tại tủ (bước 1 → 7)", "type": "computed", "unit": "giây", "decimals": 0, "formula": "avg(C1, {@t7} - {@t1}, {@result} == \"ok\")" },
+        { "id": "C-02", "label": "Tổng thời gian dừng xe (bước 0 → 8)", "type": "computed", "unit": "giây", "decimals": 0, "formula": "avg(C1, {@t8}, {@result} == \"ok\")" },
+        { "id": "C-03", "label": "Đút pin cũ vào (bước 2 → 3)", "type": "computed", "unit": "giây", "decimals": 0, "formula": "avg(C1, {@t3} - {@t2}, {@result} == \"ok\")" },
+        { "id": "C-04", "label": "Tủ xử lý pin cũ đến lúc nhả pin đầy (bước 4 → 5)", "type": "computed", "unit": "giây", "decimals": 0, "formula": "avg(C1, {@t5} - {@t4}, {@result} == \"ok\")" },
+        { "id": "C-05", "label": "Rút pin đầy ra (bước 5 → 6)", "type": "computed", "unit": "giây", "decimals": 0, "formula": "avg(C1, {@t6} - {@t5}, {@result} == \"ok\")" },
+        { "id": "C-06", "label": "Số lần thử", "type": "computed", "decimals": 0, "formula": "count(C1)" },
+        { "id": "C-07", "label": "Mình cho tủ biết “tôi là ai” bằng cách nào?", "type": "multiChoice", "required": true, "options": [
+          { "value": "scan_cabinet", "label": "Dùng điện thoại quét mã trên tủ" },
+          { "value": "show_code", "label": "Đưa mã trên điện thoại cho tủ quét" },
+          { "value": "card", "label": "Chạm thẻ" },
+          { "value": "auto", "label": "Tủ tự nhận ra pin" },
+          { "value": "other", "label": "Khác", "withText": true } ] },
+        { "id": "C-08", "label": "Việc đổi pin chủ yếu được điều khiển ở đâu?", "type": "singleChoice", "required": true, "options": [
+          { "value": "phone", "label": "Trên điện thoại" },
+          { "value": "cabinet", "label": "Trên màn hình của tủ" },
+          { "value": "both", "label": "Cả hai" } ] },
+        { "id": "C-09", "label": "Số lần phải chạm vào điện thoại", "type": "integer", "min": 0, "unit": "lần", "method": "Có thể đếm lại sau bằng video quay màn hình" },
+        { "id": "C-10", "label": "Số lần phải chạm vào màn hình tủ", "type": "integer", "min": 0, "unit": "lần" },
+        { "id": "C-11", "label": "Điện thoại và màn hình tủ có báo cùng một trạng thái, khớp nhau không?", "type": "yesNo", "allowUnknown": true },
+        { "id": "C-12", "label": "Có thể đổi pin chỉ bằng tủ, không cần điện thoại không?", "type": "yesNo", "allowUnknown": true },
+        { "id": "C-13", "label": "Tủ hướng dẫn mình bằng cách nào?", "type": "multiChoice", "options": [
+          { "value": "slot_no", "label": "Hiện số ô" },
+          { "value": "light", "label": "Đèn ở ô sáng lên" },
+          { "value": "picture", "label": "Hình vẽ chỉ chiều đút pin" },
+          { "value": "sound", "label": "Tiếng nói hoặc tiếng bíp" },
+          { "value": "latch_signal", "label": "Báo khi chốt khóa hoặc nhả (đèn, tiếng)" },
+          { "value": "none", "label": "Không hướng dẫn gì" } ] },
+        { "id": "C-14", "label": "Kể ngắn: bước nào làm trên điện thoại, bước nào làm trên tủ?", "type": "multiline" }
+      ]
+    },
+    {
+      "id": "D",
+      "title": "4. Pin và tiền sau khi đổi",
+      "items": [
+        { "id": "D-01", "label": "Pin cũ trả vào tủ còn bao nhiêu phần trăm?", "type": "number", "unit": "%", "decimals": 0, "min": 0, "max": 100 },
+        { "id": "D-02", "label": "Pin mới nhận được bao nhiêu phần trăm (theo ứng dụng hoặc màn hình tủ)?", "type": "number", "unit": "%", "decimals": 0, "min": 0, "max": 100, "warnMin": 90, "photoRef": "D-08" },
+        { "id": "D-03", "label": "Pin mới nhận được bao nhiêu phần trăm (theo đồng hồ trên xe)?", "type": "number", "unit": "%", "decimals": 0, "min": 0, "max": 100 },
+        { "id": "D-04", "label": "Chênh lệch giữa ứng dụng và đồng hồ xe", "type": "computed", "unit": "%", "decimals": 0, "formula": "{D-02} - {D-03}" },
+        { "id": "D-05", "label": "Sau lần này, tài khoản còn bao nhiêu lượt đổi?", "type": "integer", "min": 0, "unit": "lượt" },
+        { "id": "D-06", "label": "Lần đổi này bị trừ bao nhiêu tiền?", "type": "number", "unit": "đồng", "decimals": 0, "min": 0 },
+        { "id": "D-07", "label": "Màn hình báo kết quả cho biết những gì?", "type": "multiChoice", "options": [
+          { "value": "new_pct", "label": "Phần trăm pin mới" },
+          { "value": "old_pct", "label": "Phần trăm pin cũ" },
+          { "value": "quota", "label": "Số lượt còn lại" },
+          { "value": "money", "label": "Số tiền bị trừ" },
+          { "value": "serial", "label": "Mã số của pin" },
+          { "value": "range", "label": "Quãng đường đi được" },
+          { "value": "other", "label": "Khác", "withText": true } ] },
+        { "id": "D-08", "label": "Ảnh chụp màn hình kết quả", "type": "photo" },
+        { "id": "D-09", "label": "Sau khi đổi có nhận tin nhắn hay thông báo gì không? Nội dung", "type": "text" }
+      ]
+    },
+    {
+      "id": "E",
+      "title": "5. Kết quả và trục trặc (nếu có)",
+      "items": [
+        { "id": "E-01", "label": "Kết quả lần đổi pin", "type": "singleChoice", "required": true, "options": [
+          { "value": "first", "label": "Đổi được ngay lần đầu" },
+          { "value": "retry", "label": "Phải làm lại mới đổi được" },
+          { "value": "fail", "label": "Không đổi được" } ] },
+        { "id": "E-02", "label": "Có gặp tình huống nào sau đây không?", "type": "multiChoice", "options": [
+          { "value": "none", "label": "Không gặp gì" },
+          { "value": "no_network", "label": "Điện thoại mất mạng" },
+          { "value": "empty", "label": "Ứng dụng báo còn pin nhưng đến nơi thì hết" },
+          { "value": "high_pct", "label": "Đổi khi pin xe còn từ 70% trở lên" },
+          { "value": "no_quota", "label": "Hết lượt hoặc hết gói" },
+          { "value": "cancel", "label": "Bấm hủy giữa chừng" },
+          { "value": "app_closed", "label": "Ứng dụng bị tắt giữa lúc đang đổi" },
+          { "value": "latch_fail", "label": "Chốt không nhả, tủ báo lỗi" },
+          { "value": "night", "label": "Đổi lúc đêm khuya" },
+          { "value": "other", "label": "Khác", "withText": true } ] },
+        { "id": "E-03", "label": "Tủ hoặc ứng dụng báo gì?", "type": "multiline", "attachPhoto": true },
+        { "id": "E-04", "label": "Ai giúp xử lý?", "type": "singleChoice", "options": [
+          { "value": "system", "label": "Hệ thống tự xử lý" },
+          { "value": "hotline", "label": "Gọi tổng đài" },
+          { "value": "chat", "label": "Nhắn tin trong ứng dụng" },
+          { "value": "staff", "label": "Nhân viên tại trạm" },
+          { "value": "none", "label": "Không ai xử lý" } ] },
+        { "id": "E-05", "label": "Mất bao lâu mới xử lý xong?", "type": "number", "unit": "phút", "decimals": 0, "min": 0 },
+        { "id": "E-06", "label": "Có bị trừ lượt đổi không?", "type": "yesNo", "allowUnknown": true },
+        { "id": "E-07", "label": "Có được bù lại gì không?", "type": "yesNo", "allowUnknown": true,
+          "parts": [ { "id": "how", "label": "Cụ thể", "type": "text", "showWhen": { "field": "$self", "equals": true } } ] },
+        { "id": "E-08", "label": "Ứng dụng có gợi ý sang trạm khác không?", "type": "yesNo", "allowUnknown": true },
+        { "id": "E-09", "label": "Nếu ứng dụng bị tắt giữa chừng: mở lại có quay về đúng lần đổi đang dở không?", "type": "yesNo", "allowUnknown": true }
+      ]
+    },
+    {
+      "id": "F",
+      "title": "6. Cảm nhận",
+      "items": [
+        { "id": "F-01", "label": "Đổi pin có dễ không?", "type": "rating", "max": 5, "minLabel": "Rất khó", "maxLabel": "Rất dễ" },
+        { "id": "F-02", "label": "Màn hình tủ có dễ đọc không (dưới nắng hoặc ban đêm)?", "type": "rating", "max": 5, "minLabel": "Không đọc được", "maxLabel": "Rất rõ" },
+        { "id": "F-03", "label": "Ngôn ngữ có sẵn", "type": "multiChoice", "options": [
+          { "value": "vi", "label": "Tiếng Việt" },
+          { "value": "en", "label": "Tiếng Anh" },
+          { "value": "other", "label": "Khác", "withText": true } ] },
+        { "id": "F-04", "label": "Chỗ nào thấy bối rối hoặc phải đoán mới làm được?", "type": "multiline" },
+        { "id": "F-05", "label": "Ghi chú khác (kể cả nếu bị yêu cầu ngừng quay, chụp)", "type": "multiline" },
+        { "id": "F-06", "label": "Tên tệp video quay màn hình và ảnh đã chụp", "type": "text", "flags": false, "hint": "Nếu quay trên máy khác" },
+        { "id": "F-07", "label": "Ảnh, video tại trạm", "type": "photo", "maxCount": 10 }
+      ]
+    },
+    {
+      "id": "G",
+      "title": "7. Hỏi người khác đang đổi pin (nếu họ đồng ý)",
+      "note": "Hỏi ngắn khoảng 3 đến 5 phút. Phải xin phép trước. Không ghi họ tên, số điện thoại của người được hỏi.",
+      "items": [
+        {
+          "kind": "table",
+          "id": "G1",
+          "title": "Người được hỏi",
+          "rowLabel": "Người",
+          "quickEntry": true,
+          "columns": [
+            { "id": "purpose", "label": "Anh/chị chạy xe để làm gì?", "type": "singleChoice", "options": [
+              { "value": "personal", "label": "Đi lại cá nhân" },
+              { "value": "delivery", "label": "Giao hàng" },
+              { "value": "ride", "label": "Chở khách" },
+              { "value": "other", "label": "Khác" } ] },
+            { "id": "perday", "label": "Mỗi ngày đổi pin mấy lần?", "type": "integer", "min": 0, "stepper": true },
+            { "id": "pain", "label": "Điều gì phiền nhất khi đổi pin hoặc khi dùng ứng dụng?", "type": "text" },
+            { "id": "failed", "label": "Đã bao giờ đến trạm mà không đổi được pin chưa?", "type": "yesNo",
+              "parts": [ { "id": "then", "label": "Lúc đó làm gì", "type": "text", "showWhen": { "field": "$self", "equals": true } } ] },
+            { "id": "plan", "label": "Đang dùng gói nào?", "type": "text" },
+            { "id": "price", "label": "Thấy giá thế nào?", "type": "singleChoice", "options": [
+              { "value": "cheap", "label": "Rẻ" },
+              { "value": "ok", "label": "Vừa" },
+              { "value": "expensive", "label": "Đắt" } ] },
+            { "id": "switch", "label": "Nếu có hệ thống đổi pin khác, điều gì khiến anh/chị chuyển sang?", "type": "text" }
+          ]
+        },
+        { "id": "G-01", "label": "Số người đã hỏi", "type": "computed", "decimals": 0, "formula": "count(G1)" }
+      ]
+    }
+  ],
+  "signatures": [
+    { "id": "operator", "label": "Người đổi pin" },
+    { "id": "recorder", "label": "Người ghi phiếu" }
+  ]
+}
