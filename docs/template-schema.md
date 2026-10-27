@@ -292,7 +292,9 @@ Hiển thị giá trị trong mọi định dạng: cờ estimate thêm tiền t
 | gps | `10.500000, 106.250000 (±5 m)` (6 chữ số; không có accuracy thì bỏ ngoặc) |
 | elapsed | `mm:ss` (≥ 1 giờ: `h:mm:ss`) |
 | photo/video/signature | danh sách tên file (không có `media/`), nối `, ` |
-- `recordTitle`: thay placeholder; sau đó cắt các ký tự ` –-/·` thừa ở đầu/cuối; nếu mọi placeholder rỗng (hoặc không có `recordTitle`) → `Phiếu mới · {createdAt dd/MM/yyyy HH:mm}`.
+- Tiêu đề phiếu: `{seq 2 chữ số} - {title mẫu} {createdAt dd/MM/yyyy}` (VD `01 - Phiếu khảo sát… 27/10/2026`); `recordTitle` của mẫu không còn dùng cho tiêu đề.
+  `seq` (số nguyên, khóa của record) = số lớn nhất của các phiếu cùng dự án + cùng id mẫu, cộng 1; gán khi tạo, nhân bản, chuyển dự án; số đã xóa không dùng lại.
+  Phiếu cũ chưa có `seq` → bỏ phần số.
 - xlsx: ô số chỉ khi giá trị là số thuần (number/integer/computed/rating giữ text `4/5`), giá trị = số **đã làm tròn** như hiển thị.
   Tên sheet: ký tự `[ ] : * ? / \` → `_`, cắt 31 ký tự, trùng thì thêm ` (2)`, ` (3)`.
 - export.json: `value` rỗng → `null` (kể cả photo rỗng); thời điểm record copy nguyên chuỗi đã lưu; bảng cố định xuất đủ

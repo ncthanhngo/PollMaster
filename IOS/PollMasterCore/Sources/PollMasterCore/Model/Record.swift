@@ -213,10 +213,12 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
     public var rawTimes = RawTimes()
     /// Owning project (schema §9.1); nil only for records written before projects existed (read as "Chung").
     public var projectId: String?
+    /// Number among the project's records of the same template ("01 - …" in the title); nil for records made before numbering.
+    public var seq: Int?
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, id, templateId, templateVersion, status, createdAt, updatedAt, completedAt, values, tables, signatures
-        case returned, lastPosition, backupAt, erpUploadedAt, projectId
+        case returned, lastPosition, backupAt, erpUploadedAt, projectId, seq
     }
 
     /// Every key except `id` is optional on read (Android omits keys).
@@ -239,6 +241,7 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         backupAt = c.lenient(Date.self, .backupAt)
         erpUploadedAt = c.lenient(Date.self, .erpUploadedAt)
         projectId = c.lenient(String.self, .projectId)?.nilIfEmpty
+        seq = c.lenient(Int.self, .seq)
         rawTimes = RawTimes(created: c.lenient(String.self, .createdAt), updated: c.lenient(String.self, .updatedAt),
                             completed: c.lenient(String.self, .completedAt))
     }
@@ -265,6 +268,7 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         try c.encodeIfPresent(backupAt, forKey: .backupAt)
         try c.encodeIfPresent(erpUploadedAt, forKey: .erpUploadedAt)
         try c.encodeIfPresent(projectId, forKey: .projectId)
+        try c.encodeIfPresent(seq, forKey: .seq)
     }
 
     /// Edited since the last automatic backup (or never backed up).

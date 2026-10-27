@@ -19,6 +19,8 @@ data class Record(
     val id: String,
     /** Owning project (schema 9.1); missing in records written before projects existed, which belong to "Chung". */
     val projectId: String? = null,
+    /** Number among the project's records of the same template ("01 - …" in the title); missing in records made before numbering. */
+    val seq: Int? = null,
     val templateId: String = "",
     val templateVersion: String = "",
     @EncodeDefault val status: String = STATUS_DRAFT,

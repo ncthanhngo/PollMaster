@@ -2,27 +2,14 @@ package com.ncthanhngo.pollmaster.core.format
 
 import com.ncthanhngo.pollmaster.core.model.Record
 import com.ncthanhngo.pollmaster.core.model.Template
-import com.ncthanhngo.pollmaster.core.model.allFields
-
-private val placeholder = Regex("\\{([^{}]+)\\}")
-private val edgeChars = charArrayOf(' ', '–', '-', '/', '·')
 
 /**
- * Title of a record from the template's `recordTitle` pattern, with separators trimmed from both ends.
- * Falls back to "Phiếu mới · dd/MM/yyyy HH:mm" (creation time) when there is no pattern or every placeholder is empty.
+ * "01 - {template title} dd/MM/yyyy": the record's number among its project's records of that template, then the creation day.
+ * Records made before numbering have no number and show only the template title and day.
  */
-fun recordTitle(template: Template, record: Record): String {
-    val pattern = template.recordTitle ?: return newRecordTitle(record)
-    val fields = template.allFields().associateBy { it.id }
-    val formatter = ValueFormatter { record.values[it] }
-    var anyFilled = false
-    val title = placeholder.replace(pattern) { m ->
-        val field = fields[m.groupValues[1]]
-        val text = field?.let { formatter.display(it, record.values[it.id]) }.orEmpty()
-        if (text.isNotEmpty()) anyFilled = true
-        text
-    }
-    return if (anyFilled) title.trim(*edgeChars) else newRecordTitle(record)
-}
+fun recordTitle(template: Template, record: Record): String =
+    listOfNotNull(record.seq?.toString()?.padStart(2, '0'), "${template.title} ${displayDayOf(record.createdAt)}").joinToString(" - ")
 
-fun newRecordTitle(record: Record): String = "Phiếu mới · " + displayDateTime(record.createdAt)
+/** Number for a new record of [templateId] in [projectId]: one above the highest so far (numbers are never reused). */
+fun nextRecordSeq(records: List<Record>, projectId: String?, templateId: String): Int =
+    (records.filter { it.projectId == projectId && it.templateId == templateId }.mapNotNull { it.seq }.maxOrNull() ?: 0) + 1

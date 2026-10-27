@@ -73,11 +73,13 @@ import Foundation
     @Test func titleAndNaming() throws {
         let t = try Fixtures.template()
         var r = RecordFactory.make(template: t)
-        #expect(RecordNaming.title(t, r) == "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"))
+        let day = ISODate.format(r.createdAt, "dd/MM/yyyy")
+        #expect(RecordNaming.title(t, r) == "\(t.title) \(day)")          // made before numbering
+        r.seq = 1
+        #expect(RecordNaming.title(t, r) == "01 - \(t.title) \(day)")
+        r.seq = 12
+        #expect(RecordNaming.title(t, r) == "12 - \(t.title) \(day)")
         r.values["HD-code"] = FieldValue(v: "001/A")
-        r.values["A-01"] = FieldValue(v: "K1")
-        r.values["A-03"] = FieldValue(v: "12 Lê Lợi")
-        #expect(RecordNaming.title(t, r) == "K1 · 12 Lê Lợi")
         #expect(RecordNaming.recordCode(t, r) == "001-A")
         #expect(RecordNaming.mediaName(t, r, fieldId: "P05", seq: 3) == "001-A_P05_03")
         #expect(RecordNaming.exportBaseName(t, r, now: Date(timeIntervalSince1970: 0)).hasPrefix("001-A_19"))

@@ -4,6 +4,7 @@ import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.editor.RecordCodes
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
 import com.ncthanhngo.pollmaster.core.export.ErpUpload
+import com.ncthanhngo.pollmaster.core.format.nextRecordSeq
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.Record
@@ -145,21 +146,27 @@ class RecordsRepository(
         val existing = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
             .filter { it.projectId == projectId } // codes are numbered per project
         RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId)
+            .copy(seq = nextRecordSeq(existing, projectId, template.id))
             .also { store.save(it) }
     }
 
-    /** Moves a record to another project; the record keeps its template, values and media. */
+    /** Moves a record to another project; the record keeps its template, values and media, and takes the next number there. */
     suspend fun move(recordId: String, projectId: String) = withContext(Dispatchers.IO) {
         release(recordId)
-        store.load(recordId)?.let { store.save(it.copy(projectId = projectId, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null)) } // old backup is removed by the caller; a new one is due
+        store.load(recordId)?.let {
+            val seq = nextRecordSeq(loadedRecords(), projectId, it.templateId)
+            store.save(it.copy(projectId = projectId, seq = seq, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null)) // old backup is removed by the caller; a new one is due
+        }
     }
 
     suspend fun duplicate(item: RecordItem): Record? = withContext(Dispatchers.IO) {
         val t = item.template ?: return@withContext null
         flushEditor(item.record.id)
         val source = store.load(item.record.id) ?: return@withContext null
-        RecordFactory.duplicate(t, source).also { store.save(it) }
+        RecordFactory.duplicate(t, source).let { it.copy(seq = nextRecordSeq(loadedRecords(), it.projectId, it.templateId)) }.also { store.save(it) }
     }
+
+    private fun loadedRecords(): List<Record> = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
 
     suspend fun delete(recordId: String) = withContext(Dispatchers.IO) {
         tickers.remove(recordId)?.cancel()

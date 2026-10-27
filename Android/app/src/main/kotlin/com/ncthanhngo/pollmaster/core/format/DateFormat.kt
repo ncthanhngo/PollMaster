@@ -39,6 +39,10 @@ fun fileStamp(instant: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefa
 fun parseInstant(iso: String?): Instant? =
     iso?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 
+/** `dd/MM/yyyy` of a stored timestamp, in the device zone (record titles). */
+fun displayDayOf(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
+    runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dateFmt) }.getOrDefault(iso)
+
 /** `dd/MM HH:mm` (list rows). */
 fun displayDayMonthTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
     runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dayMonthTimeFmt) }.getOrDefault(iso)

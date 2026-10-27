@@ -4,6 +4,7 @@ import com.ncthanhngo.pollmaster.core.editor.mediaFileName
 import com.ncthanhngo.pollmaster.core.editor.nextMediaName
 import com.ncthanhngo.pollmaster.core.format.formatElapsed
 import com.ncthanhngo.pollmaster.core.format.formatNumber
+import com.ncthanhngo.pollmaster.core.format.nextRecordSeq
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -29,12 +30,19 @@ class FormatTest {
         assertEquals("HD-01-A_P01-04_02.jpg", nextMediaName(t, r, "P01-04", "jpg", setOf("HD-01-A_P01-04_01.jpg")))
     }
 
-    @Test fun recordTitleUsesPatternAndFallsBack() {
+    @Test fun recordTitleIsNumberTemplateTitleAndDay() {
         val t = TestData.template
-        val empty = TestData.emptyRecord()
-        assertEquals("Phiếu mới · 01/01/2026 08:00", recordTitle(t, empty))
-        val r = empty.copy(values = mapOf("A-03" to TestData.text("12 Lê Lợi"), "A-01" to TestData.text("Trạm 7")))
-        assertEquals("Trạm 7 · 12 Lê Lợi", recordTitle(t, r))
-        assertEquals("Trạm 7", recordTitle(t, empty.copy(values = mapOf("A-01" to TestData.text("Trạm 7")))))
+        val r = TestData.emptyRecord().copy(values = mapOf("A-01" to TestData.text("Trạm 7")))
+        assertEquals("${t.title} 01/01/2026", recordTitle(t, r)) // made before numbering
+        assertEquals("01 - ${t.title} 01/01/2026", recordTitle(t, r.copy(seq = 1)))
+        assertEquals("12 - ${t.title} 01/01/2026", recordTitle(t, r.copy(seq = 12)))
+    }
+
+    @Test fun nextSeqCountsPerProjectAndTemplate() {
+        val r = TestData.emptyRecord()
+        val list = listOf(r.copy(projectId = "p", seq = 1), r.copy(projectId = "p", seq = 3), r.copy(projectId = "q", seq = 9),
+            r.copy(projectId = "p", templateId = "other", seq = 7), r.copy(projectId = "p"))
+        assertEquals(4, nextRecordSeq(list, "p", r.templateId)) // the gap left by a deleted record is not reused
+        assertEquals(1, nextRecordSeq(list, "z", r.templateId))
     }
 }

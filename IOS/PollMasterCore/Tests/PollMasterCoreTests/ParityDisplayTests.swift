@@ -62,14 +62,18 @@ import Foundation
         #expect(ValueFormatter.display(comp, FieldValue(parts: ["x": 50])) == "Vươn: 50 mm")
     }
 
-    @Test func recordTitleTrimsSeparators() throws {
-        var t = t
-        t.recordTitle = "{HD-code} – {A-01} /"
+    @Test func recordTitleIgnoresThePatternAndPadsTheNumber() throws {
         var r = Record(templateId: t.id, templateVersion: t.version)
         r.values["A-01"] = FieldValue(v: "K1")
-        #expect(RecordNaming.title(t, r) == "K1")
-        r.values["A-01"] = nil
-        #expect(RecordNaming.title(t, r) == "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"))
+        r.seq = 5
+        #expect(RecordNaming.title(t, r) == "05 - \(t.title) " + ISODate.format(r.createdAt, "dd/MM/yyyy"))
+    }
+
+    @Test func nextSeqCountsPerProjectAndTemplate() {
+        func rec(_ p: String?, _ seq: Int?, template: String = "T") -> Record { var r = Record(templateId: template, templateVersion: "1", projectId: p); r.seq = seq; return r }
+        let list = [rec("p", 1), rec("p", 3), rec("q", 9), rec("p", 7, template: "other"), rec("p", nil)]
+        #expect(RecordNaming.nextSeq(among: list, projectId: "p", templateId: "T") == 4)   // a deleted record's gap is not reused
+        #expect(RecordNaming.nextSeq(among: list, projectId: "z", templateId: "T") == 1)
     }
 
     @Test func xlsxNumbersRoundedAndSheetNames() throws {
@@ -142,13 +146,5 @@ extension ParityDisplayTests {
         r.tables["E1"] = [Row(values: ["mode": FieldValue(v: "O")]), Row(values: ["hand": FieldValue(v: "2T")])]   // 2nd row misses "mode"
         #expect(Validator.validate(t, r).contains { $0.fieldId == "E1" })
         #expect(Validator.progress(t, r).done == ok.done - 1)
-    }
-
-    @Test func missingRecordTitleFallsBackToNewRecordTitle() {
-        var t = t
-        t.recordTitle = nil
-        var r = Record(templateId: t.id, templateVersion: t.version)
-        r.values["HD-code"] = FieldValue(v: "X")
-        #expect(RecordNaming.title(t, r) == "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"))
     }
 }

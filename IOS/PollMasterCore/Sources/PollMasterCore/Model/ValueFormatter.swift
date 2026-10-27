@@ -135,22 +135,17 @@ public enum RecordNaming {
         rawRecordCode(t, r).flatMap { sanitize($0).nilIfEmpty }
     }
 
-    private static let titleTrim = CharacterSet(charactersIn: " –-/·").union(.whitespacesAndNewlines)
-
-    static func newRecordTitle(_ r: Record) -> String { "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm") }
-
-    /// `recordTitle` with `{fieldId}` replaced and stray separators trimmed; "Phiếu mới · dd/MM/yyyy HH:mm" when nothing is filled.
+    /// "01 - {template title} dd/MM/yyyy": the record's number among its project's records of that template, then the creation day.
+    /// Records made before numbering have no number and show only the template title and day.
     public static func title(_ t: Template, _ r: Record) -> String {
-        guard let pattern = t.recordTitle else { return newRecordTitle(r) }
-        var anyFilled = false
-        let out = replace(pattern) { id in
-            guard let f = t.field(id) else { return "" }
-            let s = ValueFormatter.display(f, r.values[id])
-            if !s.isEmpty { anyFilled = true }
-            return s
-        }
-        let trimmed = out.trimmingCharacters(in: titleTrim)
-        return anyFilled && !trimmed.isEmpty ? trimmed : newRecordTitle(r)
+        let named = t.title + " " + ISODate.format(r.createdAt, "dd/MM/yyyy")
+        guard let seq = r.seq else { return named }
+        return (seq < 10 ? "0\(seq)" : "\(seq)") + " - " + named
+    }
+
+    /// Number for a new record of `templateId` in `projectId`: one above the highest so far (numbers are never reused).
+    public static func nextSeq(among records: [Record], projectId: String?, templateId: String) -> Int {
+        (records.filter { $0.projectId == projectId && $0.templateId == templateId }.compactMap(\.seq).max() ?? 0) + 1
     }
 
     /// `{fieldId}` used in media names; table columns are `{tableId}-{columnId}`.

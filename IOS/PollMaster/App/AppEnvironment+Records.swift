@@ -19,7 +19,7 @@ extension AppEnvironment {
         createRecord(from: pending.template, in: pending.project)
     }
 
-    /// The record's own project is scanned once (off the main actor) to propose the next record code.
+    /// The record's own project is scanned once (off the main actor) for the next record number and code.
     func createRecord(from t: Template, in project: Project) {
         guard !creatingRecord else { return }
         creatingRecord = true
@@ -27,10 +27,10 @@ extension AppEnvironment {
         let store = recordStore, pid = project.id
         Task {
             defer { creatingRecord = false }
-            if let code = t.recordCodeField, r.values[code.id]?.v?.isBlank != false {
-                let mine = await Task.detached { store.list().filter { ($0.projectId ?? "") == pid } }.value
-                if let proposed = RecordCodeProposal.propose(for: t, among: mine) { r.values[code.id] = FieldValue(v: .string(proposed)) }
-            }
+            let mine = await Task.detached { store.list().filter { ($0.projectId ?? "") == pid } }.value
+            r.seq = RecordNaming.nextSeq(among: mine, projectId: pid, templateId: t.id)
+            if let code = t.recordCodeField, r.values[code.id]?.v?.isBlank != false,
+               let proposed = RecordCodeProposal.propose(for: t, among: mine) { r.values[code.id] = FieldValue(v: .string(proposed)) }
             do {
                 try recordStore.save(r)
                 upsert(r)
@@ -47,7 +47,8 @@ extension AppEnvironment {
     func duplicate(_ id: String) {
         guard let r = recordStore.load(id) else { return }
         let t = templateStore.load(id: r.templateId, version: r.templateVersion)
-        let copy = RecordFactory.duplicate(r, template: t)
+        var copy = RecordFactory.duplicate(r, template: t)
+        copy.seq = RecordNaming.nextSeq(among: recordStore.list(), projectId: copy.projectId, templateId: copy.templateId)
         do { try recordStore.save(copy); upsert(copy) }
         catch { errorMessage = "Không nhân bản được: \(error.localizedDescription)" }
     }
