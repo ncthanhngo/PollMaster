@@ -12,6 +12,9 @@ struct TemplateDetailView: View {
     @Environment(\.pmTheme) private var theme
 
     @State private var choosing = false
+    @State private var renaming = false
+    @State private var newTitle = ""
+    @State private var renameError: String?
 
     private var isNewest: Bool { env.newestTemplates.contains { $0.key == template.key } }
     /// Active projects that use exactly this template version.
@@ -67,8 +70,27 @@ struct TemplateDetailView: View {
         .confirmationDialog("Tạo phiếu trong dự án", isPresented: $choosing, titleVisibility: .visible) {
             ForEach(projects) { p in Button("\(p.name) (\(p.code))") { env.startCreate(from: template, in: p) } }
         }
+        .alert("Đổi tên mẫu", isPresented: $renaming) {
+            TextField("Tên mẫu", text: $newTitle)
+            Button("Lưu") { rename() }
+                .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button("Hủy", role: .cancel) {}
+        } message: { Text("Chỉ đổi tên hiển thị. Mã \(template.id) và phiên bản giữ nguyên.") }
+        .alert("Không đổi được tên", isPresented: Binding(get: { renameError != nil }, set: { if !$0 { renameError = nil } })) {
+            Button("OK") { renameError = nil }
+        } message: { Text(renameError ?? "") }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Đổi tên", systemImage: "pencil") { newTitle = template.title; renaming = true }
+            }
+        }
         .navigationTitle(template.id)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func rename() {
+        do { try env.renameTemplate(template, to: newTitle) }
+        catch { renameError = TemplateText.errorLines(error).joined(separator: "\n") }
     }
 
     private var summary: some View {

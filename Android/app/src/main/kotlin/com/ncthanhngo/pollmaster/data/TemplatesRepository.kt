@@ -7,6 +7,7 @@ import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import com.ncthanhngo.pollmaster.core.storage.TemplateText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,6 +70,14 @@ class TemplatesRepository(
 
     suspend fun install(json: String, overwrite: Boolean): InstallResult = withContext(Dispatchers.IO) {
         store.install(json, overwrite).also { reload(store.list()) }
+    }
+
+    /** Renames every installed version of [id] (title only: records and projects keep their id+version). */
+    suspend fun rename(id: String, title: String) = withContext(Dispatchers.IO) {
+        store.list().filter { it.id == id }.forEach { t ->
+            store.raw(t.id, t.version)?.let { store.install(TemplateText.renamed(it, title), overwrite = true) }
+        }
+        reload(store.list())
     }
 
     suspend fun readUri(uri: android.net.Uri): String = withContext(Dispatchers.IO) {

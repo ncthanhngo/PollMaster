@@ -1,5 +1,10 @@
 package com.ncthanhngo.pollmaster.core.storage
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+
 object TemplateText {
     private val fence = Regex("```[ \\t]*([A-Za-z]*)[ \\t]*\\r?\\n(.*?)```", RegexOption.DOT_MATCHES_ALL)
 
@@ -15,6 +20,14 @@ object TemplateText {
         val start = s.indexOf('{')
         val end = s.lastIndexOf('}')
         return if (start in 0 until end) s.substring(start, end + 1).trim() else null
+    }
+
+    /** The same template JSON with only `title` replaced (rename in the library: id and version stay, so records and projects keep pointing at it). */
+    fun renamed(json: String, title: String): String {
+        val name = title.trim()
+        if (name.isEmpty()) throw TemplateException("Tên mẫu không được để trống.")
+        val obj = Json.parseToJsonElement(json).jsonObject
+        return JsonObject(obj + ("title" to JsonPrimitive(name))).toString()
     }
 
     /** Message the user can send back to the AI after an import failure. */

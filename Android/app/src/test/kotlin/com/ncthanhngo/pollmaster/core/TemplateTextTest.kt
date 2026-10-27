@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.core
 
+import com.ncthanhngo.pollmaster.core.storage.TemplateException
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
 import com.ncthanhngo.pollmaster.core.storage.TemplateText
 import org.junit.Assert.assertEquals
@@ -35,6 +36,18 @@ class TemplateTextTest {
 
     @Test fun errorReportFormat() {
         assertEquals("P:\n- e1\n- e2", TemplateText.errorReport("P:", "e1\n\ne2\n"))
+    }
+
+    @Test fun renameChangesOnlyTitle() {
+        val before = TemplateParser.parse(TestData.templateText)
+        val after = TemplateParser.parse(TemplateText.renamed(TestData.templateText, "  Tủ đổi pin Hà Nội "))
+        assertEquals("Tủ đổi pin Hà Nội", after.title)
+        assertEquals(before.copy(title = after.title), after)
+    }
+
+    @Test(expected = TemplateException::class)
+    fun renameRejectsBlankTitle() {
+        TemplateText.renamed(TestData.templateText, "   ")
     }
 
     @Test fun guideExampleParses() {

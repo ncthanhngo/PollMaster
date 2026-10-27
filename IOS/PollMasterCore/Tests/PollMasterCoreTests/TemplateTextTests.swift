@@ -27,6 +27,19 @@ import Foundation
         #expect(TemplateText.fixRequest(lines).hasSuffix("hãy sửa và trả lại toàn bộ JSON:\n- a\n- b"))
     }
 
+    @Test func renameChangesOnlyTitle() throws {
+        let data = try Fixtures.templateData()
+        var before = try TemplateLoader.decode(data)
+        let after = try TemplateLoader.decode(TemplateText.renamed(data, to: "  Tủ đổi pin Hà Nội "))
+        #expect(after.title == "Tủ đổi pin Hà Nội")
+        before.title = after.title
+        #expect(after == before)
+    }
+
+    @Test func renameRejectsBlankTitle() throws {
+        #expect(throws: TemplateError.self) { try TemplateText.renamed(Fixtures.templateData(), to: "   ") }
+    }
+
     @Test func guideExampleDecodes() throws {
         let url = Fixtures.sharedDir.appendingPathComponent("huong-dan-tao-mau-bang-ai.md")
         let md = try String(contentsOf: url, encoding: .utf8)

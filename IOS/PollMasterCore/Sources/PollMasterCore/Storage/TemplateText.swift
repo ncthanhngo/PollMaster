@@ -22,6 +22,15 @@ public enum TemplateText {
         }
     }
 
+    /// The same template JSON with only `title` replaced (rename in the library: id and version stay, so records and projects keep pointing at it).
+    public static func renamed(_ data: Data, to title: String) throws -> Data {
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw TemplateError.invalid(["Tên mẫu không được để trống."]) }
+        guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw TemplateError.parse("Mẫu không phải đối tượng JSON.") }
+        object["title"] = name
+        return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
     /// Ready-to-send message asking the AI to fix the template.
     public static func fixRequest(_ lines: [String]) -> String {
         "Mẫu JSON bị app PollMaster từ chối với các lỗi sau, hãy sửa và trả lại toàn bộ JSON:\n" + lines.map { "- \($0)" }.joined(separator: "\n")

@@ -25,7 +25,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,9 +66,10 @@ import kotlinx.coroutines.launch
 fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onRecordCreated: (String) -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
-    val template = remember(id, version) { container.templates.find(id, version) }
-    var confirmDelete by remember { mutableStateOf(false) }
     val all by container.templates.templates.collectAsState()
+    val template = remember(all, id, version) { container.templates.find(id, version) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     val outdated = template != null && newestVersions(all).none { it.id == template.id && it.version == template.version } && all.any { it.id == template.id }
     var inUse by remember { mutableStateOf<Int?>(null) }
     val startRecord = rememberRecordCreator(onRecordCreated)
@@ -93,6 +98,9 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
                 navigationIcon = { BackButton(onBack) },
                 actions = {
                     if (template != null) {
+                        IconButton(onClick = { renaming = true }) {
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.template_rename))
+                        }
                         IconButton(onClick = { confirmDelete = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.template_delete))
                         }
@@ -175,6 +183,13 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
         }
     }
 
+    if (renaming && template != null) {
+        RenameTemplateDialog(
+            template = template,
+            onSave = { title -> scope.launch { container.templates.rename(template.id, title) } },
+            onDismiss = { renaming = false },
+        )
+    }
     if (confirmDelete && template != null) {
         ConfirmDialog(
             title = stringResource(R.string.template_delete),
@@ -208,3 +223,22 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     }
 }
 
+
+@Composable
+private fun RenameTemplateDialog(template: Template, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+    var title by rememberSaveable { mutableStateOf(template.title) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.template_rename)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.template_rename_label)) })
+                Text(stringResource(R.string.template_rename_note, template.id), style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = title.isNotBlank(), onClick = { onSave(title); onDismiss() }) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}

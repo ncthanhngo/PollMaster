@@ -173,5 +173,13 @@ final class AppEnvironment {
         reload()
     }
 
+    /// Renames every installed version of the template (title only: records and projects keep their id+version).
+    func renameTemplate(_ t: Template, to title: String) throws {
+        for v in templates where v.id == t.id {
+            guard let data = templateStore.data(id: v.id, version: v.version) else { continue }
+            try overwriteTemplate(TemplateText.renamed(data, to: title))
+        }
+    }
+
     func usedStorage() -> Int64 { RecordStore.directorySize(root) }
 }
