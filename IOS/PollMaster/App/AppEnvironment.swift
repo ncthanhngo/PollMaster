@@ -16,9 +16,12 @@ struct RecordSummary: Identifiable, Equatable {
     var templateId = ""
     var returned = false
     var needsBackup = false
-    /// Last "Gửi lên ERP" and whether the record changed after it (schema §9.6).
+    /// Sync state of the card (`RecordSyncState`): last push / pull, unsent changes, conflict flag; creator for "của …" and the edit right.
     var erpUploadedAt: Date?
-    var erpUnsent = false
+    var syncDirty = false
+    var syncConflict = false
+    var createdBy: String?
+    var createdByName: String?
     /// Codes of planned sites this record visited (a lookup field holds the code).
     var visitedSites: Set<String> = []
     var thumbnail: URL?

@@ -76,4 +76,10 @@ struct ERPSyncRemote: SyncRemote {
         let (data, status) = try await client.rawAuthorized(await client.request(path(projectId, "poll-records/\(recordId)"), method: "DELETE"))
         guard (200..<300).contains(status) || status == 404 else { throw fail(status, data, "Không xoá được phiếu trên máy chủ.") }
     }
+
+    func changes(projectId: String, recordId: String) async throws -> [RecordChange] {
+        let (data, status) = try await client.rawAuthorized(await client.request(path(projectId, "poll-records/\(recordId)/changes")))
+        guard status == 200 else { throw fail(status, data, "Không có quyền xem lịch sử hoặc phiếu chưa có trên máy chủ.") }
+        return try decode([RecordChange].self, data)
+    }
 }

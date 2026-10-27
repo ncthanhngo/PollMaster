@@ -10,10 +10,12 @@ enum Route: Hashable {
     case review(record: String)
     /// "Điền lần lượt": one missing field at a time.
     case fill(record: String)
+    /// "Lịch sử sửa": who changed which field, from the ERP's log.
+    case history(String)
 
     var recordId: String {
         switch self {
-        case .editor(let id), .review(let id), .fill(let id): return id
+        case .editor(let id), .review(let id), .fill(let id), .history(let id): return id
         case .section(let id, _, _): return id
         case .row(let id, _, _): return id
         }

@@ -6,6 +6,7 @@ extension AppEnvironment {
 
     /// Entry point of every "create record" button: asks for the surveyor name once when Cài đặt has none, then creates.
     func startCreate(from t: Template, in project: Project) {
+        guard project.canPost else { infoMessage = "Bạn chỉ có quyền xem dự án \(project.name), không tạo được phiếu."; return }
         if settings.surveyorName.isEmpty, !settings.surveyorAsked, t.field("HD-surveyor") != nil { askSurveyorFor = PendingCreate(template: t, project: project) }
         else { createRecord(from: t, in: project) }
     }
@@ -46,7 +47,7 @@ extension AppEnvironment {
     }
 
     func duplicate(_ id: String) {
-        guard let r = recordStore.load(id) else { return }
+        guard let r = recordStore.load(id), canPost(to: r.projectId ?? "") else { return }
         let t = templateStore.load(id: r.templateId, version: r.templateVersion)
         var copy = RecordFactory.duplicate(r, template: t)
         copy.seq = RecordNaming.nextSeq(among: recordStore.list(), projectId: copy.projectId, templateId: copy.templateId)
@@ -55,6 +56,7 @@ extension AppEnvironment {
     }
 
     func delete(_ id: String) {
+        if let r = recordStore.load(id), readOnlyNote(for: r) != nil { return }        // someone else's record: only its owner or a manager deletes
         editors[id]?.discard(); closingEditors[id]?.discard()      // a pending autosave must not bring the folder back
         editors[id] = nil; closingEditors[id] = nil
         let old = recordStore.load(id)
@@ -80,6 +82,7 @@ extension AppEnvironment {
                               sites: { [unowned self] in self.sites(forProject: r.projectId) },
                               project: { [unowned self] pid in self.project(id: pid) })
         m.onSaved = { [weak self] saved in self?.upsert(saved) }
+        m.setReadOnly(readOnlyNote(for: r))
         editors[id] = m
         fetchMediaOnOpen(r)
         return m

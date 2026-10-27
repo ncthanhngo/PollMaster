@@ -9,7 +9,7 @@ struct NewRecordSheet: View {
     var body: some View {
         NavigationStack {
             if let p = env.currentProject { TemplatePicker(project: p, close: { dismiss() }) } else {
-                List(env.activeProjects) { p in
+                List(env.activeProjects.filter(\.canPost)) { p in
                     NavigationLink {
                         TemplatePicker(project: p, close: { dismiss() })
                     } label: {
@@ -19,7 +19,7 @@ struct NewRecordSheet: View {
                         }
                     }
                 }
-                .overlay { if env.activeProjects.isEmpty { ContentUnavailableView("Chưa có dự án", systemImage: "folder", description: Text("Chưa có dự án ERP nào. Kéo xuống ở tab Dự án để tải lại.")) } }
+                .overlay { if !env.activeProjects.contains(where: \.canPost) { ContentUnavailableView("Chưa có dự án", systemImage: "folder", description: Text("Chưa có dự án ERP nào. Kéo xuống ở tab Dự án để tải lại.")) } }
                 .navigationTitle("Chọn dự án").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } } }
             }

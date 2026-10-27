@@ -23,6 +23,15 @@ struct BackupService: Sendable {
         }.value
     }
 
+    /// The device version kept next to the safety copies when the user takes the server's (a file of its own, never replaced).
+    func writeConflictCopy(_ t: Template, _ r: Record, project: Project?) async throws {
+        let store = store
+        try await Task.detached(priority: .userInitiated) {
+            _ = try RecordExporter(store: store).writeBackup(t, r, into: Self.directory(for: project), project: project,
+                                                             fileName: RecordExporter.conflictCopyFileName(t, r, projectCode: project?.code))
+        }.value
+    }
+
     /// Drops the copy of a record from its project's folder (the record moved to another project).
     static func removeBackup(_ t: Template, _ r: Record, project: Project?) {
         let file = directory(for: project).appendingPathComponent(RecordExporter.backupFileName(t, r, projectCode: project?.code))

@@ -14,15 +14,18 @@ extension AppEnvironment {
     /// `-pmOneHand 0|1` set one-hand mode; `-pmScrollDown 1` scroll a stopwatch form to its end.
     /// Projects: `-pmSeedProjects 1` two sample projects with sites/records; `-pmProject <code>` current project; `-pmProjectDetail <code>`;
     /// `-pmSwitcher 1` open the project switcher; `-pmImportBundle <path>` preview a .pmproject.
+    /// `-pmSyncStates 1` (with `-pmSeedProjects 1`) gives the first project's records a creator and sync state: someone else's synced (view-only),
+    /// mine waiting, mine in conflict + an error on one; `-pmOpenRecord <0-2>` opens one of them; `-pmHistory 1` pushes the history screen with a sample log.
     /// `-pmAccount 1` signed in as a sample ERP user (no network); `-pmLogin 1` show the sign-in screen.
     func applyDebugLaunchArguments() {
         let d = UserDefaults.standard
-        if d.bool(forKey: "pmAccount") { account = ERPAccount(name: "Nguyễn Văn A", email: "a@evselab.com", org: "EVSELab") }
+        if d.bool(forKey: "pmAccount") { account = ERPAccount(userId: "u-me", name: "Nguyễn Văn A", email: "a@evselab.com", org: "EVSELab") }
         if d.bool(forKey: "pmLogin") { account = nil }
         if let a = d.string(forKey: "pmAppearance").flatMap(AppearanceMode.init) { settings.appearance = a }
         if d.object(forKey: "pmOneHand") != nil { settings.oneHand = d.bool(forKey: "pmOneHand") }
         if d.bool(forKey: "pmMap") { recordsShowMap = true }
         if d.bool(forKey: "pmSeedProjects") { seedProjects() }
+        if d.bool(forKey: "pmSyncStates") { seedSyncStates(open: d.object(forKey: "pmOpenRecord") != nil ? d.integer(forKey: "pmOpenRecord") : nil, history: d.bool(forKey: "pmHistory")) }
         if d.bool(forKey: "pmSites"), let p = currentProject ?? projects.first { try? projectStore.sites(p.id).save(sampleSites); reloadNow() }
         if let code = d.string(forKey: "pmProject") { currentProjectId = projects.first { $0.code == code }?.id }
         if let code = d.string(forKey: "pmProjectDetail"), let p = projects.first(where: { $0.code == code }) { selectedTab = .projects; projectsPath = [ProjectRoute(id: p.id)] }
@@ -58,6 +61,26 @@ extension AppEnvironment {
         } else if d.object(forKey: "pmSection") != nil {
             recordsPath.append(.section(record: r.id, index: d.integer(forKey: "pmSection"), focus: focus))
         }
+    }
+
+    private func seedSyncStates(open index: Int?, history: Bool) {
+        guard let p = projects.first(where: { $0.code == "VGREEN-HN" }) else { return }
+        let mine = recordStore.list().filter { $0.projectId == p.id }.sorted { $0.createdAt < $1.createdAt }
+        var ids: [String] = []
+        for (i, var r) in mine.prefix(3).enumerated() {
+            r.erpUploadedAt = r.updatedAt; r.serverRev = 2; r.createdBy = "u-me"; r.createdByName = "Nguyễn Văn A"
+            switch i {
+            case 0: r.createdBy = "u-other"; r.createdByName = "Trần Thị B"
+            case 1: r.erpUploadedAt = r.updatedAt.addingTimeInterval(-600)
+            default: r.erpUploadedAt = r.updatedAt.addingTimeInterval(-600); r.syncConflict = true; recordSyncIssues[r.id] = "Tệp P05_01.jpg lớn hơn 95 MB."
+            }
+            try? recordStore.save(r)
+            ids.append(r.id)
+        }
+        reloadNow()
+        guard let index, ids.indices.contains(index) else { return }
+        selectedTab = .records
+        recordsPath = history ? [.editor(ids[index]), .history(ids[index])] : [.editor(ids[index])]
     }
 
     private var sampleSites: [Site] {

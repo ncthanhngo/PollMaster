@@ -14,13 +14,16 @@ struct RouteDestination: View {
     }
 
     @ViewBuilder private var destination: some View {
-        if let model = env.editor(for: route.recordId) {
+        if case .history(let id) = route {
+            RecordHistoryView(recordId: id)
+        } else if let model = env.editor(for: route.recordId) {
             switch route {
             case .editor: EditorRootView(model: model)
             case .section(_, let index, let focus): SectionView(model: model, index: index, focus: focus)
             case .row(_, let table, let row): RowFormView(model: model, tableId: table, rowId: row)
             case .review: ReviewView(model: model)
             case .fill: FillOneByOneView(model: model)
+            case .history: EmptyView()
             }
         } else {
             ContentUnavailableView("Không mở được phiếu", systemImage: "exclamationmark.triangle",

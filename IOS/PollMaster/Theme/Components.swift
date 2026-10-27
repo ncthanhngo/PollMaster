@@ -73,15 +73,37 @@ extension View {
     }
 }
 
-/// "Đã gửi ERP dd-MM-yyyy HH:mm" or "Có thay đổi chưa gửi" (schema §9.6); nothing for a record never sent.
-struct ERPMarker: View {
-    let uploadedAt: Date?
-    let unsent: Bool
+/// Sync state of a record (ux-spec N): "Đã đồng bộ dd-MM HH:mm" · "Chờ đồng bộ" · "Xung đột" · "Lỗi: …".
+struct SyncMarker: View {
+    let state: RecordSyncState
     @Environment(\.pmTheme) private var theme
 
     var body: some View {
-        if let text = ERPUpload.marker(uploadedAt: uploadedAt, hasUnsentChanges: unsent) {
-            Text(text).font(.caption).foregroundStyle(unsent ? theme.warning : theme.secondaryText).lineLimit(1)
+        Label(state.text(), systemImage: icon)
+            .font(.caption).foregroundStyle(color).lineLimit(1).labelStyle(CompactLabelStyle())
+    }
+
+    private var icon: String {
+        switch state {
+        case .synced: "checkmark.icloud"
+        case .pending: "arrow.triangle.2.circlepath.icloud"
+        case .conflict: "exclamationmark.icloud"
+        case .failed: "xmark.icloud"
         }
+    }
+
+    private var color: Color {
+        switch state {
+        case .synced: theme.secondaryText
+        case .pending: theme.warning
+        case .conflict: theme.attention
+        case .failed: theme.alert
+        }
+    }
+}
+
+private struct CompactLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) { configuration.icon; configuration.title }
     }
 }

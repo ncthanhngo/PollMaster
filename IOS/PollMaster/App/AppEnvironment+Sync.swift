@@ -42,6 +42,7 @@ extension AppEnvironment {
                 acct.userId = try await erp.me()
                 guard gen == sessionGen else { return }
                 updateAccountDetails(acct)
+                reload()                       // the list hides other accounts' leftovers by user id
             }
             guard let me = acct.userId else { return }
             let engine = makeSyncEngine()
@@ -59,7 +60,8 @@ extension AppEnvironment {
                 issues.merge(rep.failures) { _, new in new }
             }
             recordSyncIssues = issues
-            if !removed.isEmpty || reports.values.contains(where: { $0.created + $0.overwritten + $0.deletedLocal + $0.pushed > 0 }) { reload() }
+            if !removed.isEmpty || projectRightsChanged()
+                || reports.values.contains(where: { $0.created + $0.overwritten + $0.deletedLocal + $0.pushed + $0.conflicts > 0 }) { reload() }
         } catch ERPError.sessionExpired {
             guard gen == sessionGen else { return }
             setSessionExpired()

@@ -37,6 +37,7 @@ struct RecordsListView: View {
                     }.pickerStyle(.menu)
                 }
                 .padding(.horizontal).padding(.bottom, 6)
+                if let p = env.syncProgress { SyncProgressBar(progress: p) }
                 if env.recordsShowMap {
                     RecordsMapView(records: shown)
                 } else if env.projectSummaries.isEmpty {
@@ -49,24 +50,31 @@ struct RecordsListView: View {
                                 .swipeActions(edge: .trailing) { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                                 .contextMenu { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                         } else {
-                            NavigationLink(value: Route.editor(s.id)) { RecordRow(summary: s, project: env.project(id: s.projectId)) }
-                                .listRowBackground(RecordFrame(summary: s))
-                                .swipeActions(edge: .trailing) {
-                                    Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s }
-                                    Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }.tint(.blue)
-                                }
-                                .swipeActions(edge: .leading) {
-                                    Button("Nhân bản", systemImage: "plus.square.on.square") { env.duplicate(s.id) }.tint(.indigo)
-                                }
-                                .contextMenu {
-                                    Button("Nhân bản", systemImage: "plus.square.on.square") { env.duplicate(s.id) }
-                                    Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }
+                            let mayEdit = env.canEdit(s), mayCopy = env.canPost(to: s.projectId)
+                            NavigationLink(value: Route.editor(s.id)) {
+                                RecordRow(summary: s, project: env.project(id: s.projectId), me: env.currentUserId, failure: env.recordSyncIssues[s.id])
+                            }
+                            .listRowBackground(RecordFrame(summary: s))
+                            .swipeActions(edge: .trailing) {
+                                if mayEdit { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
+                                Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }.tint(.blue)
+                            }
+                            .swipeActions(edge: .leading) {
+                                if mayCopy { Button("Nhân bản", systemImage: "plus.square.on.square") { env.duplicate(s.id) }.tint(.indigo) }
+                            }
+                            .contextMenu {
+                                if mayCopy { Button("Nhân bản", systemImage: "plus.square.on.square") { env.duplicate(s.id) } }
+                                Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }
+                                Button("Lịch sử sửa", systemImage: "clock.arrow.circlepath") { env.recordsPath.append(.history(s.id)) }
+                                if mayEdit {
                                     Button("Chuyển dự án", systemImage: "folder") { moving = s }
                                     Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s }
                                 }
+                            }
                         }
                     }
                     .listRowSpacing(10)
+                    .refreshable { await env.syncProjects() }
                 }
             }
             .navigationTitle("Phiếu khảo sát")
@@ -75,7 +83,9 @@ struct RecordsListView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) { ProjectTitleButton { env.showProjectSwitcher = true } }
                 ToolbarItem(placement: .topBarLeading) { AppearanceToggleButton() }
-                ToolbarItem(placement: .primaryAction) { Button("Tạo phiếu", systemImage: "plus") { startNew() } }
+                if env.currentProject?.canPost != false {
+                    ToolbarItem(placement: .primaryAction) { Button("Tạo phiếu", systemImage: "plus") { startNew() } }
+                }
             }
             .navigationDestination(for: Route.self) { RouteDestination(route: $0) }
             .sheet(isPresented: $creating) { NewRecordSheet() }
@@ -130,6 +140,9 @@ struct RecordRow: View {
     let summary: RecordSummary
     /// The project the record belongs to: shown on every row, so it is always clear what the survey is for.
     var project: Project?
+    /// Signed-in ERP user id (a record of somebody else shows "của …") and the last sync problem of this record.
+    var me: String?
+    var failure: String?
     @Environment(\.pmTheme) private var theme
 
     /// Three lines, none wrapping: title · project + date · status, backup flag and progress.
@@ -167,10 +180,21 @@ struct RecordRow: View {
                         Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption).monospacedDigit().secondaryText().fixedSize()
                     }
                 }
-                if summary.loadError == nil { ERPMarker(uploadedAt: summary.erpUploadedAt, unsent: summary.erpUnsent) }
+                if summary.loadError == nil {
+                    HStack(spacing: 6) {
+                        SyncMarker(state: .of(dirty: summary.syncDirty, conflict: summary.syncConflict, failure: failure, syncedAt: summary.erpUploadedAt))
+                        if let owner { Text("· của \(owner)").font(.caption).secondaryText().lineLimit(1) }
+                    }
+                }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// Creator's name when the record is somebody else's.
+    private var owner: String? {
+        guard let by = summary.createdBy, by != me else { return nil }
+        return summary.createdByName ?? "người khác"
     }
 
     @ViewBuilder private var thumbnail: some View {
@@ -213,5 +237,19 @@ struct RecordFrame: View {
                         .padding(.trailing, 18).accessibilityHidden(true)
                 }
             }
+    }
+}
+
+/// "Đang đồng bộ n/N phiếu" while a run pushes records.
+struct SyncProgressBar: View {
+    let progress: SyncProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Đang đồng bộ \(min(progress.done + 1, progress.total))/\(progress.total) phiếu").font(.footnote).monospacedDigit().secondaryText()
+            ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
+        }
+        .padding(.horizontal).padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
     }
 }

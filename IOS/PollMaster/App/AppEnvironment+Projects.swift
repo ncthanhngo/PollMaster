@@ -93,7 +93,7 @@ extension AppEnvironment {
 
     func move(_ recordId: String, to target: Project) {
         editors[recordId]?.flush(); closingEditors[recordId]?.flush()
-        guard var r = recordStore.load(recordId) else { return }
+        guard var r = recordStore.load(recordId), readOnlyNote(for: r) == nil else { return }
         let old = project(of: r)
         editors[recordId]?.discard(); closingEditors[recordId]?.discard()      // saved above; nothing pending may write the old project back
         editors[recordId] = nil; closingEditors[recordId] = nil

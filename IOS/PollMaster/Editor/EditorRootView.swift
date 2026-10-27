@@ -13,6 +13,7 @@ struct EditorRootView: View {
 
     var body: some View {
         List {
+            if model.record.syncConflict { Section { ConflictBanner(model: model) } }
             if model.isLocked { Section { LockedBanner(model: model) } }
             if model.record.returned && !model.isLocked {
                 Section { Label("Phiếu được trả lại để sửa. Xem các ghi chú kiểm tra màu cam.", systemImage: "arrow.uturn.backward.circle.fill")
@@ -20,7 +21,10 @@ struct EditorRootView: View {
             }
             Section {
                 progressHero
-                if model.record.erpUploadedAt != nil { ERPMarker(uploadedAt: model.record.erpUploadedAt, unsent: model.record.hasUnsentErpChanges) }
+                SyncMarker(state: .of(model.record, failure: env.recordSyncIssues[model.record.id]))
+                if let by = model.record.createdByName, model.record.createdBy != env.currentUserId {
+                    Label("Người tạo: \(by)", systemImage: "person").font(.caption).secondaryText()
+                }
             }
             Section("Mục lục") {
                 ForEach(Array(model.sectionTitles.enumerated()), id: \.offset) { i, s in
@@ -73,7 +77,8 @@ struct EditorRootView: View {
                 Menu {
                     Button("Xuất", systemImage: "square.and.arrow.up") { exporting = true }
                     Button("Hướng dẫn mẫu", systemImage: "book") { showInstructions = true }
-                    if model.isLocked {
+                    Button("Lịch sử sửa", systemImage: "clock.arrow.circlepath") { env.recordsPath.append(.history(model.record.id)) }
+                    if model.canReview {
                         Button(model.reviewMode ? "Thoát chế độ kiểm tra" : "Chế độ kiểm tra", systemImage: "text.badge.checkmark") {
                             model.reviewMode.toggle()
                         }

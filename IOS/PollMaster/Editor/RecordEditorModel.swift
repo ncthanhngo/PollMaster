@@ -18,8 +18,10 @@ final class RecordEditorModel {
     var reviewNotes: [ReviewFinding] = []
     /// Red error marks stay hidden until the user pressed "Kiểm tra" for the first time (this session).
     var showAllErrors = false
-    /// Completed record opened by the checker: read-only, notes allowed.
-    var reviewMode = false
+    /// Completed record opened by the checker: read-only, notes allowed. Never on for a record the user may not edit.
+    var reviewMode = false { didSet { if reviewMode && readOnly { reviewMode = false } } }
+    /// Why the record is view-only for this user (banner text), nil when they may edit it (ux-spec N, `RecordAccess`).
+    private(set) var readOnlyNote: String?
     var saveError: String?
     var backupError: String?
     private(set) var lastSaved: Date?
@@ -57,12 +59,24 @@ final class RecordEditorModel {
         refresh()
     }
 
-    var isLocked: Bool { record.status == .completed }
-    var canEdit: Bool { !isLocked }
+    /// View-only by permission: nothing is written, whatever the UI lets through.
+    var readOnly: Bool { readOnlyNote != nil }
+    var isLocked: Bool { record.status == .completed || readOnly }
+    /// Completed and editable by this user: may be reopened or checked.
+    var canReview: Bool { record.status == .completed && !readOnly }
+
+    /// Sets (or lifts, nil) the view-only state. What was typed before is saved first.
+    func setReadOnly(_ note: String?) {
+        guard note != readOnlyNote else { return }
+        flush()
+        readOnlyNote = note
+        if note != nil { reviewMode = false }
+    }
     var title: String { RecordNaming.title(template, record) }
 
     /// Remembered without touching `updatedAt` (it is not an edit).
     func setPosition(section: String, field: String) {
+        guard !readOnly else { return }
         let new = LastPosition(section: section, field: field)
         guard record.lastPosition != new else { return }
         record.lastPosition = new
@@ -72,6 +86,7 @@ final class RecordEditorModel {
     // MARK: mutation
 
     func setValue(_ id: String, _ value: FieldValue) {
+        guard !readOnly else { return }
         var v = value; v.normalize()
         record.values[id] = v.isBlank ? nil : v
         touched.insert(id)
@@ -99,6 +114,7 @@ final class RecordEditorModel {
     }
 
     func mutateRow(_ table: String, _ rowId: String, _ body: (inout Row) -> Void) {
+        guard !readOnly else { return }
         guard let def = template.table(table) else { return }
         if !def.isFixed { TableOps.ensureRow(&record, template, table: def, rowId: rowId) }
         var rows = record.tables[table] ?? []
@@ -115,6 +131,7 @@ final class RecordEditorModel {
 
     /// Repairs a missing twin row of a paired table before it is shown (data from older versions).
     func ensureRow(_ table: String, _ rowId: String) {
+        guard !readOnly else { return }
         guard let def = template.table(table), !def.isFixed else { return }
         let ids = [def.id] + (template.pairedTable(of: def).map { [$0.id] } ?? [])
         guard ids.contains(where: { record.tables[$0]?.contains { $0.id == rowId } != true }) else { return }
@@ -124,18 +141,20 @@ final class RecordEditorModel {
 
     /// New row (and its twin in a paired table), `carryOver` columns prefilled from the previous row.
     func addRow(_ table: String) -> String {
-        guard let def = template.table(table) else { return "" }
+        guard !readOnly, let def = template.table(table) else { return "" }
         let id = TableOps.addRow(&record, template, table: def)
         changed()
         return id
     }
 
     func duplicateRow(_ table: String, _ rowId: String) {
+        guard !readOnly else { return }
         guard let def = template.table(table), TableOps.duplicateRow(&record, template, table: def, rowId: rowId) != nil else { return }
         changed()
     }
 
     func deleteRow(_ table: String, _ rowId: String) {
+        guard !readOnly else { return }
         guard let def = template.table(table) else { return }
         let removed = TableOps.deleteRow(&record, template, table: def, rowId: rowId)
         changed()
@@ -143,11 +162,13 @@ final class RecordEditorModel {
     }
 
     func setSignature(_ id: String, _ entry: SignatureEntry?) {
+        guard !readOnly else { return }
         record.signatures[id] = entry
         changed()
     }
 
     func complete() {
+        guard !readOnly else { return }
         refresh()
         guard issues.isEmpty else { return }
         RecordFactory.complete(&record, template: template)
@@ -157,6 +178,7 @@ final class RecordEditorModel {
     }
 
     func reopen() {
+        guard !readOnly else { return }
         RecordFactory.reopen(&record)
         reviewMode = false
         changed(); flush()
@@ -164,7 +186,7 @@ final class RecordEditorModel {
 
     /// Checker hands the record back to the surveyor.
     func returnForFix() {
-        guard RecordFactory.returnForFix(&record) else { return }
+        guard !readOnly, RecordFactory.returnForFix(&record) else { return }
         reviewMode = false
         changed(); flush()
     }
@@ -172,6 +194,7 @@ final class RecordEditorModel {
     /// Bulk KĐĐ for the empty flaggable fields of a section; returns the count.
     @discardableResult
     func markUnmeasurable(section id: String, reason: String) -> Int {
+        guard !readOnly else { return 0 }
         let n = SectionOps.markUnmeasurable(template, &record, sectionId: id, reason: reason)
         if n > 0 { changed() }
         return n
@@ -179,12 +202,14 @@ final class RecordEditorModel {
 
     @discardableResult
     func copySection(_ id: String, from source: Record) -> Int {
+        guard !readOnly else { return 0 }
         let n = SectionOps.copySection(template, from: source, into: &record, sectionId: id)
         if n > 0 { changed() }
         return n
     }
 
     func applyLookup(_ lookup: Lookup, site: Site, overwrite: Bool) {
+        guard !readOnly else { return }
         SiteLookup.apply(SiteLookup.fillValues(lookup, site: site), to: &record, overwrite: overwrite)
         changed()
     }
@@ -213,10 +238,11 @@ final class RecordEditorModel {
     /// Stamps a finished backup of `snapshot`: `backupAt` is the snapshot's time when the record changed meanwhile, so it still counts as unsaved.
     func markBackedUp(snapshot: Record) {
         guard !discarded else { return }
-        if closed {
+        if closed || readOnly {
             // the stored record may have been deleted or moved since: reconcile with it instead of writing our copy
             guard let stamped = BackupReconcile.stamped(snapshot: snapshot, current: store.load(record.id), editorOpen: false),
                   (try? store.save(stamped)) != nil else { return }
+            if readOnly { record = stamped }
             onSaved?(stamped)
             return
         }
@@ -229,7 +255,7 @@ final class RecordEditorModel {
     /// Returns the record as saved, nil when this model was discarded or the record is gone.
     func applySync(_ change: (inout Record) -> Bool) -> Record? {
         guard !discarded else { return nil }
-        if closed {
+        if closed || readOnly {       // a view-only copy is never written from memory: bookkeeping goes onto the stored file
             guard var r = store.load(record.id) else { return nil }
             if change(&r) { guard (try? store.save(r)) != nil else { return r }; record = r; onSaved?(r) }
             return r
@@ -238,9 +264,21 @@ final class RecordEditorModel {
         return record
     }
 
+    /// The stored file replaced this copy (the server version was taken): show it, forget unsaved edits.
+    func reloadFromStore() {
+        guard !discarded, let r = store.load(record.id) else { return }
+        saveTask?.cancel()
+        dirty = false
+        record = r
+        computed = ComputedEngine(template: template, record: r).computeAll()
+        lastSaved = r.updatedAt
+        refresh()
+    }
+
     func flush() {
         saveTask?.cancel()
         guard !discarded else { return }
+        guard !readOnly else { dirty = false; return }
         if derivedStale { refresh() }
         guard dirty else { return }
         if closed {      // deleted or moved to another project meanwhile: that wins
