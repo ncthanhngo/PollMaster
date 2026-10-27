@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.ui.common.FirstFitText
 import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.ui.projects.ProjectsScreen
 import com.ncthanhngo.pollmaster.ui.records.RecordsScreen
@@ -38,7 +39,8 @@ fun MainScreen(
             NavigationBar {
                 NavigationBarItem(
                     selected = tab == 0, onClick = { onTab(0) },
-                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text(stringResource(R.string.tab_records)) },
+                    icon = { Icon(Icons.Filled.Description, null) }, // one line: narrow phones (e.g. 360 dp) get the short label instead of "sát" wrapping
+                    label = { FirstFitText(listOf(stringResource(R.string.tab_records), stringResource(R.string.tab_records_short))) },
                 )
                 NavigationBarItem(
                     selected = tab == 1, onClick = { onTab(1) },

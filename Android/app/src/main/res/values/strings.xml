@@ -4,6 +4,7 @@
 
     <!-- Tabs -->
     <string name="tab_records">Phiếu khảo sát</string>
+    <string name="tab_records_short">Phiếu</string>
     <string name="tab_templates">Mẫu</string>
     <string name="tab_settings">Cài đặt</string>
 

@@ -51,10 +51,15 @@ struct RecordsListView: View {
                                 .contextMenu { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                         } else {
                             let mayEdit = env.canEdit(s), mayCopy = env.canPost(to: s.projectId)
-                            NavigationLink(value: Route.editor(s.id)) {
-                                RecordRow(summary: s, project: env.project(id: s.projectId), me: env.currentUserId, failure: env.recordSyncIssues[s.id])
-                            }
-                            .listRowBackground(RecordFrame(summary: s))
+                            // the card draws its own background and outline: a list row background is clipped to the
+                            // cell's rounded corners, which cut the outline at the corners
+                            RecordRow(summary: s, project: env.project(id: s.projectId), me: env.currentUserId, failure: env.recordSyncIssues[s.id])
+                                .padding(.leading, 16).padding(.trailing, 12).padding(.top, 14).padding(.bottom, 10)
+                                .background(RecordFrame(summary: s))
+                                .overlay { NavigationLink(value: Route.editor(s.id)) { EmptyView() }.opacity(0) }
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing) {
                                 if mayEdit { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                                 Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }.tint(.blue)
@@ -225,7 +230,8 @@ struct RecordFrame: View {
     let summary: RecordSummary
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: PMRadius.m)
+        // at least as round as the list cell (large on iOS 26), so the cell's own clipping never cuts the outline
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         shape.fill(Color(.secondarySystemGroupedBackground))
             .overlay { shape.strokeBorder(Color(hex: summary.badgeColor) ?? .clear, lineWidth: 2) }
             .overlay(alignment: .topTrailing) {
