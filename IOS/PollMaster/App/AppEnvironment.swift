@@ -63,6 +63,8 @@ final class AppEnvironment {
     var syncError: String?
 
     var templates: [Template] = []
+    /// Templates being edited on this device (`template-drafts/`), newest edit first.
+    var templateDrafts: [TemplateDraft] = []
     var projects: [Project] = []
     /// Photo avatars by project id, read once per reload (rows would otherwise hit the disk on every render).
     var projectAvatars: [String: UIImage] = [:]

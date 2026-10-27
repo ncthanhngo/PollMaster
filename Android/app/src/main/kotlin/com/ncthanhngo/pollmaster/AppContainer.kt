@@ -21,6 +21,9 @@ import com.ncthanhngo.pollmaster.data.ProjectsRepository
 import com.ncthanhngo.pollmaster.data.SitesRepository
 import com.ncthanhngo.pollmaster.data.RecordsRepository
 import com.ncthanhngo.pollmaster.data.Settings
+import com.ncthanhngo.pollmaster.data.TemplateDraftsRepository
+import com.ncthanhngo.pollmaster.data.TemplatePublisher
+import com.ncthanhngo.pollmaster.data.ErpTemplateRemote
 import com.ncthanhngo.pollmaster.data.TemplatesRepository
 import com.ncthanhngo.pollmaster.data.UpdateChecker
 import com.ncthanhngo.pollmaster.platform.MediaProcessor
@@ -60,8 +63,11 @@ class AppContainer(context: Context) {
     private val erpClient = ErpClient(context)
     val erp: ErpSession = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
     val sync = SyncService(context, context.filesDir, erpClient, erp, projects, records, templates, backup, scope) { isOnline(context) }
+    val templateDrafts = TemplateDraftsRepository(context.filesDir, templates, projects) { erp.account.value != null }
+    val templatePublisher = TemplatePublisher(context.filesDir, ErpTemplateRemote(erpClient), erp, templates, projects, templateDrafts) { isOnline(context) }
 
     init {
+        scope.launch { templateDrafts.refresh() }
         erp.onProjectsSynced = { sync.request() }
         erp.onLogout = sync::cancel
         records.onCreated = { sync.request(it.projectId) }

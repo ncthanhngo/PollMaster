@@ -1,5 +1,5 @@
 {
- "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing. Phase 06 sections: labels/values (ChangeLabels, template file under shared/templates, tableRows = row ids of the record), canEdit, hidden (RecordAccess), syncState (RecordSyncState; text is rendered in UTC+7). Phase 07: templates (TemplateSyncPlanner: refs are \"id@version\"; post = refs to POST, templates = project list after) and created (RecordFactory.make/duplicate stamp the signed-in account as creator; me null = no account).",
+ "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing. Phase 06 sections: labels/values (ChangeLabels, template file under shared/templates, tableRows = row ids of the record), canEdit, hidden (RecordAccess), syncState (RecordSyncState; text is rendered in UTC+7). Phase 07: templates (TemplateSyncPlanner: refs are \"id@version\"; post = refs to POST, templates = project list after) and created (RecordFactory.make/duplicate stamp the signed-in account as creator; me null = no account). publish (TemplateSync.publish, template-schema 11.2): the test builds base template T-1 at baseVersion (installed for every version in library), the draft by `draft` (newVersion = label changed, meta = title changed, newTemplate = no base, id NEW-1, invalid = empty label), a server holding T-1@assigned in P1, and answers POSTs from `responses` (200, 409 = TEMPLATE_VERSION_EXISTS, 400 = refused, net = no connection); `calls` lists every POST/PATCH made (add:project:id@version, patch:project:id@version or id@meta); `expect.publishVersion` is the number saved in the draft that was kept.",
  "plan": [
   {
    "name": "server has it, device does not -> create",
@@ -1918,6 +1918,485 @@
    ],
    "expectPost": [],
    "expectTemplates": []
+  }
+ ],
+ "publish": [
+  {
+   "name": "new version: next number after the newest known",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "version": "1.1",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "two 409s then 200 gives 1.3",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "409",
+    "409",
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1",
+     "add:P1:T-1@1.2",
+     "add:P1:T-1@1.3"
+    ],
+    "version": "1.3",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "five 409s give up and keep the last number in the draft",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "409",
+    "409",
+    "409",
+    "409",
+    "409"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "throws",
+    "calls": [
+     "add:P1:T-1@1.1",
+     "add:P1:T-1@1.2",
+     "add:P1:T-1@1.3",
+     "add:P1:T-1@1.4",
+     "add:P1:T-1@1.5"
+    ],
+    "draftKept": true,
+    "publishVersion": "1.5"
+   }
+  },
+  {
+   "name": "version above the library's newest comes from the server's assigned one",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.4",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": true,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.5"
+    ],
+    "version": "1.5",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "newest known wins over order of the list",
+   "draft": "newVersion",
+   "baseVersion": "1.10",
+   "assigned": "1.10",
+   "library": [
+    "1.9",
+    "1.10",
+    "1.2"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.11"
+    ],
+    "version": "1.11",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "another manager released after the draft began: asks first",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.2",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "staleBase",
+    "calls": [],
+    "serverVersion": "1.2",
+    "draftKept": true
+   }
+  },
+  {
+   "name": "same, user chose to publish anyway",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.2",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": true,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.3"
+    ],
+    "version": "1.3",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "server never had the template in this project: no stale check",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": null,
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "version": "1.1",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "send again after a lost reply repeats the same number",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": "1.1",
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "version": "1.1",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "a number handed out earlier skips the stale check",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.1",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": "1.1",
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "version": "1.1",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "only title changed: PATCH, no new version",
+   "draft": "meta",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "patch:P1:T-1@meta"
+    ],
+    "version": "1.0",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "meta change ignores other projects",
+   "draft": "meta",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [
+    "P2"
+   ],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "patch:P1:T-1@meta"
+    ],
+    "version": "1.0",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "other projects follow the new version",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [
+    "P2",
+    "P3"
+   ],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1",
+     "patch:P2:T-1@1.1",
+     "patch:P3:T-1@1.1"
+    ],
+    "version": "1.1",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "a failing other project is listed, draft still gone",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [
+    "P2",
+    "P3"
+   ],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [
+    "P3"
+   ],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:T-1@1.1",
+     "patch:P2:T-1@1.1",
+     "patch:P3:T-1@1.1"
+    ],
+    "version": "1.1",
+    "failed": [
+     "P3"
+    ],
+    "draftKept": false
+   }
+  },
+  {
+   "name": "new template goes out as 1.0",
+   "draft": "newTemplate",
+   "baseVersion": null,
+   "assigned": null,
+   "library": [],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "published",
+    "calls": [
+     "add:P1:NEW-1@1.0"
+    ],
+    "version": "1.0",
+    "draftKept": false
+   }
+  },
+  {
+   "name": "new template whose code exists is not renumbered",
+   "draft": "newTemplate",
+   "baseVersion": null,
+   "assigned": null,
+   "library": [],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "409"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "idTaken",
+    "calls": [
+     "add:P1:NEW-1@1.0"
+    ],
+    "draftKept": true
+   }
+  },
+  {
+   "name": "errors in the draft stop before the network",
+   "draft": "invalid",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "200"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "invalid",
+    "calls": [],
+    "draftKept": true
+   }
+  },
+  {
+   "name": "server refusal is thrown and the draft stays",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "400"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "throws",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "draftKept": true,
+    "publishVersion": "1.1"
+   }
+  },
+  {
+   "name": "network failure is thrown and the number is kept for the next try",
+   "draft": "newVersion",
+   "baseVersion": "1.0",
+   "assigned": "1.0",
+   "library": [
+    "1.0"
+   ],
+   "publishVersion": null,
+   "force": false,
+   "also": [],
+   "responses": [
+    "net"
+   ],
+   "failPatch": [],
+   "expect": {
+    "outcome": "throws",
+    "calls": [
+     "add:P1:T-1@1.1"
+    ],
+    "draftKept": true,
+    "publishVersion": "1.1"
+   }
   }
  ]
 }

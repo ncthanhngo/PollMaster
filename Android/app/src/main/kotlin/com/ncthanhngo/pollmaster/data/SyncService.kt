@@ -12,6 +12,7 @@ import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateException
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateText
+import com.ncthanhngo.pollmaster.core.templateeditor.TemplateDraftStore
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.sync.ConflictInfo
 import com.ncthanhngo.pollmaster.core.sync.PendingDelete
@@ -161,7 +162,7 @@ class SyncService(
 
     // ---- project templates (schema 10.6, phase 07): need the network and `canManage`; the device follows only what the server confirmed ----
 
-    private fun templateSync() = TemplateSync(ProjectStore(root), TemplateStore(root), templateRemote)
+    private fun templateSync() = TemplateSync(ProjectStore(root), TemplateStore(root), templateRemote, TemplateDraftStore(root))
 
     private fun newestRefs() = newestVersions(templates.templates.value).map { TemplateRef(it.id, it.version) }
 

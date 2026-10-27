@@ -7,6 +7,7 @@ import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import com.ncthanhngo.pollmaster.core.templateeditor.TemplateDraftStore
 import com.ncthanhngo.pollmaster.core.sync.ProjectTemplatesInfo
 import com.ncthanhngo.pollmaster.core.sync.ServerTemplate
 import com.ncthanhngo.pollmaster.core.sync.ServerTemplateRef
@@ -125,7 +126,7 @@ class TemplateSyncTest {
     private class Env(val root: File, val remote: FakeTemplates, val data: String) {
         val projects = ProjectStore(root)
         val store = TemplateStore(root)
-        fun sync() = TemplateSync(projects, store, remote)
+        fun sync() = TemplateSync(projects, store, remote, TemplateDraftStore(root))
     }
 
     private fun setup(phoenix: Boolean = false): Env {
@@ -184,7 +185,7 @@ class TemplateSyncTest {
             override suspend fun patch(projectId: String, templateId: String, version: String?, title: String?, shortName: String?, color: String?) {}
             override suspend fun remove(projectId: String, templateId: String) = true
         }
-        val out = TemplateSync(e.projects, e.store, gone).sync(pid, emptyList(), emptyList())
+        val out = TemplateSync(e.projects, e.store, gone, TemplateDraftStore(e.root)).sync(pid, emptyList(), emptyList())
         assertTrue(out.unavailable); assertEquals(1, e.projects.get(pid)!!.templates.size)
     }
 

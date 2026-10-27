@@ -33,6 +33,7 @@ extension AppEnvironment {
         projects = scan.projects
         projectAvatars = scan.avatars
         siteCache = scan.sites
+        reloadDrafts()
         if let id = currentProjectId, !projects.contains(where: { $0.id == id }) { currentProjectId = nil }
         summaries = scan.summaries
         rebuildDerived()

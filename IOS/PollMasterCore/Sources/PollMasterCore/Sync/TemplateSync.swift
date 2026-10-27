@@ -102,9 +102,10 @@ public struct TemplateSync: Sendable {
     let projects: ProjectStore
     let templates: TemplateStore
     let remote: any TemplateRemote
+    let drafts: TemplateDraftStore
 
     public init(root: URL, remote: any TemplateRemote) {
-        projects = ProjectStore(root: root); templates = TemplateStore(root: root); self.remote = remote
+        projects = ProjectStore(root: root); templates = TemplateStore(root: root); drafts = TemplateDraftStore(root: root); self.remote = remote
     }
 
     public struct Outcome: Equatable, Sendable {
@@ -187,7 +188,7 @@ public struct TemplateSync: Sendable {
     }
 
     /// Installs the server's templates (server wins on id@version), then the project's list and removed ids. Returns whether anything changed.
-    private func apply(_ info: ProjectTemplatesInfo, to projectId: String, keepList: Bool) throws -> Bool {
+    func apply(_ info: ProjectTemplatesInfo, to projectId: String, keepList: Bool) throws -> Bool {
         var changed = false
         for t in info.templates {
             guard let data = try? JSONEncoder().encode(t.content), let theirs = try? TemplateLoader.decode(data),

@@ -7,6 +7,7 @@ import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.project.startsWithLibrary
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import com.ncthanhngo.pollmaster.core.templateeditor.TemplateDraftStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -82,9 +83,10 @@ object TemplateSyncPlanner {
 
 /** Reads and writes a project's templates through the server; the device copy follows only what the server confirmed (no offline queue). */
 class TemplateSync(
-    private val projects: ProjectStore,
-    private val templates: TemplateStore,
-    private val remote: TemplateRemote,
+    internal val projects: ProjectStore,
+    internal val templates: TemplateStore,
+    internal val remote: TemplateRemote,
+    internal val drafts: TemplateDraftStore,
 ) {
     class Outcome(
         /** The device's templates or project list changed (reload the screens). */
@@ -170,7 +172,7 @@ class TemplateSync(
         content(ref) ?: throw TemplateSyncFailure("Mẫu ${ref.id} v${ref.version} không có trong thư viện trên máy.")
 
     /** Installs the server's templates (server wins on id@version), then the project's list and removed ids. Returns whether anything changed. */
-    private fun apply(info: ProjectTemplatesInfo, projectId: String, keepList: Boolean): Boolean {
+    internal fun apply(info: ProjectTemplatesInfo, projectId: String, keepList: Boolean): Boolean {
         var changed = false
         for (t in info.templates) {
             val obj = (t.content as? JsonObject) ?: continue
