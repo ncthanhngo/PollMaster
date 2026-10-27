@@ -417,12 +417,15 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
 - `GET /projects?status=active&page_size=100&page=n` (lặp đến `total`): chỉ lấy `project_type` `company` → mục **Dự án công ty**, `internal` → **Nội bộ**
   (bỏ `personal`). Dự án mới về máy: chưa có mẫu, riêng dự án có "Phoenix" trong mã/tên được gán sẵn mọi mẫu của thư viện (bản mới nhất).
   Mẫu đóng gói lần đầu có trên máy (id chưa từng cài) cũng được thêm vào dự án Phoenix đang có; mẫu đã gỡ khỏi dự án không quay lại.
+  *(Từ khi có đồng bộ: quy tắc Phoenix và danh sách mẫu của dự án dựa trên dữ liệu máy chủ — xem §10.6; đoạn này chỉ còn áp khi máy chủ chưa có API mẫu.)*
   Đồng bộ khi đăng nhập, khi mở app, khi kéo để tải lại; mất mạng → dùng danh sách đã lưu.
 - Ảnh đại diện: `customer_logo_url` (tương đối → ghép `https://api.evselab.com`), cắt vuông 256 px nền trắng → `avatar.jpg`.
 - Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình. Đăng xuất hủy lần đồng bộ đang chạy (kết quả cũ bị bỏ).
 - Id dự án ERP dùng làm tên thư mục: chỉ nhận `^[A-Za-z0-9-]{1,64}$`, dòng khác bị bỏ qua.
 
 ### 9.6 Gửi phiếu lên ERP
+> **Đã được thay bằng đồng bộ tự động (§10)**; mục này giữ nguyên làm hợp đồng cho build ≤42 (server vẫn nhận `POST …/polls` y như dưới đây). App mới không còn nút "Gửi lên ERP" bằng tay.
+
 Nút **Gửi lên ERP** ở màn xuất / màn phiếu (bật khi đã đăng nhập ERP và có mạng). Phiếu nháp gửi được sau khi xác nhận "Phiếu chưa hoàn thành — vẫn gửi?".
 App tạo PDF + zip "JSON + media" của phiếu bằng đúng code xuất §5 rồi tải lên; không có hàng đợi/thử lại nền.
 
@@ -452,3 +455,110 @@ App tạo PDF + zip "JSON + media" của phiếu bằng đúng code xuất §5 r
 Record thêm khóa optional `"erpUploadedAt": ISO` — thời điểm **bắt đầu** lần gửi thành công gần nhất (ghi như `backupAt`: không đổi `updatedAt`;
 không ghi nếu phiếu bị xóa hoặc chuyển dự án trong lúc gửi; xóa khi chuyển dự án; bản nhân bản không mang theo).
 Hiển thị (dòng phiếu + màn phiếu + màn xuất): `Đã gửi ERP dd-MM-yyyy HH:mm`; nếu `updatedAt > erpUploadedAt` thì `Có thay đổi chưa gửi`; chưa gửi lần nào thì không hiện gì.
+
+## 10. Đồng bộ phiếu & mẫu qua ERP (schemaVersion vẫn 1 — mọi key mới optional)
+
+Mục tiêu: phiếu và mẫu của một dự án ERP dùng chung cho mọi tài khoản đọc được dự án; chỉ người tạo phiếu hoặc quản lý dự án được sửa;
+mọi lần sửa có log đến từng trường. Hợp đồng API đầy đủ (mã lỗi, giới hạn, ví dụ): backend `docs/api-contracts/project-polls.md`
+(phiếu) và `docs/api-contracts/project-poll-templates.md` (mẫu). Mục này là phần **app** phải làm theo; hai nền giống hệt nhau
+(vector chung `shared/sync-test-vectors.json`).
+
+### 10.1 Khoá mới (bookkeeping — KHÔNG đổi `updatedAt`, không vào `values`)
+Record, tất cả optional, đọc lenient, ghi khi có:
+
+| Khoá | Ý nghĩa |
+|---|---|
+| `createdBy` | `user.id` ERP của người tạo (UUID). Vắng = chưa lên server (phiếu mới tạo trên máy này; tài khoản đang đăng nhập là người tạo). |
+| `createdByName` | tên hiển thị người tạo (do server trả; để hiện "của …") |
+| `serverRev` | `rev` của bản server mà bản máy dựa trên. Vắng = chưa từng lên server. |
+| `syncConflict` | `true` khi máy và server cùng đổi (hoặc phiếu bị xoá trên server khi máy còn sửa). Vắng = false. |
+
+`erpUploadedAt` (§9.6) dùng lại với nghĩa **thời điểm bắt đầu lần đẩy thành công gần nhất** (phiếu kéo từ server về: `= updatedAt`).
+**Bẩn** (có thay đổi chưa đồng bộ) ⇔ chưa có `erpUploadedAt` ∨ `updatedAt > erpUploadedAt`. Sửa trong lúc đang đẩy vẫn còn bẩn
+(stamp bằng thời điểm bắt đầu đẩy, như §9.6).
+
+Khi tính "máy có thay đổi hay không" (so với bản server, tránh đẩy/xung đột giả), so **sau khi bỏ bookkeeping**: `updatedAt, lastPosition,
+backupAt, erpUploadedAt, serverRev, syncConflict, createdBy, createdByName, seq` (cùng tập server bỏ qua khi diff, §10.3).
+
+Project (`project.json`, §9.1) thêm: `canPost` (bool), `canManage` (bool) — quyền của tài khoản hiện tại, lấy từ `poll-sync`;
+`recordsSyncedAt` (ISO) — con trỏ `since` cho lần kéo sau, chỉ ghi khi cả lượt sync của dự án xong; `removedTemplateIds` ([string]) — §10.6.
+`ERPAccount` thêm `userId` (từ `user.id` của login hoặc `GET /auth/me`).
+
+### 10.2 Endpoint phiếu (Bearer, `X-Client-App: evs-mobile`, refresh 401 như §9.5)
+Tóm tắt (chi tiết, mã lỗi, thân JSON: `project-polls.md`):
+
+| Việc | Gọi | Kết quả chính |
+|---|---|---|
+| Kéo | `GET /projects/:id/poll-sync?since=<recordsSyncedAt>` | `{server_time, can_post, can_manage, records:[SyncRecord], ids:[{record_id, rev}]}` |
+| Đẩy phiếu | `PUT /projects/:id/poll-records/:recordId` `{base_rev, title, record_code, template_title, media:{"media/x.jpg": sha256}, data}` | 200 `SyncRecord` · 409 `REV_CONFLICT` `{current}` · 409 `MEDIA_MISSING` `{missing:[name]}` · 404 · 400 |
+| Đẩy media | `PUT /projects/:id/poll-records/:recordId/media/<tên tệp>` thân nhị phân, `X-Content-SHA256` | 204 · mỗi tệp ≤ **95 MB** (413) |
+| Tải media | `GET …/media/<tên tệp>` | byte tệp |
+| PDF (tuỳ chọn, cho web) | `PUT …/pdf` `application/pdf` ≤ 20 MB | 204, lỗi bỏ qua |
+| Xoá | `DELETE …/poll-records/:recordId` | 204; 404 = đã không còn ⇒ coi như xong |
+| Lịch sử | `GET …/poll-records/:recordId/changes` | `[{rev, changed_by_name, changed_at, source, created, changes:[{path,label,old,new}]}]`, mới nhất trước |
+
+- `SyncRecord = {id, record_id, rev, seq, status, title, record_code, template_id, template_version, created_by, created_by_name, updated_by_name, created_at, updated_at, can_edit, data, media:[{name, sha256, size}]}`; `data` là record.json đầy đủ.
+- Tên media trong URL là phần sau `media/` (URL-encode); `name` đầy đủ trong `media` map và trong `record.json` là `media/<tên>`.
+- `since` bỏ trống = kéo tất cả. `server_time` trả về đã lùi 10 s; app lưu nó làm `recordsSyncedAt` (kéo trùng vô hại, khớp theo `rev`).
+- **Đẩy một phiếu**: PUT record → `MEDIA_MISSING` ⇒ PUT từng tệp thiếu ⇒ PUT record lại (1 lần) → 200: ghi `serverRev = rev`, `seq`, `createdBy`, `createdByName`
+  từ response, stamp `erpUploadedAt`. 409 `REV_CONFLICT` ⇒ `syncConflict = true`, không ghi đè.
+- Phiếu build 42 đã gửi (`erpUploadedAt` có, `serverRev` vắng): đẩy `base_rev = 0`. Server so nội dung: **giống** ⇒ 200 (nhận `serverRev`);
+  **khác** ⇒ 409 `REV_CONFLICT` kèm `current` — app xử lý theo bẩn/sạch (kế hoạch app).
+- Mọi gọi không phải GET chỉ khi `canEdit`/`canPost` tương ứng; phiếu của người khác mà máy "bẩn" (đổi tài khoản trên máy dùng chung) thì không đẩy.
+
+### 10.3 Đường dẫn diff (`path`) — log sửa từng trường
+Server tính (một nguồn sự thật, áp cả cho phiếu gửi bằng build 42 qua zip) bằng cách so `record.json` mới với bản trước; app và web chỉ
+**hiển thị**. Chỉ xét `status`, `returned`, `completedAt`, `values`, `tables`, `signatures`.
+
+| `path` | Ý nghĩa |
+|---|---|
+| `status` · `returned` · `completedAt` | trường gốc (`returned` vắng = false) |
+| `values.<fid>.<k>` | `k` ∈ `v flag reason note other review media` — mỗi khoá so nguyên khối |
+| `values.<fid>.parts.<pid>` | từng ô phụ |
+| `tables.<tid>[<rowId>]` | thêm dòng (`old: null`) / xoá dòng (`new: null`); `old`/`new` là cả dòng |
+| `tables.<tid>[<rowId>].<colId>.<k>` · `….parts.<pid>` | ô của dòng đã có |
+| `signatures.<sid>` | cả đối tượng chữ ký (`file`, `name`, `signedAt`) |
+
+Quy ước: "trống" (§2) coi như nhau và ghi là `null`; số so theo giá trị; thứ tự dòng bảng, `stopwatchStart`, và mọi khoá bookkeeping
+(`updatedAt, createdAt, lastPosition, backupAt, erpUploadedAt, serverRev, syncConflict, createdBy*, schemaVersion, seq, projectId, templateId, templateVersion`)
+**không** tạo dòng log. Lần tạo: một mục `created: true`, `changes: []`. `source`: `app` | `legacy` (build ≤42). Một mục log = một lần lưu có
+thay đổi thật (diff rỗng ⇒ không tăng `rev`, không log).
+
+**Dịch `path` → nhãn** (app/web, cùng thuật toán, vector chung mục `labels`): ưu tiên `label` server (hiện server chưa có mẫu ⇒ rỗng) →
+tra mẫu cục bộ theo `templateId@templateVersion`: `values.<fid>` ⇒ nhãn field (+ " › " nhãn khoá phụ: `note`→"Ghi chú", `review`→"Kiểm tra", `flag`→"Cờ",
+`reason`→"Lý do", `other`→"Khác", `media`→"Tệp", `parts.<pid>`→nhãn ô phụ); `tables.<tid>[<rowId>].<colId>` ⇒ "{nhãn bảng} ({nhãn dòng hoặc số thứ tự dòng}) › {nhãn cột}";
+`signatures.<sid>` ⇒ nhãn chữ ký; thiếu mẫu/id lạ ⇒ chính `path`. Giá trị hiển thị bằng hàm chung §6.5; trống ⇒ "(trống)".
+
+### 10.4 Quyền
+`canEdit(record) = canPost(project) ∧ (record.createdBy == me ∨ record.createdBy vắng ∨ canManage(project))`.
+Tạo phiếu: `canPost`. Xoá / chuyển dự án / trả lại để sửa / mở lại / sửa giá trị: `canEdit`. Nhân bản: `canPost` (bản mới thuộc mình,
+bỏ `createdBy*`, `serverRev`, `syncConflict`). Server là nguồn quyết định cuối: sai quyền ⇒ 404.
+- **Đọc** = đọc được dự án; **tạo** = `canPost`; **sửa/xoá/trả** = `canEdit` (ở trên). Sai quyền ⇒ 404 ở mọi endpoint (kể cả media và log).
+
+### 10.5 Xung đột, seq, xoá, media
+- **Xung đột** = khoá lạc quan `rev`/`base_rev`: không gộp theo trường. Người dùng chọn *Giữ bản của tôi* (đẩy lại với `base_rev = rev` server; có log) hoặc
+  *Lấy bản máy chủ* (bản máy sao lưu zip §A trước khi ghi đè).
+- **`seq`** do server chốt khi tạo hàng: giữ số app đề xuất nếu còn trống trong (dự án, mẫu), không thì `max+1`; sau đó bất biến.
+  App ghi lại `seq` server trả (đổi tiêu đề theo số mới, không coi là thay đổi cần đẩy). Hai máy cùng tạo "01" offline ⇒ sau sync một phiếu thành "02".
+- **Xoá** phiếu ⇒ server xoá luôn log và media (cascade). Phiếu có `serverRev` mà vắng trong `ids`: sạch ⇒ xoá cục bộ; bẩn ⇒ `syncConflict` ("đã bị xoá trên máy chủ"), người dùng chọn Khôi phục (đẩy như tạo mới, cần `canPost`) hoặc Xoá trên máy.
+  Xoá cục bộ phiếu đã có `serverRev` ⇒ ghi vào `<AppData>/sync/pending-deletes.json` `[{projectId, recordId}]` rồi DELETE khi có mạng.
+- **Media**: ảnh + ghi âm của phiếu người khác tải ngay khi kéo; video chỉ tải khi mở phiếu. Mỗi tệp ≤ 95 MB; quá ⇒ báo lỗi đúng tệp trên phiếu (phiếu vẫn ở máy).
+- Không đồng bộ `sites.json` (danh sách điểm) trong phạm vi này.
+
+### 10.6 Mẫu theo dự án (thư viện theo tổ chức + gán theo dự án)
+Mẫu nằm trong **thư viện theo tổ chức** (server khoá org + `templateId` + `version`, org lấy từ dự án — đối tác không thấy mẫu của nhau) và được
+**gán** cho từng dự án (`position`; gỡ = đặt `removed_at` để nhớ mẫu đã gỡ). Chi tiết: `project-poll-templates.md`.
+
+| Việc | Gọi | Quyền |
+|---|---|---|
+| Lấy | `GET /projects/:id/poll-templates` → `{can_manage, assigned:[{template_id, version, position}], removed_ids:[…], templates:[{template_id, version, content}]}` (`templates` = mẫu được gán ∪ id@version mà phiếu của dự án đang dùng) | đọc |
+| Thêm vào dự án | `POST /projects/:id/poll-templates {content}` | quản lý |
+| Đổi bản / tên / viết tắt / màu | `PATCH /projects/:id/poll-templates/:templateId {version?, title?, short_name?, color?}` | quản lý |
+| Gỡ khỏi dự án | `DELETE /projects/:id/poll-templates/:templateId` | quản lý |
+
+- Mỗi lần sync dự án (trước phần phiếu): cài `templates[].content` vào thư viện máy (id@version trùng khác nội dung ⇒ **server thắng**), `project.templates = assigned` theo `position`, lưu `removedTemplateIds = removed_ids`.
+- Gán/gỡ/đổi tên-viết tắt-màu chỉ **quản lý dự án**, cần mạng, ghi cục bộ chỉ sau khi server 200 (không hàng đợi offline). Đổi tên/màu áp **toàn thư viện của tổ chức** (mọi dự án dùng id@version đó).
+- **Khởi tạo lần đầu** (server chưa có dòng nào cho dự án: `assigned` và `removed_ids` rỗng): người quản lý POST các mẫu đang gán trên máy; không quản lý ⇒ giữ danh sách cục bộ đến khi server có.
+- **Quy tắc Phoenix** (dựa dữ liệu server, không hard-code ở Go): người có `canManage` sync dự án có "Phoenix" trong mã/tên ⇒ mọi mẫu đóng gói/thư viện chưa nằm trong `assigned ∪ removed_ids` được POST vào dự án. Mẫu đã gỡ (`removed_ids`) không quay lại.
+- Máy chủ chưa có API mẫu (404) ⇒ giữ hành vi cục bộ §9.1/§9.5.
+

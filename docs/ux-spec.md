@@ -218,3 +218,30 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   `ios-v<ver>-<build>`, build = số commit). Build lớn hơn bản đang chạy → hộp thoại "Có bản mới" **một lần cho mỗi build**
   (Cập nhật / Để sau), Cài đặt › Thông tin có dòng "Cập nhật bản mới …" tới khi cài. Android: mở link APK (trình duyệt tải về
   rồi hỏi cài). iOS: mở PollMaster trong TestFlight; release `ios-…` chỉ được tạo sau khi Apple xử lý xong build.
+
+## N. Đồng bộ & quyền (schema §10)
+Phiếu và mẫu của dự án ERP tự đồng bộ, không còn nút "Gửi lên ERP" bằng tay. Xuất tệp cục bộ (PDF/xlsx/zip) giữ nguyên.
+- **Khi nào đồng bộ** (mỗi dự án đọc được, một lượt tại một thời điểm, đăng xuất huỷ lượt đang chạy): mở app / quay lại foreground, kéo để tải lại
+  (danh sách phiếu, tab Dự án), rời màn phiếu, sau tạo/xoá phiếu, khi có mạng trở lại. Không chạy khi app bị tắt. Pull trước, push sau; không áp
+  kết quả kéo về lên phiếu **đang mở** trong màn soạn (áp sau khi rời màn).
+- **Nhãn đồng bộ trên thẻ và đầu màn phiếu** (thay `Đã gửi ERP …`): `Đã đồng bộ dd-MM HH:mm` · `Chờ đồng bộ` (có thay đổi chưa đẩy / chưa có mạng) ·
+  `Xung đột` (cam) · `Lỗi: {câu ngắn}` (vd. "Ảnh P05_01.jpg lớn hơn 95 MB"). Lần đồng bộ đầu có nhiều phiếu: thanh tiến độ "Đang đồng bộ n/N phiếu", tiếp tục được.
+  Thẻ phiếu của người khác thêm "của {createdByName}".
+- **Chỉ đọc theo quyền** (`canEdit`, schema §10.4): người không phải người tạo và không quản lý dự án mở phiếu thấy banner "Phiếu của {tên} — chỉ xem"; mọi ô nhập,
+  ảnh, chữ ký, bảng, đồng hồ bấm giờ bị khoá (chặn cả ở tầng lưu, không chỉ UI); ẩn "Mở lại"; "Chế độ kiểm tra" chỉ xem (không thêm ghi chú, không "Trả lại để sửa").
+  Menu phiếu ẩn **Xoá** và **Chuyển dự án**; **Nhân bản** vẫn có khi `canPost` (bản mới là của mình). Nút **+** ẩn khi `!canPost` (người xem dự án).
+  Quản lý dự án thấy đầy đủ như người tạo (sửa, trả, xoá).
+- **Xung đột**: mở phiếu `Xung đột` → hộp "Phiếu đã được {tên} sửa lúc {giờ} trên máy khác." với **Giữ bản của tôi** (ghi đè, có ghi lịch sử) và
+  **Lấy bản máy chủ** (bản máy được sao lưu zip trước, rồi thay). Phiếu bị xoá trên máy chủ khi máy còn sửa: "Phiếu đã bị xoá trên máy chủ." với **Khôi phục**
+  (đẩy lại như phiếu mới, cần quyền ghi) và **Xoá trên máy**. Không tự gộp theo trường.
+- **Lịch sử sửa** (menu ⋯ của phiếu, cần mạng): danh sách theo lần lưu, mới nhất trước — tiêu đề "{tên} · dd-MM-yyyy HH:mm" (+ "· app cũ" khi `source=legacy`);
+  mỗi dòng "{nhãn}: {cũ} → {mới}", giá trị trống là "(trống)", giá trị hiển thị bằng hàm chung §6.5; lần tạo: "Tạo phiếu". Nhãn dịch từ `path` (schema §10.3).
+  Mất mạng / lỗi: "Không tải được lịch sử." + Thử lại. Web ERP hiển thị cùng dữ liệu.
+- **Số thứ tự**: tiêu đề phiếu "NN - Tên mẫu - ngày" dùng `seq` do máy chủ chốt. Hai máy cùng tạo "01" khi offline → sau đồng bộ máy đẩy sau thấy phiếu đổi thành "02" (không báo lỗi).
+- **Mẫu cần mạng + quyền quản lý**: thêm mẫu vào dự án, gỡ, dùng bản mới, đổi tên / viết tắt / màu — chỉ quản lý dự án (`canManage`) và khi có mạng; ngược lại nút mờ,
+  chạm báo "Cần quyền quản lý dự án và có mạng". Thay đổi chỉ hiện trên máy sau khi máy chủ xác nhận. Đổi tên/màu áp toàn thư viện của tổ chức; hộp xác nhận nêu rõ
+  "Áp dụng cho mọi dự án dùng mẫu này". Máy khác thấy sau lần đồng bộ kế (kéo để tải lại).
+- **Media**: ảnh + ghi âm của phiếu người khác tải ngay khi đồng bộ; video chỉ tải khi mở phiếu (hiện tiến độ, huỷ được). Đang chờ tải → ô hiện "Đang tải…"; offline → "Chưa tải (cần mạng)".
+- **Đổi tài khoản trên cùng máy**: phiếu sạch của người cũ bị xoá khỏi máy (kéo lại nếu tài khoản mới được xem); phiếu bẩn của người cũ giữ, ẩn, không đẩy. Đăng xuất không xoá gì.
+- **Mất quyền dự án** (ERP không còn trả về dự án): phiếu sạch của dự án đó bị xoá khỏi máy; phiếu bẩn giữ ẩn như hiện nay.
+- Chuỗi lỗi cho người dùng theo quy ước §9.5 (câu tiếng Việt hiện nguyên văn; mã SCREAMING_SNAKE như `REV_CONFLICT` không bao giờ hiện).
