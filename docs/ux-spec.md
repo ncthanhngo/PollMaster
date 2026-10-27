@@ -248,3 +248,21 @@ Phiếu và mẫu của dự án ERP tự đồng bộ, không còn nút "Gửi 
 - **Đổi tài khoản trên cùng máy**: phiếu sạch của người cũ bị xoá khỏi máy (kéo lại nếu tài khoản mới được xem); phiếu bẩn của người cũ (có `createdBy` khác, chưa đồng bộ) giữ, **ẩn khỏi danh sách** (trừ khi tài khoản hiện tại quản lý dự án đó — khi ấy hiện và đẩy được), không đẩy. Đăng xuất không xoá gì.
 - **Mất quyền dự án** (ERP không còn trả về dự án): phiếu sạch của dự án đó bị xoá khỏi máy; phiếu bẩn giữ ẩn như hiện nay.
 - Chuỗi lỗi cho người dùng theo quy ước §9.5 (câu tiếng Việt hiện nguyên văn; mã SCREAMING_SNAKE như `REV_CONFLICT` không bao giờ hiện).
+
+## O. Sửa mẫu (schema §11)
+- **Điểm vào**: chi tiết mẫu → **Sửa nội dung** (chỉ khi tài khoản quản lý ≥1 dự án đang gán mẫu đó; theo `canManage` lần đồng bộ cuối, sửa nháp được khi offline). Đã có nháp ⇒ **Tiếp tục nháp (sửa lúc …)** / **Bỏ nháp**.
+  Tab Mẫu, menu + → **Tạo mẫu mới** → Trống / Nhân bản từ mẫu…; chi tiết dự án có "Tạo mẫu mới" với dự án đích đặt sẵn. Mục "Bản nháp (n)" ở đầu danh sách khi có nháp.
+  Người không quản lý: không có các nút này; màn chi tiết mẫu chỉ đọc như nay.
+- **Màn sửa**: mục lục (Thông tin mẫu · Đầu biên bản · các mục · Chữ ký · + Thêm mục). Thanh trên: **Xem trước**, chip "n lỗi · m cảnh báo", **Phát hành**. Tự lưu nháp (debounce 500 ms).
+- **Sắp xếp**: nút **↑ / ↓** trên từng dòng + menu ⋯ → **Chuyển sang mục…** (không kéo thả; hai nền giống nhau, dùng được với cỡ chữ lớn nhất). Menu ⋯: Sửa, Nhân bản, Chuyển sang mục…, Sửa JSON, Xoá.
+- **Form theo kiểu**: chỉ hiện ô hợp kiểu (nhãn, kiểu, bắt buộc, đơn vị, min/max/cảnh báo, lựa chọn…). Công thức, parts, showWhen, lookup, stopwatch, pairedWith… sửa trong **JSON nâng cao** (kiểm lỗi 300 ms, dòng lỗi đỏ, **Áp dụng** mờ khi JSON hỏng).
+  Mã trường đã có ở bản gốc khoá (hiện ổ khoá); mục mới thêm trong nháp mới sửa được mã. JSON nâng cao đổi mã ⇒ cảnh báo "Phiếu cũ giữ dữ liệu theo mã cũ; xuất tổng hợp tách 2 cột".
+- **Xoá**: mục đang được tham chiếu ⇒ hộp hỏi, liệt kê nơi dùng.
+- **Lỗi/cảnh báo**: chạm chip → danh sách; chạm một dòng nhảy tới đúng mục/trường. Còn lỗi ⇒ **Phát hành** mờ; cảnh báo không chặn.
+- **Xem trước**: màn điền phiếu thật với bản ghi tạm trong thư mục tạm, banner "Xem trước — không lưu", không đồng bộ, không sinh phiếu/số thứ tự, xoá khi đóng. Mẫu còn lỗi ⇒ mở danh sách lỗi thay vì xem trước.
+- **Phát hành**: cần mạng + quản lý dự án đích (nút mờ + "Cần quyền quản lý dự án và có mạng" nếu không). Hộp: dự án đích (chọn khi mẫu mới), tóm tắt "v1.0 → v1.1", danh sách **dự án khác mình quản lý đang dùng cùng mẫu — tích sẵn, bỏ tích được**.
+  Chỉ đổi tên/viết tắt/màu ⇒ không tạo version (PATCH meta). Thành công ⇒ xoá nháp; lỗi một dự án phụ liệt kê riêng (bản chính vẫn phát hành). Phiếu cũ (kể cả nháp dở) giữ version cũ; phiếu tạo sau dùng bản mới.
+  Mã mẫu đã có trong tổ chức ⇒ "Mã mẫu đã có trong tổ chức — đổi mã".
+- **Xung đột hai quản lý**: lúc phát hành dự án đang gán bản khác bản gốc của nháp ⇒ "Đã có bản vX do người khác phát hành sau khi bạn bắt đầu sửa từ vY. Phát hành sẽ thay bản đó cho phiếu mới." **[Vẫn phát hành]** **[Huỷ]**. Không gộp.
+- **Quay lại bản trước**: màn dự án có nút đổi về bản cũ hơn (PATCH `version`) để gỡ nhanh bản phát hành lỗi.
+- Chuỗi lỗi theo quy ước §9.5: câu tiếng Việt nguyên văn, mã như `TEMPLATE_VERSION_EXISTS` không hiện ra người dùng.

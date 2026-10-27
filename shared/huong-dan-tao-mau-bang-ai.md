@@ -4,6 +4,7 @@
 > (mục đích, đối tượng, các thông tin cần ghi, cần đo gì, cần chụp ảnh gì, ai ký…). AI sẽ trả về một khối JSON.
 > Trong app PollMaster: **Mẫu → + → Dán JSON** (hoặc lưu thành tệp `.json` rồi chọn "Nhập từ tệp").
 > Nếu app báo lỗi, bấm **Sao chép lỗi**, dán lại cho AI và yêu cầu sửa.
+> Có thể sửa mẫu ngay trong app (dành cho quản lý dự án): chi tiết mẫu → **Sửa nội dung**.
 
 ---
 

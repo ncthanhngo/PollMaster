@@ -304,8 +304,15 @@ Hiển thị giá trị trong mọi định dạng: cờ estimate thêm tiền t
 - PDF/DOCX: bảng lặp có cột đầu `#` = `{rowLabel} {n}`; bảng cố định không có cột thêm. Chân trang `Trang n/N` ở cả PDF và DOCX.
 
 ### 6.6 Import template
-- singleChoice/multiChoice không có `options` → từ chối. `rows[].fixed` thiếu → `{}`. `part.type` thiếu → `text`;
-  `part.label` thiếu → từ chối. Lỗi import báo đường dẫn JSON (VD `sections[2].items[5].options`).
+- Một bộ luật cho cả hai app; lõi trả **mọi lỗi** (không dừng ở lỗi đầu), mỗi dòng bắt đầu bằng đường dẫn JSON rồi `: ` (VD `sections[2].items[5].options: …`).
+  Vector `shared/template-validation-vectors.json` (so tập đường dẫn) chạy ở cả hai app: iOS `TemplateLoader.problems`, Android `TemplateParser.problems`.
+- **Lỗi (từ chối cài)**: `schemaVersion` ≠ 1 · JSON hỏng · `kind` lạ · `type` lạ (field, cột, part) · thiếu khoá bắt buộc (`id`/`type` của field, `label` của part, `value`/`label` của option…) ·
+  trùng mã (header + mọi item, toàn mẫu) · cột trùng trong một bảng · singleChoice/multiChoice (field, cột, **part**) không có `options` · `computed` ngoài bảng thiếu `formula` ·
+  `formula` có mặt (kể cả field không phải computed) mà sai cú pháp / hàm lạ / bảng lạ / `{@x}` ngoài hàm · `pairedWith` không tồn tại hoặc trỏ chính bảng đó.
+  Lỗi mức giải mã (JSON hỏng, `kind`/`type` lạ, thiếu khoá) được báo **một mình** — như iOS dừng ở lỗi giải mã đầu tiên theo thứ tự đọc.
+- **Chấp nhận (cả hai app)**: thiếu `schemaVersion` (= 1), `sections`, `items` của mục, `title` của heading, `columns` của bảng (= rỗng); `rows[].fixed` thiếu → `{}`; `part.type` thiếu → `text`;
+  cột `computed` không có `formula` (formula của cột, nếu có, vẫn được kiểm).
+- **Cảnh báo (không chặn, lõi `TemplateLoader.warnings` / `TemplateParser.warnings`)**: mã mục (section) trùng · cột kiểu `computed`/`signature` (§1.3 không dùng được). Hai luật này mới, chưa kiểm trên dữ liệu production nên không chặn.
 
 ## 7. Mở rộng cho hiện trường (schemaVersion vẫn 1 — mọi key mới đều optional)
 
@@ -568,3 +575,64 @@ Mẫu nằm trong **thư viện theo tổ chức** (server khoá org + `template
   "Cần quyền quản lý dự án và có mạng". Quy tắc quyết định (khởi tạo lần đầu, Phoenix, mẫu đã gỡ) nằm ở lõi dùng chung, vector `templates` trong `shared/sync-test-vectors.json`.
 - Phiếu tạo mới/nhân bản ghi `createdBy`/`createdByName` ngay (§10.1); vector `created`.
 
+## 11. Sửa mẫu trên máy (schemaVersion vẫn 1 — không khoá mới trong mẫu)
+
+Quản lý dự án sửa/tạo mẫu trên điện thoại rồi phát hành thành phiên bản mới qua API mẫu sẵn có (§10.6); không đổi máy chủ. Trình sửa thao tác trên **cây JSON thô**
+(không qua model `Template`, để không rơi khoá lạ). UI: `ux-spec.md` §O.
+
+### 11.1 Nháp
+`<AppData>/template-drafts/<draftId>.json` (ghi nguyên tử): `{draftId, baseId, baseVersion|null, projectId, createdAt, updatedAt, publishVersion|null, content}`.
+`baseId`/`baseVersion` null = mẫu mới; `projectId` = dự án đích; `publishVersion` = version đã cấp cho lần phát hành đang dở (§11.2). Nhiều nháp được, nhưng tối đa **1 nháp / (máy, id mẫu)**.
+Nháp không đồng bộ; xoá nháp sau khi POST chính thành công.
+
+### 11.2 Phát hành
+- `publishKind(base, draft)`: `newTemplate` (không có base) · `meta` (so nội dung ngữ nghĩa với base chỉ khác `title`/`shortName`/`color`) · `newVersion` (còn lại). So sánh ngữ nghĩa như máy chủ (thứ tự khoá, `1` = `1.0` không quan trọng).
+- `meta` ⇒ PATCH meta như màn hiện có, không tạo version. `newVersion` ⇒ POST `{content}` với `version` mới (máy chủ tự gán vào dự án đích, giữ `position`); dự án khác mình quản lý dùng cùng id ⇒ PATCH `version`.
+- `bumpMinor(v)`: tách theo `.`, tăng số cuối (`1.9`→`1.10`, `2`→`2.1`); phần cuối không phải số ⇒ thêm `.1` (`1.0-beta`→`1.0-beta.1`). `next = bumpMinor(max(version đã biết của id: thư viện máy ∪ GET dự án))`, so bằng `isNewer`/`compareVersions`. Không có version nào ⇒ `1.0`.
+- Ghi `publishVersion` vào nháp **trước** khi POST ⇒ gửi lại sau mất mạng là cùng nội dung ⇒ 200 (idempotent). 409 `TEMPLATE_VERSION_EXISTS` ⇒ `bumpMinor`, ghi lại, thử tiếp, tối đa 5 lần.
+- Trước khi gửi GET lại: dự án đang gán bản ≠ `baseVersion` ⇒ hộp xung đột (ux §O). Không gộp nội dung.
+- Mẫu mới: mã `{SLUG(shortName|title) ≤8}-{4 ký tự base36 ngẫu nhiên}` in hoa, `^[A-Z0-9-]{1,40}$`, không trùng thư viện máy; sửa được tới lần phát hành đầu; phát hành `1.0`; 409 ⇒ "Mã mẫu đã có trong tổ chức — đổi mã" (không tăng version).
+- Không đăng nhập (chế độ cục bộ): cài vào thư viện máy + dùng bản mới, không gọi mạng.
+
+### 11.3 Mã mục mới (sinh trong lõi, duy nhất toàn mẫu; cột: duy nhất trong bảng)
+| Loại | Quy tắc |
+|---|---|
+| field trong mục `S` | tiền tố của mã cuối cùng trong mục + số kế tiếp, giữ độ dài số (`A-07`→`A-08`, `A-9`→`A-10`); không suy được ⇒ `{S}-{nn}` |
+| field trong header | `HD-{nn}` |
+| heading | `{S}{n}` |
+| bảng | `{S}T{n}` |
+| cột | `c{n}` |
+| option `value` | slug(label) không dấu, `_`, chữ thường (`Giếng khoan`→`gieng_khoan`); trùng thêm `_2`, `_3` |
+| chữ ký | `sig{n}` |
+| dòng cố định | `r{n}` |
+Trùng với mã đã có ⇒ nhảy số tiếp.
+
+### 11.4 In JSON (thứ tự khoá, dùng chung hai app)
+Khoá ưu tiên theo thứ tự: `schemaVersion, id, version, kind, title, label, type, required, shortName, color, subtitle, instructions, recordTitle, mediaNamePattern, note, unit, hint, method, min, max, decimals, warnMin, warnMax, options, parts, formula, columns, rows, items, header, sections, signatures`; khoá còn lại a–z sau đó.
+Khoá không đụng tới giữ nguyên (kể cả khoá lạ). Số nguyên in không `.0`. So sánh test: bằng nhau ngữ nghĩa, không so chuỗi.
+
+### 11.5 Mã trường và lint
+- Mã trường có ở bản gốc bị **khoá trên giao diện** (xuất tổng hợp gộp cột theo mã qua mọi version: đổi mã = tách cột); chỉ mục mới thêm trong nháp được đổi mã. JSON nâng cao vẫn đổi được nhưng cảnh báo `ID_REMOVED`.
+- Sau validator §6.6, `TemplateLint` chia **lỗi** (chặn phát hành) / **cảnh báo**; mỗi mục có `code`, `path`, `message` tiếng Việt nguyên văn:
+
+| Mã | Mức | Thông điệp |
+|---|---|---|
+| `EMPTY_ID` | lỗi | "Mã không được để trống." |
+| `EMPTY_LABEL` | lỗi | "Nhãn không được để trống." |
+| `EMPTY_TITLE` | lỗi | "Tên không được để trống." |
+| `BAD_TEMPLATE_ID` | lỗi | "Mã mẫu chỉ gồm chữ in hoa, số và dấu gạch ngang (tối đa 40 ký tự)." |
+| `NO_SECTIONS` | lỗi | "Mẫu cần ít nhất một mục." |
+| `DUP_OPTION` | lỗi | "Trùng giá trị lựa chọn \"{value}\"." |
+| `STOPWATCH_COLUMN` | lỗi | "Cột bấm giờ \"{id}\" không tồn tại hoặc không phải kiểu elapsed." |
+| `MIN_GT_MAX` | lỗi | "Giá trị nhỏ nhất lớn hơn giá trị lớn nhất." |
+| `DANGLING_REF` | cảnh báo | "\"{id}\" không tồn tại (công thức, điều kiện hiện, ảnh tham chiếu…)." |
+| `ID_REMOVED` | cảnh báo | "Mã \"{id}\" có ở bản gốc nhưng không còn. Phiếu cũ giữ dữ liệu; xuất tổng hợp sẽ có cột riêng." |
+| `MULTI_RECORD_CODE` / `MULTI_SESSION_TIME` | cảnh báo | "Có nhiều hơn một trường {recordCode / sessionTime}." |
+| `DUP_SECTION_ID` | cảnh báo | "Trùng mã mục \"{id}\"." (từ §6.6) |
+| `COLUMN_TYPE` | cảnh báo | "Cột không dùng được kiểu {computed/signature}." (từ §6.6) |
+
+Xoá mục đang được tham chiếu ⇒ hỏi xác nhận, liệt kê nơi dùng.
+
+### 11.6 Vector chung
+`shared/template-validation-vectors.json` (§6.6): `[{name, template (object hoặc "templates/x.json"), valid, problemPaths, warningPaths?}]`.
+`shared/template-edit-vectors.json`: `{cases:[{name, base: object|file, ops:[Op], expect: object | {error: "CODE"}, expectLint?: [{code, path}]}], versions:[{known:[…], expect}], ids:[…]}`.
