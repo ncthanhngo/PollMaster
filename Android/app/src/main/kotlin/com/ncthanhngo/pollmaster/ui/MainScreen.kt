@@ -33,6 +33,7 @@ fun MainScreen(
     onOpenTemplate: (Template) -> Unit,
     onOpenProject: (String) -> Unit,
     onOpenHistory: (String) -> Unit,
+    onOpenDraft: (String) -> Unit,
 ) {
     Scaffold(
         bottomBar = {
@@ -61,7 +62,7 @@ fun MainScreen(
             when (tab) {
                 0 -> RecordsScreen(onOpenRecord, onOpenHistory)
                 1 -> ProjectsScreen(onOpenProject)
-                2 -> TemplatesScreen(onOpenTemplate)
+                2 -> TemplatesScreen(onOpenTemplate, onOpenDraft)
                 else -> SettingsScreen()
             }
         }

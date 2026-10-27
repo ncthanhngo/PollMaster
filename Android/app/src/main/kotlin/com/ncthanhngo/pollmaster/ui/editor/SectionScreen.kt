@@ -45,6 +45,7 @@ import com.ncthanhngo.pollmaster.core.model.Item
 import com.ncthanhngo.pollmaster.core.model.TableItem
 import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_ID
 import com.ncthanhngo.pollmaster.ui.common.BackButton
+import com.ncthanhngo.pollmaster.ui.templateeditor.PreviewTopBar
 import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 import com.ncthanhngo.pollmaster.ui.theme.TOUCH_ONE_HAND
 
@@ -137,11 +138,11 @@ fun SectionScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            PreviewTopBar(recordId) { TopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { BackButton(onBack) },
                 actions = { if (!env.reviewMode) SectionMenu(sectionId, controller) },
-            )
+            ) }
         },
         // Pinned: previous / check (k/N) / next, so the next section never needs a scroll to the end.
         bottomBar = {

@@ -70,6 +70,7 @@ import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
 import kotlin.math.roundToInt
 import com.ncthanhngo.pollmaster.ui.common.BackButton
+import com.ncthanhngo.pollmaster.ui.templateeditor.PreviewTopBar
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.MessageDialog
 import com.ncthanhngo.pollmaster.ui.theme.okColor
@@ -93,9 +94,12 @@ fun OutlineScreen(
     var confirmReturn by remember { mutableStateOf(false) }
 
     fun leave() {
+        val preview = container.records.isPreview(recordId)
         container.records.release(recordId)
-        container.backup.requestIfNeeded(recordId)
-        container.sync.request(controller?.record?.value?.projectId)
+        if (!preview) { // the throw-away record of "Xem trước" never backs up or syncs
+            container.backup.requestIfNeeded(recordId)
+            container.sync.request(controller?.record?.value?.projectId)
+        }
         onBack()
     }
     BackHandler(onBack = ::leave)
@@ -125,7 +129,7 @@ fun OutlineScreen(
     val systemDark = isSystemInDarkTheme()
     Scaffold(
         topBar = {
-            TopAppBar(
+            PreviewTopBar(recordId) { TopAppBar(
                 title = {
                     Column {
                         Text(recordTitle(template, record), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
@@ -134,7 +138,7 @@ fun OutlineScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        SyncMarker(record, syncIssues[record.id])
+                        if (!container.records.isPreview(recordId)) SyncMarker(record, syncIssues[record.id])
                         record.createdByName?.takeIf { record.createdBy != null && record.createdBy != container.erp.account.value?.userId }?.let {
                             Text(stringResource(R.string.creator_line, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
@@ -148,7 +152,9 @@ fun OutlineScreen(
                     IconButton(onClick = { menu = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; exporting = true })
+                            if (!container.records.isPreview(recordId)) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; exporting = true })
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(if (LocalUiPrefs.current.dark) R.string.theme_switch_light else R.string.theme_switch_dark)) },
                                 onClick = { menu = false; container.settings.setThemeMode(container.settings.themeMode.value.toggled(systemDark)) },
@@ -166,7 +172,7 @@ fun OutlineScreen(
                         }
                     }
                 },
-            )
+            ) }
         },
     ) { padding ->
         LazyColumn(

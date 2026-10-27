@@ -46,6 +46,8 @@ import com.ncthanhngo.pollmaster.ui.common.TemplateBadge
 import com.ncthanhngo.pollmaster.ui.common.hexColor
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,7 +83,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onRecordCreated: (String) -> Unit) {
+fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onRecordCreated: (String) -> Unit, onOpenDraft: (String) -> Unit) {
     val container = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -97,6 +99,8 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     var usedBy by remember { mutableStateOf<String?>(null) }
     var noProject by remember { mutableStateOf(false) }
     var choosing by remember { mutableStateOf<List<Project>?>(null) }
+    val drafts by container.templateDrafts.drafts.collectAsState()
+    var discardingDraft by remember { mutableStateOf<String?>(null) }
 
     /** New record goes to the current project when it lists this template, else to the only (or a chosen) project that does. */
     fun createRecord(t: Template) {
@@ -157,6 +161,30 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item { TemplateSummary(template) }
+            if (!outdated && container.templateDrafts.canDraft(template)) {
+                val draft = drafts.firstOrNull { it.templateId == template.id }
+                item(key = "edit-content") {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                if (draft != null) onOpenDraft(draft.draftId)
+                                else scope.launch {
+                                    try { onOpenDraft(container.templateDrafts.start(template).draftId) }
+                                    catch (e: Exception) { Toast.makeText(context, e.message.orEmpty(), Toast.LENGTH_LONG).show() }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Filled.Edit, null, Modifier.size(18.dp))
+                            Text(
+                                if (draft != null) stringResource(R.string.te_continue_draft, displayDayMonthTime(draft.updatedAt)) else stringResource(R.string.te_edit_content),
+                                Modifier.padding(start = 8.dp), maxLines = 1,
+                            )
+                        }
+                        if (draft != null) TextButton(onClick = { discardingDraft = draft.draftId }) { Text(stringResource(R.string.te_discard_draft), color = MaterialTheme.colorScheme.error) }
+                    }
+                }
+            }
             if (outdated) {
                 item { Text(stringResource(R.string.template_outdated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary) }
             }
@@ -206,6 +234,14 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
         }
     }
 
+    discardingDraft?.let { draftId ->
+        ConfirmDialog(
+            title = stringResource(R.string.te_discard_title), message = stringResource(R.string.te_discard_message),
+            confirmLabel = stringResource(R.string.te_discard_draft),
+            onConfirm = { scope.launch { container.templateDrafts.discard(draftId) } },
+            onDismiss = { discardingDraft = null },
+        )
+    }
     if (renaming && template != null) {
         EditTemplateDialog(
             template = template,

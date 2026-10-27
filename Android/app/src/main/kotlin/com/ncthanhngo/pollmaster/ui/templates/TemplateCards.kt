@@ -23,7 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
 import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.core.templateeditor.TemplateDraft
+import com.ncthanhngo.pollmaster.core.templateeditor.obj
+import com.ncthanhngo.pollmaster.core.templateeditor.str
 import com.ncthanhngo.pollmaster.core.model.fieldCount
 import com.ncthanhngo.pollmaster.core.model.tables
 import com.ncthanhngo.pollmaster.core.project.Project
@@ -100,5 +104,20 @@ internal fun SectionRow(icon: ImageVector, title: String, detail: String) {
         IconBadge(icon, size = 28.dp)
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
+    }
+}
+
+/** A draft of the template editor in the "Bản nháp" list: name, code and when it was last edited. */
+@Composable
+internal fun DraftCard(draft: TemplateDraft, onClick: () -> Unit) {
+    val title = draft.content.obj()?.get("title").str().orEmpty()
+    AppCard(Modifier.clickable(onClick = onClick)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title.ifEmpty { draft.templateId }, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(R.string.te_draft_card_sub, draft.templateId, displayDayMonthTime(draft.updatedAt)),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+            )
+        }
     }
 }

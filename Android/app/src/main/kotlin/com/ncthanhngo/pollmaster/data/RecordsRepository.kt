@@ -20,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import com.ncthanhngo.pollmaster.core.storage.DebouncedSaver
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
@@ -248,6 +249,31 @@ class RecordsRepository(
         return controller
     }
 
+    private val previews = ConcurrentHashMap<String, File>()
+
+    /** True for the throw-away record of "Xem trước" (template editor): it lives only in a temp folder, never syncs or backs up. */
+    fun isPreview(recordId: String): Boolean = previews.containsKey(recordId)
+
+    /**
+     * A throw-away record of [template] for the template editor's preview, kept in a new `preview-*` folder under [parent]
+     * (the cache dir). Opens like any record through [editor]; [release] deletes the folder. Returns the record id.
+     */
+    fun openPreview(template: Template, parent: File): String {
+        parent.listFiles { f -> f.isDirectory && f.name.startsWith("preview-") && f !in previews.values }?.forEach { it.deleteRecursively() }
+        val dir = File(parent, "preview-${UUID.randomUUID()}").also { it.mkdirs() }
+        val previewStore = RecordStore(dir)
+        val record = RecordFactory.create(template, settings.surveyorName.value)
+        lateinit var controller: EditorController
+        val saver = DebouncedSaver(scope, 500, onError = { _saveError.value = it.message ?: "Lỗi ghi tệp" }) {
+            previewStore.save(it)
+            controller.noteSaved()
+        }
+        controller = EditorController(template, record, saver)
+        editors[record.id] = controller
+        previews[record.id] = dir
+        return record.id
+    }
+
     /** Current stored state of a record (flushing its open editor first). */
     fun load(recordId: String): Record? {
         editors[recordId]?.flush()
@@ -270,6 +296,7 @@ class RecordsRepository(
     fun release(recordId: String) {
         tickers.remove(recordId)?.cancel()
         editors.remove(recordId)?.flush()
+        previews.remove(recordId)?.deleteRecursively()
     }
 
     fun flushEditor(recordId: String) {
@@ -290,5 +317,5 @@ class RecordsRepository(
         _saveError.value = null
     }
 
-    fun mediaDir(recordId: String) = store.mediaDir(recordId)
+    fun mediaDir(recordId: String) = previews[recordId]?.let { RecordStore(it).mediaDir(recordId) } ?: store.mediaDir(recordId)
 }

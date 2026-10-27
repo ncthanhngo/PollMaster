@@ -40,15 +40,19 @@ import com.ncthanhngo.pollmaster.core.storage.compareVersions
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.data.SyncService
 import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
+import com.ncthanhngo.pollmaster.ui.templateeditor.NewTemplateDialog
 import kotlinx.coroutines.launch
 
 /** "Mẫu của dự án": the templates new records can use; add from the library, remove, switch to a newer version. */
 @Composable
-fun ProjectTemplatesSection(project: Project) {
+fun ProjectTemplatesSection(project: Project, onOpenDraft: (String) -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
     val library by container.templates.templates.collectAsState()
     var adding by remember { mutableStateOf(false) }
+    var creating by remember { mutableStateOf(false) }
+    var rollingBack by remember { mutableStateOf<Pair<TemplateRef, TemplateRef>?>(null) }
     val context = LocalContext.current
     // Changes go through the server: they need the network and the manager role (dimmed otherwise; a tap says why).
     val allowed = container.sync.canChangeTemplates(project)
@@ -72,6 +76,13 @@ fun ProjectTemplatesSection(project: Project) {
                     Column(Modifier.weight(1f)) {
                         Text(t?.title ?: ref.id, style = MaterialTheme.typography.bodyLarge)
                         Text("${ref.id} · v${ref.version}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val previous = if (signedIn && !project.canManage) null else container.templateDrafts.previousVersion(ref)
+                        if (previous != null) {
+                            TextButton(
+                                onClick = { rollingBack = ref to previous },
+                                modifier = Modifier.alpha(if (allowed) 1f else 0.45f),
+                            ) { Text(stringResource(R.string.te_rollback, previous.version), maxLines = 1) }
+                        }
                         if (newer != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.project_template_newer, newer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.weight(1f, fill = false))
@@ -91,10 +102,26 @@ fun ProjectTemplatesSection(project: Project) {
                 onClick = { if (allowed) adding = true else Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.fillMaxWidth().alpha(if (allowed) 1f else 0.45f),
             ) { Text(stringResource(R.string.project_template_add)) }
+            if (container.templateDrafts.canCreate() && (!signedIn || project.canManage)) {
+                OutlinedButton(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.te_new_template), maxLines = 1) }
+            }
             if (signedIn) Text(stringResource(R.string.project_templates_shared), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
+    if (creating) NewTemplateDialog(project, onCreated = onOpenDraft, onDismiss = { creating = false })
+    rollingBack?.let { (ref, previous) ->
+        ConfirmDialog(
+            title = stringResource(R.string.te_rollback_title),
+            message = stringResource(R.string.te_rollback_message, project.name, previous.version, ref.id),
+            confirmLabel = stringResource(R.string.te_rollback, previous.version),
+            onConfirm = {
+                if (!allowed) Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show()
+                else scope.launch { container.templatePublisher.rollBack(project, ref)?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
+            },
+            onDismiss = { rollingBack = null },
+        )
+    }
     if (adding) {
         val candidates = newestVersions(library).filter { t -> project.templates.none { it.id == t.id } }.sortedBy { it.title }
         AlertDialog(

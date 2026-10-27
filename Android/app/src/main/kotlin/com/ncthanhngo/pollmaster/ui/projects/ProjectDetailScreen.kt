@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 /** Project detail: stats, everyday actions (records, summary, share), its templates and sites, then archive / delete. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onShowRecords: () -> Unit) {
+fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onShowRecords: () -> Unit, onOpenDraft: (String) -> Unit) {
     val container = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -98,7 +98,7 @@ fun ProjectDetailScreen(projectId: String, onBack: () -> Unit, onShowRecords: ()
                     }
                 }
             }
-            item { ProjectTemplatesSection(project) }
+            item { ProjectTemplatesSection(project, onOpenDraft) }
             item { ProjectSitesSection(project, mine) }
         }
     }

@@ -46,6 +46,7 @@ import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.InstallResult
 import com.ncthanhngo.pollmaster.ui.projects.ProjectChoiceDialog
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
+import com.ncthanhngo.pollmaster.ui.templateeditor.NewTemplateDialog
 import kotlinx.coroutines.launch
 
 private sealed interface ImportState {
@@ -56,7 +57,7 @@ private sealed interface ImportState {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
+fun TemplatesScreen(onOpenTemplate: (Template) -> Unit, onOpenDraft: (String) -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
     val templates by container.templates.templates.collectAsState()
@@ -67,6 +68,8 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     var state by remember { mutableStateOf<ImportState?>(null) }
     val projects by container.projects.projects.collectAsState()
     var offerAdd by remember { mutableStateOf<Template?>(null) }
+    val drafts by container.templateDrafts.drafts.collectAsState()
+    var newTemplate by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { container.templates.refresh() }
 
@@ -110,6 +113,9 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.import_url)) }, onClick = { menu = false; askUrl = true })
                     DropdownMenuItem(text = { Text(stringResource(R.string.paste_json)) }, onClick = { menu = false; askPaste = true })
                     DropdownMenuItem(text = { Text(stringResource(R.string.ai_card_title)) }, onClick = { menu = false; aiGuide = true })
+                    if (container.templateDrafts.canCreate()) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.te_new_template)) }, onClick = { menu = false; newTemplate = true })
+                    }
                 }
             }
         },
@@ -117,6 +123,16 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
         Column(Modifier.padding(padding)) {
             LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item(key = "ai-guide") { AiGuideStrip { aiGuide = true } }
+                if (drafts.isNotEmpty()) {
+                    item(key = "drafts-header") {
+                        Text(
+                            stringResource(R.string.te_drafts_header, drafts.size),
+                            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+                        )
+                    }
+                    items(drafts, key = { "draft-" + it.draftId }) { d -> DraftCard(d) { onOpenDraft(d.draftId) } }
+                }
                 if (templates.isEmpty()) {
                     item(key = "empty") { Text(stringResource(R.string.templates_empty), modifier = Modifier.padding(8.dp)) }
                 }
@@ -139,6 +155,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
     }
 
     offerAdd?.let { AddToProjectsDialog(it, projects) { offerAdd = null } }
+    if (newTemplate) NewTemplateDialog(project = null, onCreated = onOpenDraft, onDismiss = { newTemplate = false })
 
     if (askUrl) UrlDialog(onDismiss = { askUrl = false }, onSubmit = { url -> guarded { container.templates.download(url) } })
 

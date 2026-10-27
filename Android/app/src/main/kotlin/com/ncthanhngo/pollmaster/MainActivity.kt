@@ -16,6 +16,7 @@ import androidx.core.content.IntentCompat
 import androidx.compose.runtime.CompositionLocalProvider
 import com.ncthanhngo.pollmaster.ui.AppNav
 import com.ncthanhngo.pollmaster.ui.common.UpdatePrompt
+import com.ncthanhngo.pollmaster.ui.templateeditor.DebugLaunch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.ncthanhngo.pollmaster.ui.theme.PollMasterTheme
@@ -37,7 +38,7 @@ class MainActivity : ComponentActivity() {
         // First frame follows the stored preference (default light) so a dark system never flashes.
         val systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         applyWindowTheme(container.settings.themeMode.value.isDark(systemDark))
-        if (savedInstanceState == null) handleShared(intent)
+        if (savedInstanceState == null) { handleShared(intent); DebugLaunch.read(intent) }
         setContent {
             CompositionLocalProvider(LocalContainer provides container) {
                 val compact by container.settings.compactMode.collectAsState()
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleShared(intent)
+        DebugLaunch.read(intent)
     }
 
     /** A package opened from another app (VIEW) or shared to it (SEND); its content is validated by the import preview. */

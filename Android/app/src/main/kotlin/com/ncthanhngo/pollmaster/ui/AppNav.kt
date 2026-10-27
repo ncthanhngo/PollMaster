@@ -1,6 +1,7 @@
 package com.ncthanhngo.pollmaster.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -21,6 +22,8 @@ import com.ncthanhngo.pollmaster.ui.editor.ReviewScreen
 import com.ncthanhngo.pollmaster.ui.editor.RowFormScreen
 import com.ncthanhngo.pollmaster.ui.editor.SectionScreen
 import com.ncthanhngo.pollmaster.ui.records.RecordHistoryScreen
+import com.ncthanhngo.pollmaster.ui.templateeditor.DebugLaunch
+import com.ncthanhngo.pollmaster.ui.templateeditor.TemplateEditorScreen
 import com.ncthanhngo.pollmaster.ui.templates.TemplateDetailScreen
 
 private object Routes {
@@ -33,6 +36,7 @@ private object Routes {
     const val REVIEW = "editor/{recordId}/review"
     const val FILL = "editor/{recordId}/fill"
     const val HISTORY = "editor/{recordId}/history"
+    const val TEMPLATE_EDITOR = "template-editor/{draftId}"
 
     fun project(id: String) = "project/$id"
     fun template(id: String, version: String) = "template/${enc(id)}/${enc(version)}"
@@ -44,6 +48,7 @@ private object Routes {
     fun review(recordId: String) = "editor/$recordId/review"
     fun fill(recordId: String) = "editor/$recordId/fill"
     fun history(recordId: String) = "editor/$recordId/history"
+    fun templateEditor(draftId: String) = "template-editor/${enc(draftId)}"
 
     private fun enc(s: String) = android.net.Uri.encode(s)
 }
@@ -57,14 +62,18 @@ private val focusArg = navArgument("focus") {
 @Composable
 fun AppNav() {
     val account by LocalContainer.current.erp.account.collectAsState()
-    if (account == null) LoginScreen() else Main()
+    val debug by DebugLaunch.request.collectAsState()
+    if (account == null && debug == null) LoginScreen() else Main(debug)
 }
 
 @Composable
-private fun Main() {
+private fun Main(debug: DebugLaunch.Request?) {
     val nav = rememberNavController()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     ImportBundleHost(onImported = { nav.navigate(Routes.project(it)) })
+    val container = LocalContainer.current
+    // debug builds: adb can open the template editor without signing in (see DebugLaunch)
+    LaunchedEffect(debug) { debug?.let { r -> DebugLaunch.open(container, r)?.let { nav.navigate(Routes.templateEditor(it)) } } }
     NavHost(nav, startDestination = Routes.MAIN) {
         composable(Routes.MAIN) {
             MainScreen(
@@ -74,10 +83,10 @@ private fun Main() {
                 onOpenTemplate = { t -> nav.navigate(Routes.template(t.id, t.version)) },
                 onOpenProject = { nav.navigate(Routes.project(it)) },
                 onOpenHistory = { nav.navigate(Routes.history(it)) },
+                onOpenDraft = { nav.navigate(Routes.templateEditor(it)) },
             )
         }
         composable(Routes.PROJECT) { entry ->
-            val container = LocalContainer.current
             val id = entry.arguments?.getString("id").orEmpty()
             ProjectDetailScreen(
                 projectId = id,
@@ -87,6 +96,7 @@ private fun Main() {
                     tab = 0
                     nav.popBackStack(Routes.MAIN, false)
                 },
+                onOpenDraft = { nav.navigate(Routes.templateEditor(it)) },
             )
         }
         composable(Routes.TEMPLATE) { entry ->
@@ -95,6 +105,14 @@ private fun Main() {
                 version = entry.arguments?.getString("version").orEmpty(),
                 onBack = { nav.popBackStack() },
                 onRecordCreated = { nav.navigate(Routes.outline(it)) { popUpTo(Routes.MAIN) } },
+                onOpenDraft = { nav.navigate(Routes.templateEditor(it)) },
+            )
+        }
+        composable(Routes.TEMPLATE_EDITOR) { entry ->
+            TemplateEditorScreen(
+                draftId = entry.arguments?.getString("draftId").orEmpty(),
+                onBack = { nav.popBackStack() },
+                onPreview = { nav.navigate(Routes.outline(it)) },
             )
         }
         composable(Routes.OUTLINE) { entry ->
