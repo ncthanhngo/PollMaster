@@ -83,6 +83,9 @@ final class AppEnvironment {
     var askSurveyorFor: PendingCreate?
     /// Records tab shows the map instead of the list.
     var recordsShowMap = false
+    @ObservationIgnored let network = NetworkStatus()
+    /// Records being sent to the ERP right now (one upload per record at a time).
+    @ObservationIgnored var uploading: Set<String> = []
     @ObservationIgnored var editors: [String: RecordEditorModel] = [:]
     /// Models closed by the last navigation change: screens still sliding out keep showing them; reopening the record reuses them.
     @ObservationIgnored var closingEditors: [String: RecordEditorModel] = [:]

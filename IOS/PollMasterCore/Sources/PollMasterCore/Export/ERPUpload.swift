@@ -45,4 +45,25 @@ public enum ERPUpload {
         }
         try out.write(contentsOf: Data("--\(boundary)--\r\n".utf8))
     }
+
+    public static let maxPDFBytes: Int64 = 20 * 1024 * 1024
+    public static let maxZipBytes: Int64 = 75 * 1024 * 1024
+
+    /// Message for the first file over the server limit (PDF checked first), or nil when both fit.
+    public static func sizeError(pdfBytes: Int64, zipBytes: Int64) -> String? {
+        if pdfBytes > maxPDFBytes { return "Tệp PDF \(mb(pdfBytes)) MB vượt giới hạn 20 MB của ERP." }
+        if zipBytes > maxZipBytes {
+            return "Tệp dữ liệu (zip) \(mb(zipBytes)) MB vượt giới hạn 75 MB của ERP — bớt ảnh hoặc giảm chất lượng ảnh rồi gửi lại."
+        }
+        return nil
+    }
+
+    private static func mb(_ bytes: Int64) -> String {
+        String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), Double(bytes) / 1_048_576).replacingOccurrences(of: ".", with: ",")
+    }
+
+    /// Leaving the editor re-sends a record only if it was sent by hand before, changed since, and nothing else is in the way.
+    public static func shouldAutoResend(_ r: Record, signedIn: Bool, online: Bool, alreadyRunning: Bool) -> Bool {
+        signedIn && online && !alreadyRunning && r.erpUploadedAt != nil && r.hasUnsentErpChanges
+    }
 }

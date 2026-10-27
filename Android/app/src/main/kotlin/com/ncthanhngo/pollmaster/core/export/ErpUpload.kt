@@ -33,4 +33,20 @@ object ErpUpload {
      * another project meanwhile; an edit made during the upload stays newer than the stamp and so shows as unsent.
      */
     fun shouldStamp(uploaded: Record, current: Record?): Boolean = current != null && current.projectId == uploaded.projectId
+
+    const val MAX_PDF_BYTES = 20L * 1024 * 1024
+    const val MAX_ZIP_BYTES = 75L * 1024 * 1024
+
+    /** Message for the first file over the server limit (PDF checked first), or null when both fit. */
+    fun sizeError(pdfBytes: Long, zipBytes: Long): String? = when {
+        pdfBytes > MAX_PDF_BYTES -> "Tệp PDF ${mb(pdfBytes)} MB vượt giới hạn 20 MB của ERP."
+        zipBytes > MAX_ZIP_BYTES -> "Tệp dữ liệu (zip) ${mb(zipBytes)} MB vượt giới hạn 75 MB của ERP — bớt ảnh hoặc giảm chất lượng ảnh rồi gửi lại."
+        else -> null
+    }
+
+    private fun mb(bytes: Long): String = String.format(java.util.Locale.ROOT, "%.1f", bytes / 1048576.0).replace('.', ',')
+
+    /** Leaving the editor re-sends a record only if it was sent by hand before, changed since, and nothing else is in the way. */
+    fun shouldAutoResend(record: Record, signedIn: Boolean, online: Boolean, alreadyRunning: Boolean): Boolean =
+        signedIn && online && !alreadyRunning && record.erpUploadedAt != null && hasUnsentChanges(record)
 }

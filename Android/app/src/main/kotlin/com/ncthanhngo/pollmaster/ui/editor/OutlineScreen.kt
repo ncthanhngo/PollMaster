@@ -93,6 +93,7 @@ fun OutlineScreen(
     fun leave() {
         container.records.release(recordId)
         container.backup.requestIfNeeded(recordId)
+        container.erpUpload.autoResend(recordId)
         onBack()
     }
     BackHandler(onBack = ::leave)

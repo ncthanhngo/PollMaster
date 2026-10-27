@@ -162,6 +162,8 @@ extension AppEnvironment {
     /// "Gửi lên ERP" (schema §9.6): PDF + zip of the record are made with the export code, uploaded to its project, then
     /// `erpUploadedAt` is stamped with the time the upload started. Throws an error with a message fit for the user.
     func uploadToERP(recordId: String) async throws {
+        guard uploading.insert(recordId).inserted else { throw ERPError.server("Phiếu đang được gửi lên ERP, thử lại sau ít giây.") }
+        defer { uploading.remove(recordId) }
         let startedAt = Date()
         editors[recordId]?.flush(); closingEditors[recordId]?.flush()
         guard let record = recordStore.load(recordId), let template = template(for: recordId) else {
@@ -178,6 +180,8 @@ extension AppEnvironment {
             guard let pdf = files.first(where: { $0.pathExtension == "pdf" }), let zip = files.first(where: { $0.pathExtension == "zip" }) else {
                 throw ERPError.badResponse
             }
+            let size = { (u: URL) in Int64((try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+            if let tooBig = ERPUpload.sizeError(pdfBytes: size(pdf), zipBytes: size(zip)) { throw ERPError.server(tooBig) }
             try await erp.uploadPoll(projectId: projectId, fields: ERPUpload.fields(template, record), pdf: pdf, zip: zip)
         } catch ERPError.sessionExpired {
             setAccount(nil)
@@ -188,5 +192,12 @@ extension AppEnvironment {
         if let m = editors[recordId] ?? closingEditors[recordId] { m.markERPUploaded(snapshot: record, at: startedAt) }
         else if let stamped = ERPUpload.stamped(snapshot: record, current: recordStore.load(recordId), at: startedAt),
                 (try? recordStore.save(stamped)) != nil { upsert(stamped) }
+    }
+
+    /// Editor left: a record sent before and changed since is sent again in the background, silently (a failure keeps "Có thay đổi chưa gửi").
+    func autoResendToERP(_ recordId: String) {
+        guard let r = recordStore.load(recordId),
+              ERPUpload.shouldAutoResend(r, signedIn: account != nil, online: network.online, alreadyRunning: uploading.contains(recordId)) else { return }
+        Task { try? await uploadToERP(recordId: recordId) }
     }
 }

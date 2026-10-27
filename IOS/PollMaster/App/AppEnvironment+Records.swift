@@ -86,6 +86,7 @@ extension AppEnvironment {
             m.close()
             editors[id] = nil
             closingEditors[id] = m
+            autoResendToERP(id)
         }
     }
 }

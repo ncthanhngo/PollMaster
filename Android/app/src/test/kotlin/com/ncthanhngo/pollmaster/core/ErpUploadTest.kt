@@ -63,3 +63,29 @@ class ErpUploadTest {
         assertEquals("03-01-2026 10:00", displayDateTimeDashed("2026-01-03T10:00:00+07:00", ZoneOffset.ofHours(7)))
     }
 }
+
+class ErpUploadRulesTest {
+    private val mb = 1024L * 1024
+
+    @Test fun sizeRuleNamesTheFileOverTheLimit() {
+        assertEquals(null, ErpUpload.sizeError(20 * mb, 75 * mb))
+        assertEquals("Tệp PDF 34,2 MB vượt giới hạn 20 MB của ERP.", ErpUpload.sizeError((34.2 * mb).toLong(), mb))
+        assertEquals(
+            "Tệp dữ liệu (zip) 80,0 MB vượt giới hạn 75 MB của ERP — bớt ảnh hoặc giảm chất lượng ảnh rồi gửi lại.",
+            ErpUpload.sizeError(mb, 80 * mb),
+        )
+        assertTrue(ErpUpload.sizeError(20 * mb + 1, 0)!!.startsWith("Tệp PDF"))
+    }
+
+    @Test fun autoResendOnlyForSentChangedRecords() {
+        val base = TestData.emptyRecord()
+        val sent = base.copy(erpUploadedAt = "2026-01-01T08:00:00+07:00")
+        val changed = sent.copy(updatedAt = "2026-01-01T09:00:00+07:00")
+        assertTrue(ErpUpload.shouldAutoResend(changed, signedIn = true, online = true, alreadyRunning = false))
+        assertFalse(ErpUpload.shouldAutoResend(sent, true, true, false))                  // nothing changed
+        assertFalse(ErpUpload.shouldAutoResend(base.copy(updatedAt = "2026-01-01T09:00:00+07:00"), true, true, false)) // never sent
+        assertFalse(ErpUpload.shouldAutoResend(changed, false, true, false))
+        assertFalse(ErpUpload.shouldAutoResend(changed, true, false, false))
+        assertFalse(ErpUpload.shouldAutoResend(changed, true, true, true))
+    }
+}

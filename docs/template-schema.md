@@ -432,12 +432,17 @@ App tạo PDF + zip "JSON + media" của phiếu bằng đúng code xuất §5 r
 | `status` | có | `draft` \| `completed` |
 | `recorded_at` | có | `record.createdAt`, RFC3339 |
 | `completed_at` | không | `record.completedAt`, bỏ khi null |
-| `pdf` (file) | có | PDF của phiếu, `application/pdf`, ≤30 MB |
-| `zip` (file) | có | JSON + media, `application/zip`, ≤90 MB |
+| `pdf` (file) | có | PDF của phiếu, `application/pdf`, ≤20 MB |
+| `zip` (file) | có | JSON + media, `application/zip`, ≤75 MB |
 
 - Upsert theo (dự án, `record_id`): gửi lại ghi đè bản trước. 200 → `{"data": {"id", "project_id", "record_id", "updated_at", …}}`.
 - Lỗi cùng phong bì §9.5: câu tiếng Việt trong `error` hiện cho người dùng, mã SCREAMING_SNAKE thì không. 404 = không thấy dự án / không có quyền gửi; 400 = dữ liệu sai; 413 = quá lớn.
-- Tệp được stream từ đĩa (không nạp 90 MB vào bộ nhớ).
+- Tệp được stream từ đĩa (không nạp 75 MB vào bộ nhớ).
+- **Kiểm tra dung lượng trước khi gửi** (MB = 1024×1024; api.evselab.com sau Cloudflare chặn request >100 MB): PDF ≤ 20 MB, zip ≤ 75 MB. Vượt thì không gửi, báo đúng tệp:
+  "Tệp PDF 34,2 MB vượt giới hạn 20 MB của ERP." / "Tệp dữ liệu (zip) 80,0 MB vượt giới hạn 75 MB của ERP — bớt ảnh hoặc giảm chất lượng ảnh rồi gửi lại." Lỗi 413 từ máy chủ vẫn hiện "Tệp quá lớn, ERP từ chối nhận."
+- **Tự gửi lại khi rời màn phiếu**: nếu phiếu đã gửi tay trước đó (`erpUploadedAt` có), có thay đổi chưa gửi (`updatedAt > erpUploadedAt`), đã đăng nhập ERP và có mạng thì gửi lại ngầm,
+  không giao diện, không hỏi xác nhận phiếu nháp. Thành công: ghi `erpUploadedAt` như thường. Thất bại: im lặng, giữ nhãn "Có thay đổi chưa gửi". Không bao giờ tự gửi phiếu chưa từng gửi tay.
+  Mỗi phiếu chỉ một lần gửi tại một thời điểm (đang gửi thì bỏ qua; bấm gửi tay lúc đó báo "đang được gửi").
 
 Record thêm khóa optional `"erpUploadedAt": ISO` — thời điểm **bắt đầu** lần gửi thành công gần nhất (ghi như `backupAt`: không đổi `updatedAt`;
 không ghi nếu phiếu bị xóa hoặc chuyển dự án trong lúc gửi; xóa khi chuyển dự án; bản nhân bản không mang theo).

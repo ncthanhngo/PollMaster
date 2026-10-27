@@ -88,4 +88,25 @@ import Foundation
         #expect(String(decoding: body.suffix(10), as: UTF8.self) == "\r\n--BB--\r\n")
         #expect(body.count > 3 << 20)
     }
+
+    @Test func sizeRuleNamesTheFileOverTheLimit() {
+        let mb: Int64 = 1024 * 1024
+        #expect(ERPUpload.sizeError(pdfBytes: 20 * mb, zipBytes: 75 * mb) == nil)
+        #expect(ERPUpload.sizeError(pdfBytes: Int64(34.2 * Double(mb)), zipBytes: mb) == "Tệp PDF 34,2 MB vượt giới hạn 20 MB của ERP.")
+        #expect(ERPUpload.sizeError(pdfBytes: mb, zipBytes: 80 * mb)
+                == "Tệp dữ liệu (zip) 80,0 MB vượt giới hạn 75 MB của ERP — bớt ảnh hoặc giảm chất lượng ảnh rồi gửi lại.")
+        #expect(ERPUpload.sizeError(pdfBytes: 20 * mb + 1, zipBytes: 0)?.hasPrefix("Tệp PDF") == true)
+    }
+
+    @Test func autoResendOnlyForSentChangedRecords() {
+        var r = Record(templateId: "T", templateVersion: "1")
+        #expect(!ERPUpload.shouldAutoResend(r, signedIn: true, online: true, alreadyRunning: false))     // never sent
+        r.erpUploadedAt = r.updatedAt
+        #expect(!ERPUpload.shouldAutoResend(r, signedIn: true, online: true, alreadyRunning: false))     // nothing changed
+        r.updatedAt = r.updatedAt.addingTimeInterval(60)
+        #expect(ERPUpload.shouldAutoResend(r, signedIn: true, online: true, alreadyRunning: false))
+        #expect(!ERPUpload.shouldAutoResend(r, signedIn: false, online: true, alreadyRunning: false))
+        #expect(!ERPUpload.shouldAutoResend(r, signedIn: true, online: false, alreadyRunning: false))
+        #expect(!ERPUpload.shouldAutoResend(r, signedIn: true, online: true, alreadyRunning: true))
+    }
 }

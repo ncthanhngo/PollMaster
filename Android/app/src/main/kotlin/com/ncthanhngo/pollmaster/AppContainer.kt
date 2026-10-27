@@ -20,6 +20,7 @@ import com.ncthanhngo.pollmaster.data.RecordsRepository
 import com.ncthanhngo.pollmaster.data.Settings
 import com.ncthanhngo.pollmaster.data.TemplatesRepository
 import com.ncthanhngo.pollmaster.platform.MediaProcessor
+import com.ncthanhngo.pollmaster.platform.isOnline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,7 +49,10 @@ class AppContainer(context: Context) {
     val media = MediaProcessor(context, settings)
     private val erpClient = ErpClient(context)
     val erp = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
-    val erpUpload = ErpUploadService(erpClient, export, recordStore, templates, records) { erp.expire() }
+    val erpUpload = ErpUploadService(
+        erpClient, export, recordStore, templates, records, { erp.expire() }, scope,
+        signedIn = { erp.account.value != null }, online = { isOnline(context) },
+    )
 }
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
