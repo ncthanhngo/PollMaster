@@ -30,12 +30,26 @@ struct HeadingForm: View {
         Form {
             Section("Tiêu đề nhóm") {
                 IdField(model: model, path: path)
-                TextField("Tiêu đề", text: model.str(path, "title"))
-                TextField("Ghi chú (không bắt buộc)", text: model.str(path, "note"), axis: .vertical).lineLimit(1...4)
+                CaptionedField(caption: "Tiêu đề", text: model.str(path, "title"))
+                CaptionedField(caption: "Ghi chú (không bắt buộc)", text: model.str(path, "note"), lines: 1...4)
             }
             JSONLink(model: model, path: path)
         }
         .navigationTitle("Tiêu đề nhóm")
+    }
+}
+
+/// A text box with its name above it: a placeholder alone disappears once the box is filled.
+struct CaptionedField: View {
+    let caption: String
+    let text: Binding<String>
+    var lines: ClosedRange<Int> = 1...1
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(caption).font(.caption).foregroundStyle(.secondary)
+            TextField(caption, text: text, axis: .vertical).lineLimit(lines)
+        }
     }
 }
 
@@ -70,7 +84,7 @@ struct FieldForm: View {
         Form {
             Section(isColumn ? "Cột" : "Trường") {
                 IdField(model: model, path: path)
-                TextField("Nhãn", text: model.str(path, "label"), axis: .vertical).lineLimit(1...3)
+                CaptionedField(caption: "Nhãn", text: model.str(path, "label"), lines: 1...3)
                 Picker("Kiểu", selection: Binding(get: { type }, set: { model.set(path, "type", .string($0)) })) {
                     ForEach(typeChoices, id: \.type) { Text($0.name).tag($0.type) }
                 }
@@ -83,8 +97,8 @@ struct FieldForm: View {
             if choice { OptionsEditor(model: model, fieldPath: path) }
             typeSection
             Section("Gợi ý cho người điền") {
-                TextField("Hướng dẫn (hiện dưới ô)", text: model.str(path, "hint"), axis: .vertical).lineLimit(1...4)
-                TextField("Phương pháp đo", text: model.str(path, "method"), axis: .vertical).lineLimit(1...3)
+                CaptionedField(caption: "Hướng dẫn (hiện dưới ô)", text: model.str(path, "hint"), lines: 1...4)
+                CaptionedField(caption: "Phương pháp đo", text: model.str(path, "method"), lines: 1...3)
             }
             if isHeader && ["text", "multiline"].contains(type) && ["recordCode", nil].contains(model.object(path)["role"]?.string) {
                 Section { Toggle("Mã phiếu (dùng đặt tên phiếu)", isOn: Binding(
