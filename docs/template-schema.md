@@ -592,24 +592,28 @@ Nháp không đồng bộ; xoá nháp sau khi POST chính thành công.
 - Ghi `publishVersion` vào nháp **trước** khi POST ⇒ gửi lại sau mất mạng là cùng nội dung ⇒ 200 (idempotent). 409 `TEMPLATE_VERSION_EXISTS` ⇒ `bumpMinor`, ghi lại, thử tiếp, tối đa 5 lần.
 - Trước khi gửi GET lại: dự án đang gán bản ≠ `baseVersion` ⇒ hộp xung đột (ux §O). Không gộp nội dung.
 - Mẫu mới: mã `{SLUG(shortName|title) ≤8}-{4 ký tự base36 ngẫu nhiên}` in hoa, `^[A-Z0-9-]{1,40}$`, không trùng thư viện máy; sửa được tới lần phát hành đầu; phát hành `1.0`; 409 ⇒ "Mã mẫu đã có trong tổ chức — đổi mã" (không tăng version).
-- Không đăng nhập (chế độ cục bộ): cài vào thư viện máy + dùng bản mới, không gọi mạng.
+- Không đăng nhập (chế độ cục bộ): cài vào thư viện máy + dùng bản mới (version cấp theo thư viện máy), không gọi mạng; chỉ đổi tên/viết tắt/màu ⇒ sửa mọi version cùng id trên máy.
+- Kết quả phát hành (lõi `TemplateSync.publish`): `published(version, failedProjects)` · `staleBase(serverVersion)` (gọi lại với `force`) · `invalid(lỗi)` (chặn trước khi gọi mạng) · `idTaken`. Hết 5 lần 409 hoặc lỗi mạng/máy chủ ⇒ ném lỗi, nháp giữ `publishVersion`.
+  Meta: chỉ PATCH dự án đích (đổi áp cho cả thư viện tổ chức); dự án phụ chỉ PATCH `version` khi có version mới. Lỗi dự án phụ gom vào `failedProjects`, không rollback bản chính.
+- **Quay lại bản trước**: `previousVersion(ref)` = version mới nhất cũ hơn `ref` đang có trên máy; `rollBack` = "Dùng bản" đó (POST nội dung, 409 ⇒ PATCH `version`), cần mạng + CanManage.
 
 ### 11.3 Mã mục mới (sinh trong lõi, duy nhất toàn mẫu; cột: duy nhất trong bảng)
 | Loại | Quy tắc |
 |---|---|
-| field trong mục `S` | tiền tố của mã cuối cùng trong mục + số kế tiếp, giữ độ dài số (`A-07`→`A-08`, `A-9`→`A-10`); không suy được ⇒ `{S}-{nn}` |
-| field trong header | `HD-{nn}` |
-| heading | `{S}{n}` |
-| bảng | `{S}T{n}` |
-| cột | `c{n}` |
+| field trong mục `S` | tiền tố của mã **trường** cuối cùng trong mục (bỏ qua heading/bảng) + số kế tiếp, giữ độ dài số (`A-07`→`A-08`, `A-9`→`A-10`); không suy được ⇒ `{S}-{nn}` (nn từ 01) |
+| field trong header | `HD-{nn}`: số nhỏ nhất ≥1 chưa dùng, rộng 2 |
+| heading | `{S}{n}`: số nhỏ nhất ≥1 chưa dùng |
+| bảng | `{S}T{n}`: như trên |
+| mục | chữ cái A–Z đầu tiên chưa dùng (mục hoặc mục con), hết ⇒ `S{n}`; không nhân bản mục (mã mục con sẽ trùng) |
+| cột | `c{n}`: số nhỏ nhất ≥1 chưa dùng trong bảng |
 | option `value` | slug(label) không dấu, `_`, chữ thường (`Giếng khoan`→`gieng_khoan`); trùng thêm `_2`, `_3` |
-| chữ ký | `sig{n}` |
-| dòng cố định | `r{n}` |
-Trùng với mã đã có ⇒ nhảy số tiếp.
+| chữ ký | `sig{n}` (số nhỏ nhất chưa dùng) |
+| dòng cố định | `r{n}` (như trên) |
+Trùng với mã đã có ⇒ nhảy số tiếp. "Mã đã có" của mục con = header + mục + mục con (không tính cột). Nhân bản = nhân đôi ngay sau bản gốc với mã mới theo bảng này (option: `slug(label)` + hậu tố).
 
 ### 11.4 In JSON (thứ tự khoá, dùng chung hai app)
-Khoá ưu tiên theo thứ tự: `schemaVersion, id, version, kind, title, label, type, required, shortName, color, subtitle, instructions, recordTitle, mediaNamePattern, note, unit, hint, method, min, max, decimals, warnMin, warnMax, options, parts, formula, columns, rows, items, header, sections, signatures`; khoá còn lại a–z sau đó.
-Khoá không đụng tới giữ nguyên (kể cả khoá lạ). Số nguyên in không `.0`. So sánh test: bằng nhau ngữ nghĩa, không so chuỗi.
+Khoá ưu tiên theo thứ tự: `schemaVersion, id, version, value, kind, title, label, type, required, shortName, color, subtitle, instructions, recordTitle, mediaNamePattern, note, unit, hint, method, min, max, decimals, warnMin, warnMax, options, parts, formula, columns, rows, items, header, sections, signatures`; khoá còn lại a–z sau đó.
+Khoá không đụng tới giữ nguyên (kể cả khoá lạ). Thụt 2 dấu cách, mảng/đối tượng rỗng in `[]`/`{}`, số nguyên in không `.0`, Unicode giữ nguyên. So sánh test: bằng nhau ngữ nghĩa, không so chuỗi (trừ vector `pretty`).
 
 ### 11.5 Mã trường và lint
 - Mã trường có ở bản gốc bị **khoá trên giao diện** (xuất tổng hợp gộp cột theo mã qua mọi version: đổi mã = tách cột); chỉ mục mới thêm trong nháp được đổi mã. JSON nâng cao vẫn đổi được nhưng cảnh báo `ID_REMOVED`.
@@ -617,6 +621,7 @@ Khoá không đụng tới giữ nguyên (kể cả khoá lạ). Số nguyên in
 
 | Mã | Mức | Thông điệp |
 |---|---|---|
+| `INVALID` | lỗi | từng dòng của validator §6.6 (đường dẫn + câu của validator) |
 | `EMPTY_ID` | lỗi | "Mã không được để trống." |
 | `EMPTY_LABEL` | lỗi | "Nhãn không được để trống." |
 | `EMPTY_TITLE` | lỗi | "Tên không được để trống." |
@@ -635,4 +640,10 @@ Xoá mục đang được tham chiếu ⇒ hỏi xác nhận, liệt kê nơi d�
 
 ### 11.6 Vector chung
 `shared/template-validation-vectors.json` (§6.6): `[{name, template (object hoặc "templates/x.json"), valid, problemPaths, warningPaths?}]`.
-`shared/template-edit-vectors.json`: `{cases:[{name, base: object|file, ops:[Op], expect: object | {error: "CODE"}, expectLint?: [{code, path}]}], versions:[{known:[…], expect}], ids:[…]}`.
+`shared/template-edit-vectors.json`: `{cases, versions, ids, optionValues, templateIds, publishKinds, pretty}`:
+- `cases[]`: `{name, base: object | "templates/x.json", ops:[Op], expect, expectPatch?, expectLint?, newTemplate?}`. `expect` = tài liệu mong đợi | `{unchanged:true}` (= base) | `{error:"CODE"}`; `expectPatch` (thay `expect` cho base là file) = `[{path,key,value}]` đặt lên base. Có `expectLint` ⇒ so tập `code|path` của `TemplateLint` (`newTemplate` = mẫu mới); không có ⇒ kết quả phải qua validator §6.6.
+- Op: `{op:"set",path,key,value?}` · `insert{path,index,node}` · `delete{path,index}` · `move{path,from,to}` · `moveItem{fromSection,index,toSection}` · `duplicate{path,index}` · `replace{path,node|json}` (`json` = văn bản, lỗi `JSON_PARSE`/`NOT_OBJECT`) · `newItem{path,kind,type?,index?}`; `path` = mảng khoá/chỉ số (`["sections",0,"items"]`). Mã lỗi: `OUT_OF_RANGE`, `BAD_PATH`, `NOT_OBJECT`, `JSON_PARSE`, `NOT_DUPLICABLE`, `BAD_KIND`.
+- `set`: `null`/thiếu `value` xoá khoá; chuỗi rỗng xoá khoá trừ `id,label,title,type,kind,value,version` (giữ rỗng để lint báo); đổi `type` sang choice mà chưa có `options` ⇒ thêm 2 lựa chọn mặc định.
+- `versions[]` `{known,expect}` (`nextVersion`) · `ids[]` `{base,path,kind,expectId}` · `optionValues[]` · `templateIds[]` (`randoms` = chuỗi ngẫu nhiên lần lượt) · `publishKinds[]` · `pretty[]` (`{doc, expect: văn bản}`).
+Lint: mỗi dòng validator ⇒ mã `INVALID` (lỗi); `DUP_SECTION_ID`/`COLUMN_TYPE` tính trong lint (đường dẫn như §6.6); `path` các mã khác: `…min`/`…warnMin` (MIN_GT_MAX), `….options[k]` (DUP_OPTION), `….stopwatch.columns[k]` (STOPWATCH_COLUMN), đường dẫn khoá chứa tham chiếu (`.formula`, `.photoRef`, `.showWhen.field`, `.lookup.fill.<id>`, `.lookup.gps`, `.chipsRange.maxRef`, `.roundEntry.timeField`, `.stopwatch.cues.<cột>.field`) cho DANGLING_REF, `header`/`sections`/`<bảng>.columns` cho ID_REMOVED, `….role`/`….type` của trường thứ hai trở đi cho MULTI_*.
+`shared/sync-test-vectors.json` mục `publish`: các ca phát hành với máy chủ giả (xem `_doc`).

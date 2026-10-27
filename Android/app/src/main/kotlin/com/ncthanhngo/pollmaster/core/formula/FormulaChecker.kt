@@ -40,3 +40,12 @@ object FormulaChecker {
         c.args.drop(1).forEach { visit(it, true, tables) }
     }
 }
+
+/** Field codes a parsed formula reads (`{A-01}`, `{B-06.rows}` -> "B-06"); `{@col}` and table names are not fields. */
+fun formulaReferences(e: Expr): List<String> = when (e) {
+    is Expr.Ref -> listOf(e.id)
+    is Expr.Unary -> formulaReferences(e.operand)
+    is Expr.Binary -> formulaReferences(e.left) + formulaReferences(e.right)
+    is Expr.Call -> e.args.flatMap(::formulaReferences)
+    else -> emptyList()
+}
