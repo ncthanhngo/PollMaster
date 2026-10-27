@@ -20,6 +20,7 @@ import com.ncthanhngo.pollmaster.ui.editor.OutlineScreen
 import com.ncthanhngo.pollmaster.ui.editor.ReviewScreen
 import com.ncthanhngo.pollmaster.ui.editor.RowFormScreen
 import com.ncthanhngo.pollmaster.ui.editor.SectionScreen
+import com.ncthanhngo.pollmaster.ui.records.RecordHistoryScreen
 import com.ncthanhngo.pollmaster.ui.templates.TemplateDetailScreen
 
 private object Routes {
@@ -31,6 +32,7 @@ private object Routes {
     const val ROW = "editor/{recordId}/row/{tableId}/{rowId}?focus={focus}"
     const val REVIEW = "editor/{recordId}/review"
     const val FILL = "editor/{recordId}/fill"
+    const val HISTORY = "editor/{recordId}/history"
 
     fun project(id: String) = "project/$id"
     fun template(id: String, version: String) = "template/${enc(id)}/${enc(version)}"
@@ -41,6 +43,7 @@ private object Routes {
         "editor/$recordId/row/${enc(tableId)}/${enc(rowId)}" + (focus?.let { "?focus=${enc(it)}" } ?: "")
     fun review(recordId: String) = "editor/$recordId/review"
     fun fill(recordId: String) = "editor/$recordId/fill"
+    fun history(recordId: String) = "editor/$recordId/history"
 
     private fun enc(s: String) = android.net.Uri.encode(s)
 }
@@ -70,6 +73,7 @@ private fun Main() {
                 onOpenRecord = { nav.navigate(Routes.outline(it)) },
                 onOpenTemplate = { t -> nav.navigate(Routes.template(t.id, t.version)) },
                 onOpenProject = { nav.navigate(Routes.project(it)) },
+                onOpenHistory = { nav.navigate(Routes.history(it)) },
             )
         }
         composable(Routes.PROJECT) { entry ->
@@ -100,6 +104,7 @@ private fun Main() {
                 onBack = { nav.popBackStack() },
                 onOpenSection = { section, focus -> nav.navigate(Routes.section(recordId, section, focus)) },
                 onReview = { nav.navigate(Routes.review(recordId)) },
+                onHistory = { nav.navigate(Routes.history(recordId)) },
             )
         }
         composable(Routes.SECTION, arguments = listOf(focusArg)) { entry ->
@@ -137,6 +142,9 @@ private fun Main() {
                 onJumpRow = { table, row, column -> nav.navigate(Routes.row(recordId, table, row, column)) },
                 onFillOneByOne = { nav.navigate(Routes.fill(recordId)) },
             )
+        }
+        composable(Routes.HISTORY) { entry ->
+            RecordHistoryScreen(recordId = entry.arguments?.getString("recordId").orEmpty(), onBack = { nav.popBackStack() })
         }
         composable(Routes.FILL) { entry ->
             val recordId = entry.arguments?.getString("recordId").orEmpty()

@@ -46,7 +46,7 @@ import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
 import com.ncthanhngo.pollmaster.data.RecordItem
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
 import com.ncthanhngo.pollmaster.ui.common.AppCard
-import com.ncthanhngo.pollmaster.ui.common.ErpMarker
+import com.ncthanhngo.pollmaster.ui.common.SyncMarker
 import com.ncthanhngo.pollmaster.ui.common.FirstFitText
 import com.ncthanhngo.pollmaster.ui.common.TemplateBadge
 import com.ncthanhngo.pollmaster.ui.common.hexColor
@@ -57,7 +57,10 @@ import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
 
 /** Three lines, none wrapping: title · project avatar + name (or code) and date · status, backup flag and progress. */
 @Composable
-internal fun RecordCard(item: RecordItem, project: Project?, onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+internal fun RecordCard(
+    item: RecordItem, project: Project?, failure: String?, owner: String?, canEdit: Boolean, canCopy: Boolean,
+    onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit, onHistory: () -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val t = item.template
@@ -94,15 +97,19 @@ internal fun RecordCard(item: RecordItem, project: Project?, onMove: () -> Unit,
                         Text("${p.filled}/${p.total}", style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1, softWrap = false)
                     }
                 }
-                ErpMarker(item.record)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SyncMarker(item.record, failure)
+                    if (owner != null) Text(stringResource(R.string.record_of, owner), style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1)
+                }
             }
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_duplicate)) }, onClick = { menu = false; onDuplicate() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.record_move)) }, onClick = { menu = false; onMove() })
+                    if (canCopy) DropdownMenuItem(text = { Text(stringResource(R.string.action_duplicate)) }, onClick = { menu = false; onDuplicate() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.record_history)) }, onClick = { menu = false; onHistory() })
+                    if (canEdit) DropdownMenuItem(text = { Text(stringResource(R.string.record_move)) }, onClick = { menu = false; onMove() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_export)) }, onClick = { menu = false; onExport() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
+                    if (canEdit) DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
                 }
             }
         }

@@ -31,6 +31,7 @@ fun MainScreen(
     onOpenRecord: (String) -> Unit,
     onOpenTemplate: (Template) -> Unit,
     onOpenProject: (String) -> Unit,
+    onOpenHistory: (String) -> Unit,
 ) {
     Scaffold(
         bottomBar = {
@@ -56,7 +57,7 @@ fun MainScreen(
     ) { padding ->
         Box(Modifier.padding(padding).consumeWindowInsets(padding)) {
             when (tab) {
-                0 -> RecordsScreen(onOpenRecord)
+                0 -> RecordsScreen(onOpenRecord, onOpenHistory)
                 1 -> ProjectsScreen(onOpenProject)
                 2 -> TemplatesScreen(onOpenTemplate)
                 else -> SettingsScreen()

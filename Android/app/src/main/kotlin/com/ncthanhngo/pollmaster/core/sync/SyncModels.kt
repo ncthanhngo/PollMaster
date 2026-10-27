@@ -3,6 +3,7 @@ package com.ncthanhngo.pollmaster.core.sync
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import java.io.File
 
 /** Wire types of the record sync API (backend `project-polls.md`, schema 10.2). */
@@ -18,6 +19,8 @@ data class SyncRecord(
     @SerialName("created_by_name") val createdByName: String? = null,
     val data: JsonElement,
     val media: List<SyncMediaInfo> = emptyList(),
+    @SerialName("updated_by_name") val updatedByName: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 @Serializable
@@ -56,6 +59,26 @@ sealed interface SyncPutResult {
     data class MediaMissing(val names: List<String>) : SyncPutResult
 }
 
+/** One field change of a log entry (`path` format: backend `project-polls.md`, schema 10.3). [label] is the server's, often empty. */
+@Serializable
+data class FieldChange(
+    val path: String,
+    val label: String = "",
+    val old: JsonElement = JsonNull,
+    val new: JsonElement = JsonNull,
+)
+
+/** One save of a record in the change log (`GET poll-records/:id/changes`, newest first). */
+@Serializable
+data class RecordChange(
+    val rev: Int,
+    @SerialName("changed_by_name") val changedByName: String = "",
+    @SerialName("changed_at") val changedAt: String = "",
+    val source: String = "app",
+    val created: Boolean = false,
+    val changes: List<FieldChange> = emptyList(),
+)
+
 /** A problem of one record (shown on it as "Lỗi: …"); the rest of the run goes on. Any other exception ends the run (offline, expired). */
 class SyncRecordFailure(message: String) : Exception(message)
 
@@ -71,4 +94,7 @@ interface SyncRemote {
 
     /** 204 and 404 both return normally. */
     suspend fun delete(projectId: String, recordId: String)
+
+    /** The record's change log, newest first. */
+    suspend fun changes(projectId: String, recordId: String): List<RecordChange>
 }

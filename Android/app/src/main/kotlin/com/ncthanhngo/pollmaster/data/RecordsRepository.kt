@@ -11,7 +11,10 @@ import com.ncthanhngo.pollmaster.core.model.Template
 import com.ncthanhngo.pollmaster.core.model.allFields
 import com.ncthanhngo.pollmaster.core.model.mediaItems
 import com.ncthanhngo.pollmaster.core.model.recordCode
+import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.storage.Backup
+import com.ncthanhngo.pollmaster.core.sync.RecordAccess
+import com.ncthanhngo.pollmaster.core.sync.isSyncDirty
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,6 +56,9 @@ class RecordsRepository(
     private val settings: Settings,
     /** Ids of the ERP projects the account sees: records of other projects stay on the device, hidden. */
     private val visibleProjects: () -> Set<String> = { emptySet() },
+    /** Signed-in ERP user id and the project of a record: who may edit it, and which leftovers of other accounts stay hidden. */
+    private val me: () -> String? = { null },
+    private val projectOf: (String?) -> Project? = { null },
 ) {
     private val _items = MutableStateFlow<List<RecordItem>>(emptyList())
     val items: StateFlow<List<RecordItem>> = _items.asStateFlow()
@@ -115,19 +121,45 @@ class RecordsRepository(
     private var lastPrint: List<Triple<String, Long, Long>>? = null
     private var lastTemplates: List<Template>? = null
     private var lastVisible: Set<String>? = null
+    private var lastMe: String? = null
+
+    /** Null when the signed-in user may edit [r]; else the banner text of its view-only state (ux-spec N). */
+    fun readOnlyNote(r: Record): String? {
+        val p = projectOf(r.projectId)
+        if (RecordAccess.canEdit(r, me(), p)) return null
+        return if (p?.canPost == false) "Bạn chỉ có quyền xem dự án này — phiếu chỉ xem" else "Phiếu của ${r.createdByName ?: "người khác"} — chỉ xem"
+    }
+
+    fun canEdit(r: Record): Boolean = readOnlyNote(r) == null
+
+    fun canPost(projectId: String?): Boolean = projectOf(projectId)?.canPost ?: true
+
+    /** Open editors follow permission changes that arrive with a sync. */
+    private fun refreshAccess() = editors.values.forEach { it.setReadOnly(readOnlyNote(it.record.value)) }
+
+    /** The stored file replaced the record (the server version was taken): open editors show it. */
+    fun reloadFromStore(recordId: String) {
+        val r = store.load(recordId) ?: return
+        editors[recordId]?.reload(r)
+    }
 
     /** Re-reads the list when record files, templates or visible projects changed since the last call; screens call this freely. */
     suspend fun refresh() {
         val templateList = templates.templates.value
         val visible = visibleProjects()
+        val user = me()
+        refreshAccess()
         val (print, stored) = withContext(Dispatchers.IO) {
             val print = store.fingerprint()
-            if (print == lastPrint && templateList === lastTemplates && visible == lastVisible) return@withContext print to null
+            if (print == lastPrint && templateList === lastTemplates && visible == lastVisible && user == lastMe) return@withContext print to null
             print to store.listAll()
         }
         if (stored == null) return
         val items = withContext(Dispatchers.IO) {
-            stored.filterIsInstance<StoredRecord.Loaded>().map { it.record }.filter { it.projectId in visible }.map { r ->
+            stored.filterIsInstance<StoredRecord.Loaded>().map { it.record }.filter { it.projectId in visible }.filter { r ->
+                // unsent changes of another account on this device stay hidden unless the user manages the project
+                !RecordAccess.isHiddenLeftover(r.createdBy, user, r.isSyncDirty, projectOf(r.projectId)?.canManage ?: false)
+            }.map { r ->
                 val t = templates.find(r.templateId, r.templateVersion)
                 RecordItem(
                     r, t,
@@ -140,7 +172,7 @@ class RecordsRepository(
         }
         _broken.value = stored.filterIsInstance<StoredRecord.Broken>()
         _items.value = items
-        lastPrint = print; lastTemplates = templateList; lastVisible = visible
+        lastPrint = print; lastTemplates = templateList; lastVisible = visible; lastMe = user
     }
 
     private fun thumbnailOf(template: Template, record: Record): File? {
@@ -160,7 +192,7 @@ class RecordsRepository(
     /** Moves a record to another project; the record keeps its template, values and media, and takes the next number there. */
     suspend fun move(recordId: String, projectId: String) = withContext(Dispatchers.IO) {
         release(recordId)
-        store.load(recordId)?.let {
+        store.load(recordId)?.takeIf(::canEdit)?.let {
             val seq = nextRecordSeq(loadedRecords(), projectId, it.templateId)
             // on the server this is a delete in the old project and a new record in the target (schema 9.6, 10)
             val moved = it.copy(
@@ -175,16 +207,17 @@ class RecordsRepository(
     suspend fun duplicate(item: RecordItem): Record? = withContext(Dispatchers.IO) {
         val t = item.template ?: return@withContext null
         flushEditor(item.record.id)
-        val source = store.load(item.record.id) ?: return@withContext null
+        val source = store.load(item.record.id)?.takeIf { canPost(it.projectId) } ?: return@withContext null
         RecordFactory.duplicate(t, source).let { it.copy(seq = nextRecordSeq(loadedRecords(), it.projectId, it.templateId)) }.also { store.save(it) }
     }
 
     private fun loadedRecords(): List<Record> = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
 
     suspend fun delete(recordId: String) = withContext(Dispatchers.IO) {
+        val old = store.load(recordId)
+        if (old != null && !canEdit(old)) return@withContext      // someone else's record: only its owner or a manager deletes
         tickers.remove(recordId)?.cancel()
         editors.remove(recordId)?.flush()
-        val old = store.load(recordId)
         store.delete(recordId)
         old?.let(onDeleted)
     }
@@ -200,6 +233,7 @@ class RecordsRepository(
             controller.noteSaved()
         }
         controller = EditorController(template, record, saver)
+        controller.setReadOnly(readOnlyNote(record))
         editors[recordId] = controller
         onEditorOpened(record)
         tickers[recordId] = scope.launch {

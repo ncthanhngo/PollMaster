@@ -35,4 +35,11 @@ object Backup {
         val code = recordCode?.let(::sanitizeFileName)?.takeIf { it.isNotEmpty() } ?: return "$prefix${recordId}_backup.zip"
         return "$prefix${code}_${recordId.take(8)}_backup.zip"
     }
+
+    /**
+     * Copy of the device version kept when the user takes the server's: `{backup name without "_backup.zip"}_ban-may_{yyyyMMdd-HHmmss}.zip`.
+     * Unlike the safety copy it is never replaced by the next backup.
+     */
+    fun conflictCopyName(recordCode: String?, recordId: String, projectCode: String?, stamp: String): String =
+        fileName(recordCode, recordId, projectCode).removeSuffix("_backup.zip") + "_ban-may_" + stamp + ".zip"
 }

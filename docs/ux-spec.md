@@ -226,22 +226,25 @@ Phiếu và mẫu của dự án ERP tự đồng bộ, không còn nút "Gửi 
   kết quả kéo về lên phiếu **đang mở** trong màn soạn (áp sau khi rời màn).
 - **Nhãn đồng bộ trên thẻ và đầu màn phiếu** (thay `Đã gửi ERP …`): `Đã đồng bộ dd-MM HH:mm` · `Chờ đồng bộ` (có thay đổi chưa đẩy / chưa có mạng) ·
   `Xung đột` (cam) · `Lỗi: {câu ngắn}` (vd. "Ảnh P05_01.jpg lớn hơn 95 MB"). Lần đồng bộ đầu có nhiều phiếu: thanh tiến độ "Đang đồng bộ n/N phiếu", tiếp tục được.
-  Thẻ phiếu của người khác thêm "của {createdByName}".
+  Thẻ phiếu của người khác thêm "của {createdByName}"; đầu màn phiếu có dòng "Người tạo: …". Lỗi từng phiếu (ví dụ ảnh quá 95 MB) hiện ngay trên thẻ đó.
+  PDF cho web chỉ được tạo và gửi khi phiếu **đã hoàn thành** (phiếu nháp chỉ đẩy dữ liệu + media).
 - **Chỉ đọc theo quyền** (`canEdit`, schema §10.4): người không phải người tạo và không quản lý dự án mở phiếu thấy banner "Phiếu của {tên} — chỉ xem"; mọi ô nhập,
   ảnh, chữ ký, bảng, đồng hồ bấm giờ bị khoá (chặn cả ở tầng lưu, không chỉ UI); ẩn "Mở lại"; "Chế độ kiểm tra" chỉ xem (không thêm ghi chú, không "Trả lại để sửa").
   Menu phiếu ẩn **Xoá** và **Chuyển dự án**; **Nhân bản** vẫn có khi `canPost` (bản mới là của mình). Nút **+** ẩn khi `!canPost` (người xem dự án).
-  Quản lý dự án thấy đầy đủ như người tạo (sửa, trả, xoá).
+  Quản lý dự án thấy đầy đủ như người tạo (sửa, trả, xoá). Chặn ở tầng ghi: editor không lưu thay đổi nội dung của phiếu chỉ xem (chỉ còn khoá đồng bộ, mốc sao lưu).
+  Android: phiếu chỉ xem dùng giao diện thẻ chỉ xem như chế độ kiểm tra nhưng không có ghi chú. Quyền đổi (đồng bộ báo `can_post`/`can_manage` mới) áp ngay cho phiếu đang mở.
 - **Xung đột**: mở phiếu `Xung đột` → hộp "Phiếu đã được {tên} sửa lúc {giờ} trên máy khác." với **Giữ bản của tôi** (ghi đè, có ghi lịch sử) và
-  **Lấy bản máy chủ** (bản máy được sao lưu zip trước, rồi thay). Phiếu bị xoá trên máy chủ khi máy còn sửa: "Phiếu đã bị xoá trên máy chủ." với **Khôi phục**
+  **Lấy bản máy chủ** (bản máy được sao lưu zip trước — tệp riêng `…_ban-may_{yyyyMMdd-HHmmss}.zip` cạnh các bản sao lưu, không bị bản sao lưu sau ghi đè — rồi thay; sao lưu lỗi thì không thay). Phiếu bị xoá trên máy chủ khi máy còn sửa: "Phiếu đã bị xoá trên máy chủ." với **Khôi phục**
   (đẩy lại như phiếu mới, cần quyền ghi) và **Xoá trên máy**. Không tự gộp theo trường.
 - **Lịch sử sửa** (menu ⋯ của phiếu, cần mạng): danh sách theo lần lưu, mới nhất trước — tiêu đề "{tên} · dd-MM-yyyy HH:mm" (+ "· app cũ" khi `source=legacy`);
   mỗi dòng "{nhãn}: {cũ} → {mới}", giá trị trống là "(trống)", giá trị hiển thị bằng hàm chung §6.5; lần tạo: "Tạo phiếu". Nhãn dịch từ `path` (schema §10.3).
-  Mất mạng / lỗi: "Không tải được lịch sử." + Thử lại. Web ERP hiển thị cùng dữ liệu.
+  Nhãn thêm cho `status` / `returned` / `completedAt`: "Trạng thái" / "Trả lại để sửa" / "Hoàn thành lúc"; dòng bảng đã bị xoá khỏi phiếu → hiện nguyên `path`.
+  Phiếu chưa có trên máy chủ: "Phiếu chưa có trên máy chủ nên chưa có lịch sử." Mất mạng / lỗi: "Không tải được lịch sử." + Thử lại. Web ERP hiển thị cùng dữ liệu.
 - **Số thứ tự**: tiêu đề phiếu "NN - Tên mẫu - ngày" dùng `seq` do máy chủ chốt. Hai máy cùng tạo "01" khi offline → sau đồng bộ máy đẩy sau thấy phiếu đổi thành "02" (không báo lỗi).
 - **Mẫu cần mạng + quyền quản lý**: thêm mẫu vào dự án, gỡ, dùng bản mới, đổi tên / viết tắt / màu — chỉ quản lý dự án (`canManage`) và khi có mạng; ngược lại nút mờ,
   chạm báo "Cần quyền quản lý dự án và có mạng". Thay đổi chỉ hiện trên máy sau khi máy chủ xác nhận. Đổi tên/màu áp toàn thư viện của tổ chức; hộp xác nhận nêu rõ
   "Áp dụng cho mọi dự án dùng mẫu này". Máy khác thấy sau lần đồng bộ kế (kéo để tải lại).
 - **Media**: ảnh + ghi âm của phiếu người khác tải ngay khi đồng bộ; video chỉ tải khi mở phiếu (hiện tiến độ, huỷ được). Đang chờ tải → ô hiện "Đang tải…"; offline → "Chưa tải (cần mạng)".
-- **Đổi tài khoản trên cùng máy**: phiếu sạch của người cũ bị xoá khỏi máy (kéo lại nếu tài khoản mới được xem); phiếu bẩn của người cũ giữ, ẩn, không đẩy. Đăng xuất không xoá gì.
+- **Đổi tài khoản trên cùng máy**: phiếu sạch của người cũ bị xoá khỏi máy (kéo lại nếu tài khoản mới được xem); phiếu bẩn của người cũ (có `createdBy` khác, chưa đồng bộ) giữ, **ẩn khỏi danh sách** (trừ khi tài khoản hiện tại quản lý dự án đó — khi ấy hiện và đẩy được), không đẩy. Đăng xuất không xoá gì.
 - **Mất quyền dự án** (ERP không còn trả về dự án): phiếu sạch của dự án đó bị xoá khỏi máy; phiếu bẩn giữ ẩn như hiện nay.
 - Chuỗi lỗi cho người dùng theo quy ước §9.5 (câu tiếng Việt hiện nguyên văn; mã SCREAMING_SNAKE như `REV_CONFLICT` không bao giờ hiện).

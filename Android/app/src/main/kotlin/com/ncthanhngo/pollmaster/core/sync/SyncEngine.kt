@@ -161,7 +161,7 @@ class SyncEngine(
         return next
     }
 
-    private fun pruneMedia(r: Record) {
+    internal fun pruneMedia(r: Record) {
         val used = SyncApply.mediaFiles(r).map { it.substringAfterLast('/') }.toSet()
         records.mediaDir(r.id).listFiles().orEmpty().filter { it.name !in used }.forEach { it.delete() }
     }

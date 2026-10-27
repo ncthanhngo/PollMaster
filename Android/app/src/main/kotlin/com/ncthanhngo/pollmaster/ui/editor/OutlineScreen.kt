@@ -47,7 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
-import com.ncthanhngo.pollmaster.ui.common.ErpMarker
+import com.ncthanhngo.pollmaster.ui.common.SyncMarker
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.format.displayTime
 import com.ncthanhngo.pollmaster.core.format.recordTitle
@@ -81,8 +81,10 @@ fun OutlineScreen(
     onBack: () -> Unit,
     onOpenSection: (sectionId: String, focus: String?) -> Unit,
     onReview: () -> Unit,
+    onHistory: () -> Unit,
 ) {
     val container = LocalContainer.current
+    val syncIssues by container.sync.issues.collectAsState()
     val controller = remember(recordId) { container.records.editor(recordId) }
     val saveError by container.records.saveError.collectAsState()
     var menu by remember { mutableStateOf(false) }
@@ -106,6 +108,7 @@ fun OutlineScreen(
     val env = rememberEditorEnv(controller)
     val record = env.record
     val savedAt by controller.savedAt.collectAsState()
+    val readOnlyNote by controller.readOnlyNote.collectAsState()
     val checked by controller.showErrors.collectAsState()
     val issues = remember(record) { controller.issues(record) }
     val progress = remember(record) { controller.progress(record) }
@@ -131,7 +134,10 @@ fun OutlineScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        ErpMarker(record)
+                        SyncMarker(record, syncIssues[record.id])
+                        record.createdByName?.takeIf { record.createdBy != null && record.createdBy != container.erp.account.value?.userId }?.let {
+                            Text(stringResource(R.string.creator_line, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
                     }
                 },
                 navigationIcon = { BackButton(::leave) },
@@ -150,7 +156,8 @@ fun OutlineScreen(
                             if (template.instructions != null) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.menu_instructions)) }, onClick = { menu = false; showInstructions = true })
                             }
-                            if (record.isCompleted || env.reviewMode) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.record_history)) }, onClick = { menu = false; onHistory() })
+                            if ((record.isCompleted || env.reviewMode) && !env.readOnly) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(if (env.reviewMode) R.string.review_mode_exit else R.string.review_mode)) },
                                     onClick = { menu = false; controller.setReviewMode(!env.reviewMode) },
@@ -176,7 +183,14 @@ fun OutlineScreen(
                     )
                 }
             }
-            if (env.reviewMode) {
+            if (record.syncConflict) item(key = "conflict") { ConflictCard(recordId, env.readOnly, record.serverRev, onDeleted = ::leave) }
+            if (env.readOnly) {
+                item {
+                    AppCard(container = MaterialTheme.colorScheme.surfaceVariant, borderColor = MaterialTheme.colorScheme.outline) {
+                        Text(readOnlyNote.orEmpty(), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else if (env.reviewMode) {
                 item {
                     AppCard(container = MaterialTheme.colorScheme.tertiaryContainer, borderColor = MaterialTheme.colorScheme.tertiary) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -200,7 +214,7 @@ fun OutlineScreen(
             }
             item {
                 val project = container.projects.get(record.projectId)
-                ProgressHero(project, progress, resume?.takeIf { !record.isCompleted }?.let { (pos, text) -> text to { onOpenSection(pos.section, pos.field) } })
+                ProgressHero(project, progress, resume?.takeIf { !record.isCompleted && !env.readOnly }?.let { (pos, text) -> text to { onOpenSection(pos.section, pos.field) } })
             }
             item {
                 Text(

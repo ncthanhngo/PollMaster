@@ -133,13 +133,18 @@ class ValueFormatter(private val lookup: (String) -> FieldValue? = { null }) {
         }.joinToString("; ")
 
     private fun partValue(part: Part, e: JsonElement): String {
-        val text = when (part.type) {
+        val text = partText(part, e)
+        return if (part.unit.isNullOrBlank()) text else "$text ${part.unit}"
+    }
+
+    /** One sub-cell value as text, without its unit. */
+    fun partText(part: Part, e: JsonElement): String {
+        return when (part.type) {
             "number", "integer" -> e.asDouble()?.let(::formatShortest) ?: e.asText().orEmpty()
             "singleChoice" -> e.asText()?.let { v -> part.options.firstOrNull { it.value == v }?.label ?: v }.orEmpty()
             "yesNo" -> if (e.asText() == "unknown") KDD else if (e.asBool() == true) "Có" else "Không"
             "rating" -> e.asDouble()?.let { formatNumber(it, 0) }.orEmpty()
             else -> e.asText().orEmpty()
         }
-        return if (part.unit.isNullOrBlank()) text else "$text ${part.unit}"
     }
 }

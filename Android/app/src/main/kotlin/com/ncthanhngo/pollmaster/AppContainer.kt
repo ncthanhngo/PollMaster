@@ -39,7 +39,10 @@ class AppContainer(context: Context) {
     val templates = TemplatesRepository(context, templateStore, recordStore, settings, projectStore)
     val sites = SitesRepository(projectStore)
     val projects = ProjectsRepository(projectStore, sites, settings)
-    val records = RecordsRepository(scope, recordStore, templates, settings) { projects.projects.value.map { it.id }.toSet() }
+    val records: RecordsRepository = RecordsRepository(
+        scope, recordStore, templates, settings, visibleProjects = { projects.projects.value.map { it.id }.toSet() },
+        me = { erp.account.value?.userId }, projectOf = projects::get,
+    )
     val backup = BackupService(context, scope, recordStore, templates, records, settings, projects)
     init {
         records.onBackupTick = backup::requestIfNeeded
@@ -53,8 +56,8 @@ class AppContainer(context: Context) {
     val media = MediaProcessor(context, settings)
     val updates = UpdateChecker(context)
     private val erpClient = ErpClient(context)
-    val erp = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
-    val sync = SyncService(context, context.filesDir, erpClient, erp, projects, records, templates, scope) { isOnline(context) }
+    val erp: ErpSession = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
+    val sync = SyncService(context, context.filesDir, erpClient, erp, projects, records, templates, backup, scope) { isOnline(context) }
 
     init {
         erp.onProjectsSynced = { sync.request() }

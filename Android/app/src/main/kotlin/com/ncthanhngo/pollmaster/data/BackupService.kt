@@ -84,6 +84,28 @@ class BackupService(
         _status.value = BackupStatus(lastOkAt = at)
     }
 
+    /** Zips the device version of [recordId] under a name of its own (never replaced by the next backup) before the server's is taken. */
+    suspend fun backupConflictCopy(recordId: String): Boolean = mutex.withLock {
+        try {
+            withContext(Dispatchers.IO) {
+                records.flushEditor(recordId)
+                val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
+                val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
+                val project = projects.get(record.projectId)
+                val tmp = File(context.cacheDir, "conflict-$recordId.zip")
+                try {
+                    tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it, project?.ref()) }
+                    write(Backup.conflictCopyName(template.recordCode(record), recordId, project?.code,
+                        java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(java.time.ZonedDateTime.now())), Backup.folder(project?.code), tmp)
+                } finally { tmp.delete() }
+            }
+            true
+        } catch (e: Exception) {
+            _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
+            false
+        }
+    }
+
     /** Removes the backup file of [recordId] in its current project's folder (used before the record moves to another project). */
     suspend fun deleteBackup(recordId: String): Boolean = mutex.withLock {
         try {

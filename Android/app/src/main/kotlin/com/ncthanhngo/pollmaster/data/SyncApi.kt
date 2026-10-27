@@ -2,12 +2,14 @@ package com.ncthanhngo.pollmaster.data
 
 import com.ncthanhngo.pollmaster.core.model.PollJson
 import com.ncthanhngo.pollmaster.core.project.ErpMessages
+import com.ncthanhngo.pollmaster.core.sync.RecordChange
 import com.ncthanhngo.pollmaster.core.sync.SyncPage
 import com.ncthanhngo.pollmaster.core.sync.SyncPutBody
 import com.ncthanhngo.pollmaster.core.sync.SyncPutResult
 import com.ncthanhngo.pollmaster.core.sync.SyncRecord
 import com.ncthanhngo.pollmaster.core.sync.SyncRecordFailure
 import com.ncthanhngo.pollmaster.core.sync.SyncRemote
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -84,5 +86,11 @@ class ErpSyncRemote(private val client: ErpClient) : SyncRemote {
     override suspend fun delete(projectId: String, recordId: String) {
         val r = client.rawAuthorized("DELETE", record(projectId, recordId))
         if (r.status !in 200..299 && r.status != 404) throw fail(r, "Không xoá được phiếu trên máy chủ.")
+    }
+
+    override suspend fun changes(projectId: String, recordId: String): List<RecordChange> {
+        val r = client.rawAuthorized("GET", record(projectId, recordId, "/changes"))
+        if (r.status != 200) throw fail(r, "Không có quyền xem lịch sử hoặc phiếu chưa có trên máy chủ.")
+        return data(r.text, ListSerializer(RecordChange.serializer()))
     }
 }

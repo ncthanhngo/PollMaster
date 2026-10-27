@@ -81,6 +81,8 @@ class EditorEnv(
     val reviewMode: Boolean = false,
     /** Project of the record, whose list of planned sites is [sites]. */
     val projectId: String? = null,
+    /** View-only by permission (`controller.readOnlyNote`): every card is read-only like review mode, but takes no notes. */
+    val readOnly: Boolean = false,
 ) {
     /** Fields that use a photo field as evidence: photo field id -> ids of the referencing fields (template order). */
     val photoUsers: Map<String, List<String>> by lazy {
@@ -145,6 +147,7 @@ fun rememberEditorEnv(controller: EditorController): EditorEnv {
     val showErrors by controller.showErrors.collectAsState()
     val touched by controller.touched.collectAsState()
     val reviewMode by controller.reviewMode.collectAsState()
+    val readOnly = controller.readOnlyNote.collectAsState().value != null
     val checker = remember(controller, sites) { WarningChecker(controller.template, sites) }
     // Values stay immediate (record); the costly scans catch up 200 ms after the last edit. A new screen or new sites compute at once.
     var derived by remember(controller, checker) { mutableStateOf(derive(controller, checker, record)) }
@@ -154,10 +157,10 @@ fun rememberEditorEnv(controller: EditorController): EditorEnv {
             derived = withContext(Dispatchers.Default) { derive(controller, checker, record) }
         }
     }
-    return remember(controller, record, derived, showErrors, touched, sites, reviewMode, projectId) {
+    return remember(controller, record, derived, showErrors, touched, sites, reviewMode, readOnly, projectId) {
         EditorEnv(
             controller, record, derived.issues, showErrors, touched, derived.warnings, derived.siteDistances,
-            checker, sites, reviewMode, projectId,
+            checker, sites, reviewMode || readOnly, projectId, readOnly,
         )
     }
 }

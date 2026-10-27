@@ -26,6 +26,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -75,7 +77,7 @@ private enum class StatusFilter { ALL, DRAFT, COMPLETED }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordsScreen(onOpenRecord: (String) -> Unit) {
+fun RecordsScreen(onOpenRecord: (String) -> Unit, onOpenHistory: (String) -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
     val items by container.records.items.collectAsState()
@@ -101,6 +103,11 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
     var deleting by remember { mutableStateOf<RecordItem?>(null) }
     var exporting by rememberSaveable { mutableStateOf<String?>(null) }
     val startRecord = rememberRecordCreator(onOpenRecord)
+    val syncIssues by container.sync.issues.collectAsState()
+    val progress by container.sync.progress.collectAsState()
+    val syncing by container.erp.syncing.collectAsState()
+    val me = container.erp.account.collectAsState().value?.userId
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(templates) { container.records.refresh() }
 
@@ -116,6 +123,10 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
 
     /** Starts a record in [p]: its only template is used at once, several are offered. */
     fun beginIn(p: com.ncthanhngo.pollmaster.core.project.Project) {
+        if (!p.canPost) {
+            android.widget.Toast.makeText(context, context.getString(R.string.project_view_only, p.name), android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         val usable = p.templates.mapNotNull { ref -> templates.firstOrNull { it.id == ref.id && it.version == ref.version } }
         when {
             usable.isEmpty() -> noTemplates = true
@@ -129,12 +140,19 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
             TopAppBar(title = { ProjectTitle(project) { switcher = true } }, actions = { ThemeToggleButton() })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { if (project != null) beginIn(project) else pickingProject = true }) {
+            if (project?.canPost != false) FloatingActionButton(onClick = { if (project != null) beginIn(project) else pickingProject = true }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.record_new))
             }
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        PullToRefreshBox(syncing, onRefresh = { scope.launch { container.erp.sync() } }, Modifier.padding(padding).fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            progress?.let { p ->
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    Text(stringResource(R.string.sync_progress, minOf(p.done + 1, p.total), p.total), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LinearProgressIndicator(progress = { p.done.toFloat() / maxOf(p.total, 1) }, modifier = Modifier.fillMaxWidth())
+                }
+            }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 SegmentedButton(!showMap, { showMap = false }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.view_list)) }
                 SegmentedButton(showMap, { showMap = true }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.view_map)) }
@@ -180,6 +198,11 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
                     RecordCard(
                         item = item,
                         project = projects.firstOrNull { it.id == item.projectId },
+                        failure = syncIssues[item.record.id],
+                        owner = item.record.createdBy?.takeIf { it != me }?.let { item.record.createdByName ?: "người khác" },
+                        canEdit = container.records.canEdit(item.record),
+                        canCopy = container.records.canPost(item.projectId),
+                        onHistory = { onOpenHistory(item.record.id) },
                         onMove = { moving = item },
                         onOpen = { onOpenRecord(item.record.id) },
                         onDuplicate = {
@@ -194,6 +217,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
                 }
             }
         }
+        }
     }
 
     pickingFor?.let { p ->
@@ -207,7 +231,7 @@ fun RecordsScreen(onOpenRecord: (String) -> Unit) {
         )
     }
     if (pickingProject) {
-        val active = projects.filter { !it.archived }
+        val active = projects.filter { !it.archived && it.canPost }
         if (active.isEmpty()) {
             MessageDialog(stringResource(R.string.pick_project), stringResource(R.string.no_active_projects)) { pickingProject = false }
         } else {

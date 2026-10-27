@@ -175,8 +175,34 @@
     <string name="fmt_docx">Word (.docx)</string>
     <string name="exporting">Đang xuất…</string>
     <string name="export_error">Không xuất được: %1$s</string>
-    <string name="erp_sent_at">Đã gửi ERP %1$s</string>
-    <string name="erp_unsent_changes">Có thay đổi chưa gửi</string>
+    <string name="sync_progress">Đang đồng bộ %1$d/%2$d phiếu</string>
+    <string name="record_of">· của %1$s</string>
+    <string name="creator_line">Người tạo: %1$s</string>
+    <string name="record_history">Lịch sử sửa</string>
+    <string name="project_view_only">Bạn chỉ có quyền xem dự án %1$s, không tạo được phiếu.</string>
+    <string name="conflict_title">Xung đột đồng bộ</string>
+    <string name="conflict_edited">Phiếu đã được %1$s sửa lúc %2$s trên máy khác.</string>
+    <string name="conflict_edited_by">Phiếu đã được %1$s sửa trên máy khác.</string>
+    <string name="conflict_edited_unknown">Phiếu đã được sửa trên máy khác.</string>
+    <string name="conflict_deleted">Phiếu đã bị xoá trên máy chủ.</string>
+    <string name="conflict_choose">Chọn cách xử lý</string>
+    <string name="conflict_working">Đang xử lý…</string>
+    <string name="conflict_keep_mine">Giữ bản của tôi</string>
+    <string name="conflict_take_server">Lấy bản máy chủ</string>
+    <string name="conflict_restore">Khôi phục</string>
+    <string name="conflict_delete_local">Xoá trên máy</string>
+    <string name="conflict_later">Để sau</string>
+    <string name="conflict_take_hint">Bản trên máy được sao lưu thành tệp zip riêng trước khi thay.</string>
+    <string name="history_loading">Đang tải lịch sử…</string>
+    <string name="history_failed">Không tải được lịch sử.</string>
+    <string name="history_retry">Thử lại</string>
+    <string name="history_offline">Cần có mạng để xem lịch sử.</string>
+    <string name="history_not_synced">Phiếu chưa có trên máy chủ nên chưa có lịch sử.</string>
+    <string name="history_empty">Chưa có thay đổi nào</string>
+    <string name="history_created">Tạo phiếu</string>
+    <string name="history_legacy">app cũ</string>
+    <string name="history_unknown_user">Không rõ</string>
+    <string name="history_arrow">%1$s → %2$s</string>
     <string name="share_title">Chia sẻ phiếu</string>
 
     <!-- Settings -->

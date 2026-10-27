@@ -29,6 +29,7 @@ fun rememberRecordCreator(onCreated: (String) -> Unit): (Template, String?) -> U
     var pending by remember { mutableStateOf<Pair<Template, String?>?>(null) }
 
     fun create(t: Template, projectId: String?) {
+        if (!container.records.canPost(projectId)) return      // a project the user may only read
         scope.launch { onCreated(container.records.create(t, projectId).id) }
     }
     pending?.let { (t, projectId) ->

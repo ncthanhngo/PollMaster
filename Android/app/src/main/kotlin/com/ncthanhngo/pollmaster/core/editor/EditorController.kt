@@ -52,7 +52,20 @@ class EditorController(
     val reviewMode: StateFlow<Boolean> = _reviewMode.asStateFlow()
 
     fun setReviewMode(on: Boolean) {
-        _reviewMode.value = on
+        _reviewMode.value = on && !readOnly
+    }
+
+    private val _readOnlyNote = MutableStateFlow<String?>(null)
+    /** Why the record is view-only for this user (banner text), null when they may edit it (ux-spec N, `RecordAccess`). */
+    val readOnlyNote: StateFlow<String?> = _readOnlyNote.asStateFlow()
+    val readOnly: Boolean get() = _readOnlyNote.value != null
+
+    /** Sets (or lifts, null) the view-only state; what was typed before is saved first. While set, no mutation changes the record. */
+    fun setReadOnly(note: String?) {
+        if (note == _readOnlyNote.value) return
+        saver.flush()
+        _readOnlyNote.value = note
+        if (note != null) _reviewMode.value = false
     }
 
     private val _touched = MutableStateFlow<Set<String>>(emptySet())
@@ -104,6 +117,7 @@ class EditorController(
     }
 
     private fun mutate(block: (Record) -> Record) {
+        if (readOnly) return        // the write layer: a view-only record is never changed, whatever the UI lets through
         val updated = _record.updateAndGet { block(it).copy(updatedAt = clock()) }
         listeners.forEach { it(updated) }
         saver.submit(updated)
@@ -116,8 +130,17 @@ class EditorController(
 
     /** Remembers where the user is editing so the outline can offer "Tiếp tục". */
     fun setPosition(section: String, field: String?) {
+        if (readOnly) return
         val position = Position(section, field)
         if (_record.value.lastPosition != position) mutateQuietly { it.copy(lastPosition = position) }
+    }
+
+    /** The stored file replaced this copy (the server version was taken): show it, forget unsaved edits. */
+    fun reload(r: Record) {
+        saver.cancel()
+        _record.value = r
+        _savedAt.value = r.updatedAt
+        listeners.forEach { it(r) }
     }
 
     /** Records a finished backup that covered everything up to [at]. */
@@ -158,6 +181,7 @@ class EditorController(
 
     /** Adds a row (same id in paired tables); `carryOver` columns start with the previous row's value. */
     fun addRow(tableId: String): String {
+        if (readOnly) return ""
         val id = UUID.randomUUID().toString()
         val tables = linked(tableId)
         mutate { r ->
@@ -181,6 +205,7 @@ class EditorController(
     }
 
     fun duplicateRow(tableId: String, rowId: String): String? {
+        if (readOnly) return null
         if (_record.value.tables[tableId]?.any { it.id == rowId } != true) return null
         val id = UUID.randomUUID().toString()
         val tables = linked(tableId)
@@ -247,7 +272,7 @@ class EditorController(
 
     /** Completes the record when there are no issues. Returns false (and changes nothing) otherwise. */
     fun complete(): Boolean {
-        if (issues().isNotEmpty()) return false
+        if (readOnly || issues().isNotEmpty()) return false
         val now = clock()
         val sessionIds = template.allFields().filter { it.type == "sessionTime" }.map { it.id }
         mutate { r ->
@@ -263,12 +288,14 @@ class EditorController(
     }
 
     fun reopen() {
+        if (readOnly) return
         mutate { it.copy(status = Record.STATUS_DRAFT, completedAt = null) }
         saver.flush()
     }
 
     /** Reviewer sends a completed record back to the surveyor: draft again, flagged `returned`. */
     fun returnForFix() {
+        if (readOnly) return
         mutate { it.copy(status = Record.STATUS_DRAFT, completedAt = null, returned = true) }
         saver.flush()
     }
@@ -282,6 +309,7 @@ class EditorController(
 
     /** Marks every empty flaggable field of the section KĐĐ with one shared [reason]; returns how many. */
     fun markEmptyNotMeasurable(sectionId: String, reason: String): Int {
+        if (readOnly) return 0
         val count = emptyFlaggableCount(sectionId)
         if (count > 0 && reason.isNotBlank()) mutate { SectionTools.markNotMeasurable(template, it, sectionId, reason) }
         return count

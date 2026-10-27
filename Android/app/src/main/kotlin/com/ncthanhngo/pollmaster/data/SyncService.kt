@@ -6,11 +6,16 @@ import com.ncthanhngo.pollmaster.core.model.Record
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
+import com.ncthanhngo.pollmaster.core.sync.ConflictInfo
 import com.ncthanhngo.pollmaster.core.sync.PendingDelete
 import com.ncthanhngo.pollmaster.core.sync.PendingDeletes
+import com.ncthanhngo.pollmaster.core.sync.RecordChange
 import com.ncthanhngo.pollmaster.core.sync.SyncEngine
 import com.ncthanhngo.pollmaster.core.sync.SyncHooks
 import com.ncthanhngo.pollmaster.core.sync.downloadMedia
+import com.ncthanhngo.pollmaster.core.sync.inspectConflict
+import com.ncthanhngo.pollmaster.core.sync.keepMine
+import com.ncthanhngo.pollmaster.core.sync.takeServer
 import com.ncthanhngo.pollmaster.export.PdfExporter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +44,7 @@ class SyncService(
     private val projects: ProjectsRepository,
     private val records: RecordsRepository,
     private val templates: TemplatesRepository,
+    private val backup: BackupService,
     private val scope: CoroutineScope,
     private val online: () -> Boolean,
 ) {
@@ -119,10 +125,8 @@ class SyncService(
                 issues += rep.failures
             }
             _issues.value = issues
-            if (removed.isNotEmpty() || reports.values.any { it.created + it.overwritten + it.deletedLocal + it.pushed > 0 }) {
-                projects.refresh()
-                records.refresh()
-            }
+            projects.refresh()      // rights may have changed; both calls are cheap when nothing did
+            records.refresh()
         } catch (e: CancellationException) {
             throw e
         } catch (e: ErpException) {
@@ -131,6 +135,45 @@ class SyncService(
             // offline or timed out: the next trigger tries again
         }
     }
+
+    // ---- the user's answers to a conflict (ux-spec N); each returns an error sentence, null when done ----
+
+    private fun failure(e: Exception) = if (e is IOException) "Không kết nối được máy chủ. Thử lại khi có mạng." else e.message ?: "Lỗi không rõ."
+
+    /** What the dialog says; null when the server could not be asked (offline). */
+    suspend fun conflictInfo(recordId: String): ConflictInfo? {
+        val pid = withContext(Dispatchers.IO) { store.load(recordId)?.projectId } ?: return null
+        return try { engine().inspectConflict(pid, recordId) } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+    }
+
+    /** "Giữ bản của tôi". */
+    suspend fun keepMine(recordId: String): String? {
+        withContext(Dispatchers.IO) { records.flushEditor(recordId) }
+        val pid = withContext(Dispatchers.IO) { store.load(recordId)?.projectId } ?: return "Không tìm thấy phiếu trên máy."
+        return try { engine().keepMine(pid, recordId); records.refresh(); null } catch (e: CancellationException) { throw e } catch (e: Exception) { failure(e) }
+    }
+
+    /** "Lấy bản máy chủ": the device version is zipped first, then replaced. */
+    suspend fun takeServer(recordId: String): String? {
+        withContext(Dispatchers.IO) { records.flushEditor(recordId) }
+        val pid = withContext(Dispatchers.IO) { store.load(recordId)?.projectId } ?: return "Không tìm thấy phiếu trên máy."
+        if (!backup.backupConflictCopy(recordId)) return "Không sao lưu được bản trên máy. Bản máy chủ chưa được lấy."
+        return try {
+            engine().takeServer(pid, recordId)
+            records.reloadFromStore(recordId)
+            records.refresh()
+            null
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { failure(e) }
+    }
+
+    /** "Khôi phục" a record the server lost: it goes up again as a new one. */
+    suspend fun restore(recordId: String) {
+        withContext(Dispatchers.IO) { records.updateForSync(recordId) { it.copy(serverRev = null, syncConflict = false) } }
+        store.load(recordId)?.projectId?.let(::request)
+    }
+
+    /** The change log of a record (needs the network). */
+    suspend fun changes(projectId: String, recordId: String): List<RecordChange> = remote.changes(projectId, recordId)
 
     /** PDF for the web view of a pushed record; null when it cannot be made (the push itself is not affected). */
     private suspend fun makePdf(record: Record): File? = withContext(Dispatchers.IO) {

@@ -87,7 +87,9 @@ fun ReviewScreen(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.review_title)) }, navigationIcon = { BackButton(onBack) }) },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                if (record.isCompleted) {
+                if (env.readOnly) {
+                    Unit        // someone else's record: nothing to complete or reopen
+                } else if (record.isCompleted) {
                     OutlinedButton(onClick = { confirmReopen = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.reopen)) }
                 } else {
                     Button(
@@ -203,7 +205,7 @@ fun ReviewScreen(
             if (template.signatures.isNotEmpty()) {
                 item { Text(stringResource(R.string.signatures_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp)) }
                 items(template.signatures, key = { "sig-${it.id}" }) { def ->
-                    SignatureCard(def, record.id, controller, record.signatures[def.id], enabled = !record.isCompleted)
+                    SignatureCard(def, record.id, controller, record.signatures[def.id], enabled = !record.isCompleted && !env.readOnly)
                 }
             }
         }

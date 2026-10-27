@@ -38,7 +38,7 @@ fun ReviewFieldCard(field: Field, scope: ValueScope, env: EditorEnv, modifier: M
         else -> scope.fixed(field.id)?.let { it.asText() ?: it.asDouble()?.let(::formatShortest) }.orEmpty()
     }
     FieldContainer(
-        modifier.clickable(enabled = scope is RecordScope) { editing = true },
+        modifier.clickable(enabled = scope is RecordScope && !env.readOnly) { editing = true },
         stroke = if (fv?.review.isNullOrBlank()) null else attentionColor(),
     ) {
         fv?.review?.takeIf { it.isNotBlank() }?.let { ReviewBox(it, onResolved = null) }
@@ -50,7 +50,7 @@ fun ReviewFieldCard(field: Field, scope: ValueScope, env: EditorEnv, modifier: M
             listOf(shown, field.unit.orEmpty().takeIf { shown.isNotEmpty() }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "—" },
             style = MaterialTheme.typography.bodyLarge,
         )
-        if (fv?.review.isNullOrBlank() && scope is RecordScope) {
+        if (fv?.review.isNullOrBlank() && scope is RecordScope && !env.readOnly) {
             Text(stringResource(R.string.review_tap_to_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

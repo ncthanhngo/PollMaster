@@ -78,6 +78,8 @@ private open class FakeRemote : SyncRemote {
     override suspend fun putPdf(projectId: String, recordId: String, file: File) {}
 
     override suspend fun delete(projectId: String, recordId: String) { deleted += recordId; server.remove(recordId) }
+
+    override suspend fun changes(projectId: String, recordId: String): List<com.ncthanhngo.pollmaster.core.sync.RecordChange> = emptyList()
 }
 
 /** Answers 409 for a put with base_rev 0 of a record the server has (what the backend does), 200 when the content is the same. */

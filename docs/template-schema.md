@@ -493,7 +493,7 @@ Tóm tắt (chi tiết, mã lỗi, thân JSON: `project-polls.md`):
 | Đẩy phiếu | `PUT /projects/:id/poll-records/:recordId` `{base_rev, title, record_code, template_title, media:{"media/x.jpg": sha256}, data}` | 200 `SyncRecord` · 409 `REV_CONFLICT` `{current}` · 409 `MEDIA_MISSING` `{missing:[name]}` · 404 · 400 |
 | Đẩy media | `PUT /projects/:id/poll-records/:recordId/media/<tên tệp>` thân nhị phân, `X-Content-SHA256` | 204 · mỗi tệp ≤ **95 MB** (413) |
 | Tải media | `GET …/media/<tên tệp>` | byte tệp |
-| PDF (tuỳ chọn, cho web) | `PUT …/pdf` `application/pdf` ≤ 20 MB | 204, lỗi bỏ qua |
+| PDF (tuỳ chọn, cho web; chỉ khi phiếu `completed`) | `PUT …/pdf` `application/pdf` ≤ 20 MB | 204, lỗi bỏ qua |
 | Xoá | `DELETE …/poll-records/:recordId` | 204; 404 = đã không còn ⇒ coi như xong |
 | Lịch sử | `GET …/poll-records/:recordId/changes` | `[{rev, changed_by_name, changed_at, source, created, changes:[{path,label,old,new}]}]`, mới nhất trước |
 
@@ -527,7 +527,7 @@ thay đổi thật (diff rỗng ⇒ không tăng `rev`, không log).
 **Dịch `path` → nhãn** (app/web, cùng thuật toán, vector chung mục `labels`): ưu tiên `label` server (hiện server chưa có mẫu ⇒ rỗng) →
 tra mẫu cục bộ theo `templateId@templateVersion`: `values.<fid>` ⇒ nhãn field (+ " › " nhãn khoá phụ: `note`→"Ghi chú", `review`→"Kiểm tra", `flag`→"Cờ",
 `reason`→"Lý do", `other`→"Khác", `media`→"Tệp", `parts.<pid>`→nhãn ô phụ); `tables.<tid>[<rowId>].<colId>` ⇒ "{nhãn bảng} ({nhãn dòng hoặc số thứ tự dòng}) › {nhãn cột}";
-`signatures.<sid>` ⇒ nhãn chữ ký; thiếu mẫu/id lạ ⇒ chính `path`. Giá trị hiển thị bằng hàm chung §6.5; trống ⇒ "(trống)".
+`signatures.<sid>` ⇒ nhãn chữ ký; `status`/`returned`/`completedAt` ⇒ "Trạng thái" / "Trả lại để sửa" / "Hoàn thành lúc"; dòng bảng không còn trong phiếu, thiếu mẫu/id lạ ⇒ chính `path`. Giá trị hiển thị bằng hàm chung §6.5; trống ⇒ "(trống)".
 
 ### 10.4 Quyền
 `canEdit(record) = canPost(project) ∧ (record.createdBy == me ∨ record.createdBy vắng ∨ canManage(project))`.

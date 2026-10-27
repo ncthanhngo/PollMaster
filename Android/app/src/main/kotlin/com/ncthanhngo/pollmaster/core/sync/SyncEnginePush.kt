@@ -29,18 +29,25 @@ internal fun sha256(file: File): String {
     return md.digest().joinToString("") { "%02x".format(it) }
 }
 
-/** Pushes one record (schema 10.2): PUT record, upload the media the server lacks, PUT again, then remember the answer. */
-internal suspend fun SyncEngine.push(id: String, project: Project): PushOutcome {
+/**
+ * Pushes one record (schema 10.2): PUT record, upload the media the server lacks, PUT again, then remember the answer.
+ * [force] ("Giữ bản của tôi"): on a revision conflict the push is repeated on top of the server's revision.
+ */
+internal suspend fun SyncEngine.push(id: String, project: Project, force: Boolean = false): PushOutcome {
     val record = records.load(id) ?: return PushOutcome.Skipped
     val template = templates.get(record.templateId, record.templateVersion)
         ?: throw SyncRecordFailure("Thiếu mẫu ${record.templateId} ${record.templateVersion} trên máy.")
     val startedAt = now()
     val files = localMedia(project.id, record)
-    val body = SyncPutBody(
+    var body = SyncPutBody(
         baseRev = record.serverRev ?: 0, title = recordTitle(template, record), recordCode = template.rawRecordCode(record),
         templateTitle = template.title, media = files.associate { it.name to it.sha }, data = SyncApply.pushData(record),
     )
     var result = remote.put(project.id, id, body)
+    if (force && result is SyncPutResult.Conflict) {
+        body = body.copy(baseRev = result.current.rev)
+        result = remote.put(project.id, id, body)
+    }
     if (result is SyncPutResult.MediaMissing) {
         for (name in result.names) {
             val f = files.firstOrNull { it.name == name } ?: throw SyncRecordFailure("Thiếu tệp $name trên máy.")
@@ -51,7 +58,8 @@ internal suspend fun SyncEngine.push(id: String, project: Project): PushOutcome 
     return when (result) {
         is SyncPutResult.Ok -> {
             val saved = update(id) { SyncApply.pushed(it, project.id, result.record, startedAt) }
-            val pdf = saved?.let { s -> hooks.makePdf?.invoke(s) }
+            // the web view only needs a PDF of a finished survey
+            val pdf = saved?.takeIf { it.isCompleted }?.let { s -> hooks.makePdf?.invoke(s) }
             if (pdf != null) try { remote.putPdf(project.id, id, pdf) } catch (_: Exception) { /* best effort */ }
             PushOutcome.Pushed
         }
