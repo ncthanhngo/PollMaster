@@ -15,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import com.ncthanhngo.pollmaster.core.storage.DebouncedSaver
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
@@ -62,31 +63,48 @@ class RecordsRepository(
     private val _saveError = MutableStateFlow<String?>(null)
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
-    private val editors = HashMap<String, EditorController>()
-    private val tickers = HashMap<String, Job>()
+    private val editors = ConcurrentHashMap<String, EditorController>()
+    private val tickers = ConcurrentHashMap<String, Job>()
 
     /** Ids of records currently open in an editor (candidates for the "app goes to background" backup). */
     fun openIds(): List<String> = editors.keys.toList()
 
-    /** Stores the time of a finished backup without touching `updatedAt`. */
-    fun markBackedUp(recordId: String, at: String) {
-        val editor = editors[recordId]
+    /**
+     * Stores the time of a finished backup of [backedUp] without touching `updatedAt`, unless the record changed, moved or was
+     * deleted meanwhile ([Backup.shouldStamp]); returns whether it was stamped.
+     */
+    fun markBackedUp(backedUp: Record, at: String): Boolean {
+        val editor = editors[backedUp.id]
         if (editor != null) {
+            if (!Backup.shouldStamp(backedUp, editor.record.value)) return false
             editor.markBackedUp(at)
             editor.flush()
-        } else {
-            store.load(recordId)?.let { store.save(it.copy(backupAt = at)) }
+            return true
         }
+        val current = store.load(backedUp.id)
+        if (current == null || !Backup.shouldStamp(backedUp, current)) return false
+        store.save(current.copy(backupAt = at))
+        return true
     }
 
     /** Called once per 15 minutes while a record is open; set by [AppContainer]. */
     var onBackupTick: (String) -> Unit = {}
 
+    private var lastPrint: List<Triple<String, Long, Long>>? = null
+    private var lastTemplates: List<Template>? = null
+    private var lastVisible: Set<String>? = null
+
+    /** Re-reads the list when record files, templates or visible projects changed since the last call; screens call this freely. */
     suspend fun refresh() {
-        val stored = withContext(Dispatchers.IO) { store.listAll() }
-        _broken.value = stored.filterIsInstance<StoredRecord.Broken>()
-        _items.value = withContext(Dispatchers.IO) {
-            val visible = visibleProjects()
+        val templateList = templates.templates.value
+        val visible = visibleProjects()
+        val (print, stored) = withContext(Dispatchers.IO) {
+            val print = store.fingerprint()
+            if (print == lastPrint && templateList === lastTemplates && visible == lastVisible) return@withContext print to null
+            print to store.listAll()
+        }
+        if (stored == null) return
+        val items = withContext(Dispatchers.IO) {
             stored.filterIsInstance<StoredRecord.Loaded>().map { it.record }.filter { it.projectId in visible }.map { r ->
                 val t = templates.find(r.templateId, r.templateVersion)
                 RecordItem(
@@ -98,6 +116,9 @@ class RecordsRepository(
                 )
             }
         }
+        _broken.value = stored.filterIsInstance<StoredRecord.Broken>()
+        _items.value = items
+        lastPrint = print; lastTemplates = templateList; lastVisible = visible
     }
 
     private fun thumbnailOf(template: Template, record: Record): File? {
@@ -159,6 +180,19 @@ class RecordsRepository(
         return store.load(recordId)
     }
 
+    /** Closes every open editor, saving first (sign-out). */
+    fun releaseAll() {
+        tickers.values.forEach { it.cancel() }
+        tickers.clear()
+        editors.values.forEach { it.flush() }
+        editors.clear()
+    }
+
+    /** Closes the open editors of records on template [id] [version] (saving first): the template file was replaced under them. */
+    fun releaseUsing(id: String, version: String) {
+        editors.filterValues { it.template.id == id && it.template.version == version }.keys.forEach(::release)
+    }
+
     fun release(recordId: String) {
         tickers.remove(recordId)?.cancel()
         editors.remove(recordId)?.flush()
@@ -174,6 +208,7 @@ class RecordsRepository(
     fun discardAll() {
         tickers.values.forEach { it.cancel() }
         tickers.clear()
+        editors.values.forEach { it.discard() }
         editors.clear()
     }
 

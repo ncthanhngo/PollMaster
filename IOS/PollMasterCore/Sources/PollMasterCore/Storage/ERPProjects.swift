@@ -85,7 +85,7 @@ public enum ERPProjectSync {
     /// must be downloaded again (or removed).
     @discardableResult
     public static func apply(_ list: [ERPProject], to store: ProjectStore, library: [TemplateRef] = [], now: Date = Date()) throws -> [LogoChange] {
-        let listed = list.filter { Project.kinds.contains($0.type ?? "") }
+        let listed = list.filter { Project.kinds.contains($0.type ?? "") && isValidId($0.id) }
         let ids = Set(listed.map(\.id))
         var all = store.list(), changes: [LogoChange] = []
         for var p in all where !ids.contains(p.id) && !p.archived {
@@ -115,9 +115,22 @@ public enum ERPProjectSync {
         return changes
     }
 
+    /// The id becomes a folder name: only letters, digits and dashes, at most 64 characters (`^[A-Za-z0-9-]{1,64}$`).
+    public static func isValidId(_ id: String) -> Bool {
+        (1...64).contains(id.utf8.count) && id.utf8.allSatisfy { ($0 >= 48 && $0 <= 57) || ($0 >= 65 && $0 <= 90) || ($0 >= 97 && $0 <= 122) || $0 == 45 }
+    }
+
     /// Absolute URL of an ERP file path: uploads are served from the API host root, outside `/api/v1`.
     public static func fileURL(_ path: String, host: URL) -> URL? {
         path.hasPrefix("http") ? URL(string: path) : URL(string: path, relativeTo: host)?.absoluteURL
+    }
+
+    /// Record and project folders on the device: what the one-time wipe would remove.
+    public static func localDataCounts(root: URL) -> (records: Int, projects: Int) {
+        func count(_ dir: String) -> Int {
+            ((try? FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(dir).path)) ?? []).filter { !$0.hasPrefix(".") }.count
+        }
+        return (count("records"), count("projects"))
     }
 
     /// One-time wipe when the app switches to ERP projects: projects and records made on the device go, templates stay.
@@ -126,5 +139,16 @@ public enum ERPProjectSync {
             let url = root.appendingPathComponent(dir, isDirectory: true)
             if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
         }
+    }
+}
+
+/// Error texts from the ERP backend: only its Vietnamese sentences are meant for people (not codes like `INVALID_CREDENTIALS`,
+/// not English like "Invalid credentials" or "Email: ...").
+public enum ERPMessage {
+    private static let vietnamese = Set("àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ")
+
+    public static func readable(_ text: String?) -> String? {
+        guard let t = text?.trimmingCharacters(in: .whitespacesAndNewlines), t.lowercased().contains(where: { vietnamese.contains($0) }) else { return nil }
+        return t
     }
 }

@@ -16,6 +16,13 @@ object Backup {
         return updated.isAfter(backup)
     }
 
+    /**
+     * After the zip of [backedUp] is written: stamp `backupAt` only if the record still exists unchanged ([current] has the same
+     * `updatedAt` and project). Edited, moved or deleted meanwhile means the backup is stale, so nothing is written back.
+     */
+    fun shouldStamp(backedUp: Record, current: Record?): Boolean =
+        current != null && current.updatedAt == backedUp.updatedAt && current.projectId == backedUp.projectId
+
     /** MediaStore relative path of one project's backups: `Download/PollMaster/{projectCode}/` (schema 9.4). */
     fun folder(projectCode: String?): String = if (projectCode.isNullOrEmpty()) FOLDER else "$FOLDER/$projectCode"
 

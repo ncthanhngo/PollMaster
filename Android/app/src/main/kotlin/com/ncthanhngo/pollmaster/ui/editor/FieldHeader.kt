@@ -23,7 +23,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.format.KDD
 import com.ncthanhngo.pollmaster.core.model.Field
@@ -38,7 +37,7 @@ fun Badge(text: String, warn: Boolean = false) {
         contentColor = if (warn) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(end = 6.dp),
     ) {
-        Text(text, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp), maxLines = 1)
+        Text(text, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp), maxLines = 1)
     }
 }
 
@@ -90,7 +89,7 @@ private fun FieldMenu(
 ) {
     Box {
         if (showButton) {
-            IconButton(onClick = { onOpen(true) }, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = { onOpen(true) }, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.Filled.MoreHoriz, contentDescription = stringResource(R.string.field_menu_cd), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

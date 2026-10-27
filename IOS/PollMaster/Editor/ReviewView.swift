@@ -82,7 +82,7 @@ struct ReviewView: View {
                             titleVisibility: .visible) {
             Button("Trả lại để sửa") { model.returnForFix() }
         }
-        .onAppear { model.showAllErrors = true }
+        .onAppear { model.refresh(); model.showAllErrors = true }
         .onDisappear { model.flush() }
     }
 
@@ -136,6 +136,8 @@ private struct SignatureRow: View {
     @Environment(\.pmTheme) private var theme
     @State private var name = ""
     @State private var error: String?
+    /// The saved signature image, read once per file (not on every render).
+    @State private var image: UIImage?
 
     private var entry: SignatureEntry? { model.record.signatures[def.id] }
 
@@ -143,10 +145,12 @@ private struct SignatureRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(def.label).font(.subheadline.weight(.semibold))
             TextField("Họ tên người ký", text: $name).textFieldStyle(.plain).inputBox().disabled(model.isLocked)
-                .onChange(of: name) { _, n in
-                    if var e = entry, e.name != n { e.name = n; model.setSignature(def.id, e) }
+                .onSubmit(commitName)
+                .task(id: name) {       // saved when typing pauses, not on every keystroke
+                    try? await Task.sleep(for: .milliseconds(400))
+                    if !Task.isCancelled { commitName() }
                 }
-            if let e = entry, let img = UIImage(contentsOfFile: model.store.fileURL(model.record.id, e.file).path) {
+            if let e = entry, let img = image {
                 Image(uiImage: img).resizable().scaledToFit().frame(height: 120)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: PMRadius.s))
                 if !model.isLocked {
@@ -167,5 +171,15 @@ private struct SignatureRow: View {
         }
         .padding(.vertical, 4)
         .onAppear { name = entry?.name ?? "" }
+        .onDisappear(perform: commitName)
+        .task(id: entry?.file) {
+            guard let file = entry?.file else { image = nil; return }
+            let path = model.store.fileURL(model.record.id, file).path
+            image = await Task.detached { UIImage(contentsOfFile: path) }.value
+        }
+    }
+
+    private func commitName() {
+        if var e = entry, e.name != name { e.name = name; model.setSignature(def.id, e) }
     }
 }

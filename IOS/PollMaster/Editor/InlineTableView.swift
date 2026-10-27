@@ -19,7 +19,7 @@ struct InlineTableView: View {
                     if !layout.sheetColumns.isEmpty {
                         Button { editing = row.id } label: {
                             Image(systemName: filled(row) ? "pencil.circle.fill" : "pencil")
-                                .frame(minWidth: 36, minHeight: max(32, theme.minTouch))
+                                .frame(minWidth: 44, minHeight: max(44, theme.minTouch))
                         }
                         .buttonStyle(.bordered).accessibilityLabel("Sửa thêm")
                     }

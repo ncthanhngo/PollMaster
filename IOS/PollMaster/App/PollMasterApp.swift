@@ -22,9 +22,12 @@ struct PollMasterApp: App {
                     Button("OK") { env.infoMessage = nil }
                 } message: { Text(env.infoMessage ?? "") }
                 .onChange(of: phase) { _, p in
-                    if p != .active { env.reload() }
+                    if p != .active { env.flushEditors() }
                     if p == .background { env.backupOpenEditors() }
-                    if p == .active { Task { await env.syncProjects() } }
+                    if p == .active {
+                        env.recheckAccount()
+                        Task { await env.syncProjects() }
+                    }
                 }
         }
     }

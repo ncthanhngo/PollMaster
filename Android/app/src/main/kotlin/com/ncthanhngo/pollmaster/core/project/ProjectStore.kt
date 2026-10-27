@@ -40,6 +40,12 @@ class ProjectStore(root: File) {
     fun list(): List<Project> = dir.listFiles { f -> f.isDirectory }.orEmpty().mapNotNull { get(it.name) }
         .sortedWith(compareBy<Project> { it.archived }.thenBy { it.name.lowercase() })
 
+    /** Cheap change detector: path, modified time and size of every file in the project folders (project.json, sites.json, avatar). */
+    fun fingerprint(): List<Triple<String, Long, Long>> =
+        dir.listFiles { f -> f.isDirectory }.orEmpty().sortedBy { it.name }.flatMap { d ->
+            d.listFiles { f -> f.isFile }.orEmpty().sortedBy { it.name }.map { Triple("${d.name}/${it.name}", it.lastModified(), it.length()) }
+        }
+
     fun get(id: String): Project? {
         val file = File(dir(id), FILE)
         if (!file.isFile) return null

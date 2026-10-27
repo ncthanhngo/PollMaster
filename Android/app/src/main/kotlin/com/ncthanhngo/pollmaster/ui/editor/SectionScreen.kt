@@ -151,7 +151,7 @@ fun SectionScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val touch = Modifier.weight(1f).then(if (LocalUiPrefs.current.oneHand) Modifier.heightIn(min = TOUCH_ONE_HAND) else Modifier)
+                    val touch = Modifier.weight(1f).then(Modifier.heightIn(min = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 48.dp))
                     val pad = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), enabled = index > 0, onClick = { onSwitchSection(ids[index - 1]) }) {
                         Text("‹ " + stringResource(R.string.section_prev), maxLines = 1)

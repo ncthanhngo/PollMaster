@@ -29,15 +29,15 @@ struct StopwatchBlock: View {
             }
             Spacer(minLength: 4)
             if row.stopwatchStart == nil {
-                Button { mutate { $0.stopwatchStart = Date() } } label: { Text("Bắt đầu (T0)").frame(minHeight: 32) }
+                Button { mutate { $0.stopwatchStart = Date() } } label: { Text("Bắt đầu (T0)").frame(minHeight: 44) }
                     .buttonStyle(.borderedProminent)
             } else if let next = nextColumn {
-                Button { mark(next) } label: { Text("Ghi \(next)").font(.headline).frame(minWidth: 90, minHeight: 32) }
+                Button { mark(next) } label: { Text("Ghi \(next)").font(.headline).frame(minWidth: 90, minHeight: 44) }
                     .buttonStyle(.borderedProminent)
             } else {
                 Label("Đủ \(columns.count) mốc", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success).font(.subheadline)
             }
-            Button { undo() } label: { Image(systemName: "arrow.uturn.backward").frame(minWidth: 32, minHeight: 32) }
+            Button { undo() } label: { Image(systemName: "arrow.uturn.backward").frame(minWidth: 44, minHeight: 44) }
                 .buttonStyle(.bordered).disabled(row.stopwatchStart == nil).accessibilityLabel("Hoàn tác mốc")
         }
         .padding(.horizontal, 12).padding(.vertical, 6)

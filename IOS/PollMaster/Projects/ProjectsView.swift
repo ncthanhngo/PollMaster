@@ -48,7 +48,6 @@ struct ProjectsView: View {
                 }
             }
             .projectBundlePicker(isPresented: $importing)
-            .onAppear { env.reload() }
         }
     }
 }

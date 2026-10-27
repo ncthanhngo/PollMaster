@@ -57,13 +57,16 @@ fun siteDistanceMessage(meters: Double) = "Cách điểm kế hoạch ${formatNu
 /** Warning rules for a template. [sites] is the imported list of planned points (may be empty). */
 class WarningChecker(private val template: Template, private val sites: List<Site> = emptyList()) {
 
-    fun check(record: Record): List<Warning> {
+    fun check(record: Record): List<Warning> = check(record, siteDistances(record))
+
+    /** [distances] = [siteDistances] of [record], computed once by callers that also show them. */
+    fun check(record: Record, distances: Map<String, Double>): List<Warning> {
         val out = mutableListOf<Warning>()
         fun fields(sectionId: String, title: String, list: List<Field>) {
             for (f in list) fieldWarnings(f, record.values[f.id]).forEach { (kind, msg) ->
                 out += Warning(kind, sectionId, title, f.id, f.label, msg)
             }
-            for (f in list) siteDistance(record, f)?.takeIf { it > SITE_DISTANCE_LIMIT_M }?.let {
+            for (f in list.filter { it.type == "gps" }) distances[f.id]?.takeIf { it > SITE_DISTANCE_LIMIT_M }?.let {
                 out += Warning(WarningKind.SITE_DISTANCE, sectionId, title, f.id, f.label, siteDistanceMessage(it))
             }
         }
@@ -105,17 +108,30 @@ class WarningChecker(private val template: Template, private val sites: List<Sit
         return out
     }
 
-    /** Metres between the GPS reading in [field] and the planned point chosen in the field whose lookup fills it, if any. */
-    fun siteDistance(record: Record, field: Field): Double? {
-        if (field.type != "gps") return null
-        val source = template.header.plus(template.sections.flatMap { s -> s.items.filterIsInstance<Field>() })
-            .firstOrNull { f -> f.lookup?.gps == field.id } ?: return null
-        val code = record.values[source.id]?.v.asText()?.trim() ?: return null
-        val site = sites.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: return null
-        val gps = record.values[field.id]?.v.asObject() ?: return null
-        val lat = gps["lat"].asDouble() ?: return null
-        val lng = gps["lng"].asDouble() ?: return null
-        return distanceMeters(lat, lng, site.lat ?: return null, site.lng ?: return null)
+    /** Top-level fields whose lookup fills a GPS field, in template order (the template does not change, so found once). */
+    private val lookupSources: List<Field> by lazy {
+        template.header.plus(template.sections.flatMap { s -> s.items.filterIsInstance<Field>() }).filter { it.lookup?.gps != null }
+    }
+
+    /**
+     * Metres between each GPS reading and the planned point chosen in the field whose lookup fills it, by GPS field id; fields with
+     * no chosen point, no reading or a point without coordinates are absent. One pass over the lookup fields per record.
+     */
+    fun siteDistances(record: Record): Map<String, Double> {
+        if (sites.isEmpty()) return emptyMap()
+        val out = HashMap<String, Double>()
+        val seen = HashSet<String>()
+        for (source in lookupSources) {
+            val gpsId = source.lookup?.gps ?: continue
+            if (!seen.add(gpsId)) continue // the first lookup field of a GPS field decides
+            val code = record.values[source.id]?.v.asText()?.trim() ?: continue
+            val site = sites.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: continue
+            val gps = record.values[gpsId]?.v.asObject() ?: continue
+            val lat = gps["lat"].asDouble() ?: continue
+            val lng = gps["lng"].asDouble() ?: continue
+            out[gpsId] = distanceMeters(lat, lng, site.lat ?: continue, site.lng ?: continue)
+        }
+        return out
     }
 }
 

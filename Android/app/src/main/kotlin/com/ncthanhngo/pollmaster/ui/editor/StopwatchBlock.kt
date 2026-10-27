@@ -116,11 +116,11 @@ fun PinnedStopwatch(
                 ) {
                     Text(formatElapsed(shown.toDouble()), style = MaterialTheme.typography.headlineSmall)
                     Button(
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                         enabled = start == null || next != null,
                         onClick = ::press,
                     ) { Text(label, maxLines = 1) }
-                    OutlinedButton(enabled = start != null, onClick = ::undo, modifier = Modifier.heightIn(min = 44.dp)) { Text("↶") }
+                    OutlinedButton(enabled = start != null, onClick = ::undo, modifier = Modifier.heightIn(min = 48.dp)) { Text("↶") }
                 }
             } else {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -23,7 +23,8 @@ struct SectionView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: PMSpace.m) {
+                // lazy: only the blocks near the screen are built (a big section re-rendered everything on every keystroke)
+                LazyVStack(alignment: .leading, spacing: PMSpace.m) {
                     if model.isLocked { LockedBanner(model: model) }
                     if let note = model.sectionNote(index) { Text(note).font(.footnote).secondaryText().padding(.bottom, 4) }
                     ForEach(segments(hasTable ? items.filter { !isComputed($0) } : items)) { segmentView($0) }
@@ -52,7 +53,7 @@ struct SectionView: View {
                         .disabled(model.isLocked)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
-                    Button("Tiếp") { advance() }
+                    Button("Tiếp") { advance(proxy) }
                     if let f = focused, FocusOrder.isSigned(key: f, fields: fields) {
                         Button("±") { NotificationCenter.default.post(name: .pmToggleSign, object: nil) }
                     }
@@ -63,6 +64,8 @@ struct SectionView: View {
             .task {
                 guard let focus else { return }
                 selectFirstEmptyRound(for: focus)
+                // lazy content: have the block holding the field built first, then settle on the field itself
+                if let block = blockId(containing: focus) { proxy.scrollTo(block, anchor: .top) }
                 try? await Task.sleep(for: .milliseconds(150))
                 withAnimation { proxy.scrollTo(focus, anchor: .top) }
             }
@@ -76,7 +79,10 @@ struct SectionView: View {
         .onChange(of: focused) { _, new in
             if let new { model.setPosition(section: sectionId, field: FocusOrder.baseId(new)) }
         }
-        .onDisappear { model.flush(); Task { await model.backup() } }
+        .onDisappear {
+            fields.forEach { model.touch($0.id) }       // marks stay hidden until the section is left
+            model.flush(); Task { await model.backup() }
+        }
     }
 
     /// A heading with the fields after it (one grouped block), or a table on its own.
@@ -115,9 +121,10 @@ struct SectionView: View {
         case .field(let f):
             if let h = RoundEntryRules.heading(owning: f.id, in: items), let entry = h.roundEntry, f.samples != nil {
                 let round = min(rounds[h.id] ?? 0, entry.samples - 1)
-                FieldCard(field: f, fv: roundBinding(f, entry, round), scope: model.scope(focus: $focused, sectionId: sectionId), round: round)
+                FieldCard(field: f, fv: roundBinding(f, entry, round), scope: model.scope(focus: $focused, sectionId: sectionId), round: round,
+                          touchOnDisappear: false)
             } else {
-                FieldCard(field: f, fv: model.binding(f.id), scope: model.scope(focus: $focused, sectionId: sectionId))
+                FieldCard(field: f, fv: model.binding(f.id), scope: model.scope(focus: $focused, sectionId: sectionId), touchOnDisappear: false)
             }
         case .heading(let h):
             VStack(alignment: .leading, spacing: 6) {
@@ -165,7 +172,7 @@ struct SectionView: View {
                 AddRowButton(model: model, table: t, sectionId: sectionId)
             }
             HStack(spacing: 8) {
-                Button { go(index - 1) } label: { Text("‹ Mục trước").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36) }.disabled(index == 0)
+                Button { go(index - 1) } label: { Text("‹ Mục trước").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.disabled(index == 0)
                 Button {
                     model.showAllErrors = true
                     env.recordsPath.append(.review(record: model.record.id))
@@ -174,9 +181,9 @@ struct SectionView: View {
                         Text("Kiểm tra").lineLimit(1)
                         Text("\(index + 1)/\(model.sectionTitles.count)").font(.caption2).secondaryText()
                     }
-                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                Button { go(index + 1) } label: { Text("Mục sau ›").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36) }.disabled(index >= model.sectionTitles.count - 1)
+                Button { go(index + 1) } label: { Text("Mục sau ›").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.disabled(index >= model.sectionTitles.count - 1)
             }
             .buttonStyle(.bordered).controlSize(theme.oneHand ? .large : .regular)
         }
@@ -190,9 +197,24 @@ struct SectionView: View {
         env.recordsPath.append(.section(record: model.record.id, index: i, focus: nil))
     }
 
-    private func advance() {
+    /// Id of the lazily built block (heading group, field group or table) that holds the field or table `id`.
+    private func blockId(containing id: String) -> String? {
+        segments(hasTable ? items.filter { !isComputed($0) } : items).first {
+            $0.heading?.id == id || $0.table?.id == id || $0.fields.contains { $0.id == id }
+        }?.id
+    }
+
+    private func advance(_ proxy: ScrollViewProxy) {
         let keys = FocusOrder.keys(for: fields, lookup: { model.record.values[$0] })
         guard let cur = focused, let i = keys.firstIndex(of: cur), i + 1 < keys.count else { focused = nil; return }
-        focused = keys[i + 1]
+        let next = keys[i + 1]
+        let block = blockId(containing: FocusOrder.baseId(next))
+        guard block != blockId(containing: FocusOrder.baseId(cur)), let block else { focused = next; return }
+        // the next field sits in a block that may not be built yet: scroll to it, then focus
+        proxy.scrollTo(block, anchor: .top)
+        Task {
+            try? await Task.sleep(for: .milliseconds(120))
+            focused = next
+        }
     }
 }

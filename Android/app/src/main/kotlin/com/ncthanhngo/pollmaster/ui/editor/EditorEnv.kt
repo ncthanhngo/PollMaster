@@ -2,10 +2,12 @@ package com.ncthanhngo.pollmaster.ui.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.format.ValueFormatter
@@ -19,6 +21,9 @@ import com.ncthanhngo.pollmaster.core.sites.Site
 import com.ncthanhngo.pollmaster.core.validation.Issue
 import com.ncthanhngo.pollmaster.core.validation.Warning
 import com.ncthanhngo.pollmaster.core.validation.WarningChecker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 
 /** Read/write access to field values for one scope (record level or one table row). */
@@ -69,6 +74,8 @@ class EditorEnv(
     private val showErrors: Boolean,
     private val touched: Set<String>,
     private val warnings: Map<String, Warning> = emptyMap(),
+    /** Metres from each GPS field to its planned point (see [WarningChecker.siteDistances]). */
+    private val siteDistances: Map<String, Double> = emptyMap(),
     val checker: WarningChecker = WarningChecker(controller.template),
     val sites: List<Site> = emptyList(),
     val reviewMode: Boolean = false,
@@ -83,6 +90,8 @@ class EditorEnv(
     }
 
     fun warning(key: String): Warning? = warnings[key]
+
+    fun siteDistance(fieldId: String): Double? = siteDistances[fieldId]
 
     val engine by lazy { controller.engine(record) }
     val formatter = ValueFormatter { record.values[it] }
@@ -106,6 +115,26 @@ fun rememberRecordState(controller: EditorController): State<Record> {
     return state
 }
 
+/** Validation issues and warnings of one record state; recomputed after typing pauses, not on every keystroke. */
+private class Derived(
+    val source: Record,
+    val issues: Map<String, Issue>,
+    val warnings: Map<String, Warning>,
+    val siteDistances: Map<String, Double>,
+)
+
+private const val DERIVED_DELAY_MS = 200L
+
+private fun derive(controller: EditorController, checker: WarningChecker, record: Record): Derived {
+    val distances = checker.siteDistances(record)
+    return Derived(
+        record,
+        controller.issues(record).groupBy { it.key }.mapValues { it.value.first() },
+        checker.check(record, distances).groupBy { it.key }.mapValues { it.value.first() },
+        distances,
+    )
+}
+
 @Composable
 fun rememberEditorEnv(controller: EditorController): EditorEnv {
     val container = LocalContainer.current
@@ -116,11 +145,19 @@ fun rememberEditorEnv(controller: EditorController): EditorEnv {
     val showErrors by controller.showErrors.collectAsState()
     val touched by controller.touched.collectAsState()
     val reviewMode by controller.reviewMode.collectAsState()
-    return remember(controller, record, showErrors, touched, sites, reviewMode, projectId) {
-        val checker = WarningChecker(controller.template, sites)
+    val checker = remember(controller, sites) { WarningChecker(controller.template, sites) }
+    // Values stay immediate (record); the costly scans catch up 200 ms after the last edit. A new screen or new sites compute at once.
+    var derived by remember(controller, checker) { mutableStateOf(derive(controller, checker, record)) }
+    LaunchedEffect(controller, checker, record) {
+        if (derived.source !== record) {
+            delay(DERIVED_DELAY_MS)
+            derived = withContext(Dispatchers.Default) { derive(controller, checker, record) }
+        }
+    }
+    return remember(controller, record, derived, showErrors, touched, sites, reviewMode, projectId) {
         EditorEnv(
-            controller, record, controller.issues(record).groupBy { it.key }.mapValues { it.value.first() }, showErrors, touched,
-            checker.check(record).groupBy { it.key }.mapValues { it.value.first() }, checker, sites, reviewMode, projectId,
+            controller, record, derived.issues, showErrors, touched, derived.warnings, derived.siteDistances,
+            checker, sites, reviewMode, projectId,
         )
     }
 }

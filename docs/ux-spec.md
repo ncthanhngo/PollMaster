@@ -183,7 +183,8 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
     các ảnh của field tham chiếu, hiện danh sách dòng chữ; chạm dòng → điền (text: thay; multiline: nối thêm). Không có ảnh → mở camera của field tham chiếu trước.
 16. **Đọc giọng nói**: field `multiline` (kể cả cột bảng) có nút 🎤: nói → chữ (ưu tiên on-device, ngôn ngữ vi-VN), nối vào cuối.
     Quyền micro + nhận dạng giọng nói; không có dịch vụ → ẩn nút.
-17. **Chế độ một tay / đeo găng** (Cài đặt, mặc định tắt): vùng chạm tối thiểu 56, chữ +10 %, thanh hành động dưới cùng trong màn soạn
+17. **Vùng chạm** mặc định tối thiểu 44 pt (iOS) / 48 dp (Android) cho mọi nút, chip, menu.
+    **Chế độ một tay / đeo găng** (Cài đặt, mặc định tắt): vùng chạm tối thiểu 56, chữ +10 %, thanh hành động dưới cùng trong màn soạn
     (`‹ Mục trước · Kiểm tra · Mục sau ›`), FAB và nút chính ở nửa dưới màn; menu ⋯ của field thay bằng nhấn giữ thẻ.
 18. **Bản đồ phiếu**: tab Phiếu khảo sát có nút chuyển **Danh sách / Bản đồ**. Bản đồ hiện mỗi phiếu có GPS (field `gps` đầu tiên có giá trị)
     là một ghim màu theo trạng thái (Nháp xám, Hoàn thành xanh, Cần sửa cam) + điểm trong danh sách điểm chưa có phiếu (ghim rỗng).
@@ -196,7 +197,9 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   đều theo dự án hiện tại (nút + hỏi dự án khi đang xem "Tất cả dự án"). **Mỗi phiếu luôn hiện avatar + tên dự án** (danh sách và đầu màn mục lục).
   Thẻ phiếu 3 dòng không xuống dòng: tiêu đề · avatar + tên dự án (không đủ chỗ → mã dự án) · ngày · trạng thái + ☁̸ chưa sao lưu + tiến độ.
 - **Đăng nhập ERP** (bắt buộc, schema §9.5): email + mật khẩu ERP; tài khoản EVSELab và tổ chức đối tác (Kimsen…). Lần đầu cảnh báo
-  dự án/phiếu cũ trên máy sẽ bị xóa (mẫu giữ). Cài đặt: mục "Tài khoản ERP" (tên, email · tổ chức) + Đăng xuất (hỏi lại; không xóa phiếu).
+  dự án/phiếu cũ trên máy sẽ được sao lưu rồi xóa (mẫu giữ). Đăng nhập đúng → hộp "Xóa dữ liệu cũ trên máy?" (N phiếu, M dự án)
+  với "Sao lưu rồi xóa" / "Hủy" (Hủy = đăng xuất). Sao lưu lỗi → "Sao lưu chưa xong" với "Thử lại" / "Xóa không sao lưu" / "Hủy";
+  không xóa gì khi chưa được đồng ý. Cài đặt: mục "Tài khoản ERP" (tên, email · tổ chức) + Đăng xuất (hỏi lại; không xóa phiếu).
 - **Tab Dự án**: dự án ERP của tài khoản, chia **Dự án công ty (N)** rồi **Nội bộ (N)** như ERP; kéo xuống để tải lại; lỗi mạng → dòng báo,
   vẫn hiện danh sách đã lưu. Mỗi thẻ 3 dòng: avatar · tên · "mã · khách hàng · N mẫu · N điểm" (bớt phần cuối khi không đủ chỗ) ·
   số phiếu nháp / cần sửa / hoàn thành · ngày gần nhất. Nút "Nhập gói dự án". **Không tạo/sửa/xóa/lưu trữ dự án** trong app.

@@ -2,10 +2,8 @@ import SwiftUI
 import PollMasterCore
 
 extension RecordEditorModel {
-    /// Distance (m) of a lookup-filled GPS field to its planned site.
-    func plannedDistance(_ fieldId: String) -> Double? {
-        SiteLookup.plannedDistances(template, record, sites: sites()).first { $0.fieldId == fieldId }?.meters
-    }
+    /// Distance (m) of a lookup-filled GPS field to its planned site (computed once per refresh, not per card).
+    func plannedDistance(_ fieldId: String) -> Double? { plannedDistances[fieldId] }
 
     /// Scope for fields of the record body (`row == nil`) or of one table row.
     func scope(table: TableDef? = nil, row: Row? = nil, focus: FocusState<String?>.Binding? = nil, sectionId: String? = nil) -> FieldScope {

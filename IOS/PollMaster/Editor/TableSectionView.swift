@@ -94,7 +94,7 @@ private struct RowCard: View {
                 Menu {
                     Button("Nhân bản", systemImage: "plus.square.on.square") { model.duplicateRow(table.id, row.id) }
                     Button("Xóa", systemImage: "trash", role: .destructive, action: onDelete)
-                } label: { Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 28, minHeight: 28) }
+                } label: { Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 28, minHeight: 28).hitSlop(8) }
             }
         }
         .cardBox()

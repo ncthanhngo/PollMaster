@@ -20,6 +20,7 @@ struct Chip: View {
             }
             .padding(.horizontal, fillWidth ? 4 : 10).padding(.vertical, 6)
             .frame(maxWidth: fillWidth ? .infinity : nil, minHeight: max(minHeight, theme.minTouch))
+            .hitSlop(max(0, (44 - max(minHeight, theme.minTouch)) / 2), .vertical)
             .overlay(alignment: .topTrailing) {
                 if selected && fillWidth { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).padding(4) }
             }

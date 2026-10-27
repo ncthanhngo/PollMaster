@@ -41,7 +41,7 @@ struct ProjectSummarySheet: View {
     }
 
     private func run() {
-        env.reload()
+        env.flushEditors()
         working = true; error = nil; note = nil
         let project = project, filter = filter, withRecords = withRecords, store = env.recordStore, library = env.templates
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("exports/\(UUID().uuidString)")

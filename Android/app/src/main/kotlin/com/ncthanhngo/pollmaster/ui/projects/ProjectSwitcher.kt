@@ -59,7 +59,7 @@ fun ProjectSwitcherSheet(
                 value = query, onValueChange = { query = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(stringResource(R.string.project_search)) },
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
-                trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Clear, null) } },
+                trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Clear, stringResource(R.string.search_clear)) } },
             )
             LazyColumn(Modifier.weight(1f, fill = false)) {
                 item(key = "all") {

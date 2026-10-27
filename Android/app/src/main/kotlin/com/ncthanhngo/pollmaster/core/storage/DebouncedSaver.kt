@@ -28,6 +28,15 @@ class DebouncedSaver(
         }
     }
 
+    /** Drops the pending change without writing it (the record was deleted or wiped). */
+    fun cancel() {
+        synchronized(lock) {
+            job?.cancel()
+            job = null
+            pending = null
+        }
+    }
+
     fun flush() {
         val toWrite = synchronized(lock) {
             job?.cancel()

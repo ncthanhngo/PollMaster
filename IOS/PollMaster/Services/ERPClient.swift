@@ -56,19 +56,29 @@ actor ERPClient {
 
     func login(email: String, password: String) async throws -> ERPAccount {
         let body = try JSONSerialization.data(withJSONObject: ["email": email, "password": password])
-        let d: LoginData = try await send(request("auth/login", method: "POST", body: body))
+        let d: LoginData
+        do { d = try await send(request("auth/login", method: "POST", body: body)) }
+        catch let ERPHTTPError.status(code, message) {
+            // a wrong or malformed password comes back as 400/401 with an English text; a Vietnamese reason (organisation switched off) wins
+            if code == 400 || code == 401 { throw ERPError.server(ERPMessage.readable(message) ?? "Sai email hoặc mật khẩu.") }
+            throw Self.userError(code, message)
+        }
         if d.must_change_password == true { throw ERPError.mustChangePassword }
-        TokenStore.save(access: d.token, refresh: d.refresh_token)
+        guard TokenStore.save(access: d.token, refresh: d.refresh_token) else {
+            TokenStore.clear()
+            throw ERPError.server("Không lưu được phiên đăng nhập vào Keychain của máy. Hãy thử lại.")
+        }
         let name = [d.user?.display_name, d.user?.name].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
         return ERPAccount(name: name ?? email, email: d.user?.email ?? email, org: d.user?.org_name.flatMap { $0.isEmpty ? nil : $0 })
     }
 
-    /// Revokes the refresh token (best effort) and forgets both tokens.
-    func logout() async {
-        if let refresh = TokenStore.refresh, let body = try? JSONSerialization.data(withJSONObject: ["refresh_token": refresh]) {
-            _ = try? await session.data(for: request("auth/logout", method: "POST", body: body))
-        }
+    /// Forgets both tokens at once; revoking the refresh token on the server is best effort in the background (never waited for).
+    func logout() {
+        let refresh = TokenStore.refresh
         TokenStore.clear()
+        guard let refresh, let body = try? JSONSerialization.data(withJSONObject: ["refresh_token": refresh]) else { return }
+        let req = request("auth/logout", method: "POST", body: body), session = session
+        Task.detached { _ = try? await session.data(for: req) }
     }
 
     /// Active projects the user may see (the backend scopes them by permission and organisation), every page.
@@ -101,14 +111,19 @@ actor ERPClient {
         return r
     }
 
-    /// GET with the access token; a 401 refreshes once (shared by concurrent calls) and retries.
+    /// GET with the access token; a 401 refreshes once (shared by concurrent calls, skipped when another call already did) and retries.
     private func authorized<T: Decodable>(_ path: String, query: [String: String]) async throws -> T {
         var r = request(path, query: query)
+        let used = TokenStore.access
+        r.setValue("Bearer \(used ?? "")", forHTTPHeaderField: "Authorization")
+        do { return try await send(r) } catch let ERPHTTPError.status(code, message) {
+            guard code == 401 else { throw Self.userError(code, message) }
+        }
+        if TokenStore.access == used { try await refresh() }
         r.setValue("Bearer \(TokenStore.access ?? "")", forHTTPHeaderField: "Authorization")
-        do { return try await send(r) } catch ERPHTTPError.status(401, _) {
-            try await refresh()
-            r.setValue("Bearer \(TokenStore.access ?? "")", forHTTPHeaderField: "Authorization")
-            return try await send(r)
+        do { return try await send(r) } catch let ERPHTTPError.status(code, message) {
+            // refused again right after a refresh: the session is of no use any more
+            throw code == 401 ? ERPError.sessionExpired : Self.userError(code, message)
         }
     }
 
@@ -126,26 +141,28 @@ actor ERPClient {
         let body = try JSONSerialization.data(withJSONObject: ["refresh_token": refresh])
         do {
             let t: Tokens = try await send(request("auth/refresh", method: "POST", body: body))
-            TokenStore.save(access: t.token, refresh: t.refresh_token)
-        } catch ERPHTTPError.status(let code, _) where code == 400 || code == 401 {
+            // the old refresh token is spent: without a stored new one the user has to sign in again
+            guard TokenStore.save(access: t.token, refresh: t.refresh_token) else { TokenStore.clear(); throw ERPError.sessionExpired }
+        } catch let ERPHTTPError.status(code, message) {
+            guard code == 400 || code == 401 else { throw Self.userError(code, message) }
             TokenStore.clear()
             throw ERPError.sessionExpired
         }
     }
 
+    /// Any non-2xx answer is an `ERPHTTPError`; callers decide what it means (401 refreshes, login 400/401 is a wrong password).
     private func send<T: Decodable>(_ r: URLRequest) async throws -> T {
         let (data, res) = try await session.data(for: r)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
-        let envelope = try? JSONDecoder().decode(ERPEnvelope<T>.self, from: data)
         guard (200..<300).contains(status) else {
-            // Machine codes (SCREAMING_SNAKE) are not for people; the backend's Vietnamese sentences are.
-            let message = (try? JSONDecoder().decode(ERPEnvelope<JSONValue>.self, from: data))?.error.flatMap { $0 == $0.uppercased() ? nil : $0 }
-            // the backend answers a wrong password or a malformed one with 400/401 and an English text
-            if status == 400 || status == 401, r.url?.path.hasSuffix("auth/login") == true { throw ERPError.server("Sai email hoặc mật khẩu.") }
-            throw status == 401 ? ERPHTTPError.status(401, message) : ERPError.server(message ?? "Máy chủ ERP báo lỗi \(status).")
+            throw ERPHTTPError.status(status, (try? JSONDecoder().decode(ERPEnvelope<JSONValue>.self, from: data))?.error)
         }
-        guard let value = envelope?.data else { throw ERPError.badResponse }
+        guard let value = (try? JSONDecoder().decode(ERPEnvelope<T>.self, from: data))?.data else { throw ERPError.badResponse }
         return value
+    }
+
+    private static func userError(_ status: Int, _ message: String?) -> ERPError {
+        .server(ERPMessage.readable(message) ?? "Máy chủ ERP báo lỗi \(status).")
     }
 }
 
@@ -158,7 +175,8 @@ enum TokenStore {
     static var access: String? { read("access") }
     static var refresh: String? { read("refresh") }
 
-    static func save(access: String, refresh: String) { write("access", access); write("refresh", refresh) }
+    /// False when the Keychain refused to store a token.
+    static func save(access: String, refresh: String) -> Bool { write("access", access) && write("refresh", refresh) }
     static func clear() { for a in ["access", "refresh"] { SecItemDelete(query(a) as CFDictionary) } }
 
     private static func query(_ account: String) -> [String: Any] {
@@ -173,11 +191,11 @@ enum TokenStore {
         return String(data: d, encoding: .utf8)
     }
 
-    private static func write(_ account: String, _ value: String) {
+    private static func write(_ account: String, _ value: String) -> Bool {
         SecItemDelete(query(account) as CFDictionary)
         var q = query(account)
         q[kSecValueData as String] = Data(value.utf8)
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(q as CFDictionary, nil)
+        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
 }

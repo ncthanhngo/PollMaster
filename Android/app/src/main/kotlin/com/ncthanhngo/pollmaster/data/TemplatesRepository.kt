@@ -34,10 +34,23 @@ class TemplatesRepository(
     val templates: StateFlow<List<Template>> = _templates.asStateFlow()
 
     suspend fun refresh() {
-        _templates.value = withContext(Dispatchers.IO) { store.list() }
+        reload(withContext(Dispatchers.IO) { store.list() })
     }
 
-    fun find(id: String, version: String): Template? = store.get(id, version)
+    /** Publishes [fresh]; an unchanged list keeps its identity, and editors holding a replaced template are closed. */
+    private fun reload(fresh: List<Template>) {
+        val old = _templates.value
+        if (fresh == old) return
+        _templates.value = fresh
+        fresh.filter { f -> old.any { it.id == f.id && it.version == f.version && it != f } }.forEach { onReplaced(it.id, it.version) }
+    }
+
+    /** Called after a template file was replaced, so editors holding the old copy can be closed. */
+    var onReplaced: (id: String, version: String) -> Unit = { _, _ -> }
+
+    /** From the loaded list (no disk read per call); falls back to the file before the first load. */
+    fun find(id: String, version: String): Template? =
+        _templates.value.firstOrNull { it.id == id && it.version == version } ?: store.get(id, version)
 
     /** Installs every bundled template version once (keyed by id@version, so a new version is added next to the old one). */
     suspend fun installBundled() = withContext(Dispatchers.IO) {
@@ -51,11 +64,11 @@ class TemplatesRepository(
             if (store.install(text, overwrite = false) !is InstallResult.Invalid) done += key
         }
         settings.installedBundled = done
-        _templates.value = store.list()
+        reload(store.list())
     }
 
     suspend fun install(json: String, overwrite: Boolean): InstallResult = withContext(Dispatchers.IO) {
-        store.install(json, overwrite).also { _templates.value = store.list() }
+        store.install(json, overwrite).also { reload(store.list()) }
     }
 
     suspend fun readUri(uri: android.net.Uri): String = withContext(Dispatchers.IO) {
@@ -90,7 +103,7 @@ class TemplatesRepository(
         val listing = projects.list().filter { p -> p.templates.any { it.id == template.id && it.version == template.version } }
         if (listing.isNotEmpty()) return@withContext DeleteResult.UsedByProjects(listing.map { it.code })
         store.delete(template.id, template.version)
-        _templates.value = store.list()
+        reload(store.list())
         DeleteResult.Deleted
     }
 

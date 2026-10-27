@@ -13,8 +13,11 @@ struct RecordSummary: Identifiable, Equatable {
     var progress: RequiredProgress
     /// Owning project; records written before projects existed belong to "Chung".
     var projectId = ""
+    var templateId = ""
     var returned = false
     var needsBackup = false
+    /// Codes of planned sites this record visited (a lookup field holds the code).
+    var visitedSites: Set<String> = []
     var thumbnail: URL?
     /// First `gps` field holding a value (map pin).
     var coordinate: GPSCoordinate?
@@ -41,6 +44,10 @@ final class AppEnvironment {
     /// Signed-in ERP user; nil shows the sign-in screen.
     var account: ERPAccount?
     var syncing = false
+    /// First-sign-in wipe of the pre-ERP data is still ahead (cached at launch: read by the sign-in screen on every render).
+    var localDataResetPending = false
+    /// Dialog of that wipe waiting for the user's answer (`answerWipe`).
+    var wipePrompt: WipePrompt?
     /// Why the last ERP project fetch failed (the cached list is shown meanwhile).
     var syncError: String?
 
@@ -49,11 +56,11 @@ final class AppEnvironment {
     /// Photo avatars by project id, read once per reload (rows would otherwise hit the disk on every render).
     var projectAvatars: [String: UIImage] = [:]
     var summaries: [RecordSummary] = []
-    private(set) var projectStats: [String: ProjectStats] = [:]
+    var projectStats: [String: ProjectStats] = [:]
     /// Planned sites per project id, loaded on `reload()`.
-    private(set) var siteCache: [String: [Site]] = [:]
+    var siteCache: [String: [Site]] = [:]
     /// Codes of planned sites that already have a record (a lookup field holds the code), per project id.
-    private(set) var visitedByProject: [String: Set<String>] = [:]
+    var visitedByProject: [String: Set<String>] = [:]
     /// Project shown in the records tab; nil = "Tất cả dự án". Remembered across launches.
     var currentProjectId: String? { didSet { UserDefaults.standard.set(currentProjectId, forKey: "currentProjectId") } }
     /// Records-tab project switcher sheet.
@@ -64,7 +71,8 @@ final class AppEnvironment {
     /// Template just imported: asks which projects should get it.
     var addToProjectsFor: Template?
     var selectedTab: AppTab = .records
-    var recordsPath: [Route] = []
+    /// Closing a record's editor stack (its routes leave the path) saves and drops its editor model.
+    var recordsPath: [Route] = [] { didSet { releaseClosedEditors() } }
     var errorMessage: String?
     /// Plain notice (title "Thông báo").
     var infoMessage: String?
@@ -73,6 +81,16 @@ final class AppEnvironment {
     /// Records tab shows the map instead of the list.
     var recordsShowMap = false
     @ObservationIgnored var editors: [String: RecordEditorModel] = [:]
+    /// Models closed by the last navigation change: screens still sliding out keep showing them; reopening the record reuses them.
+    @ObservationIgnored var closingEditors: [String: RecordEditorModel] = [:]
+    // Disk scan bookkeeping (AppEnvironment+Reload.swift), ERP session bookkeeping (AppEnvironment+ERP.swift).
+    @ObservationIgnored var scanning = false
+    @ObservationIgnored var rescanNeeded = false
+    @ObservationIgnored var creatingRecord = false
+    @ObservationIgnored var sessionGen = 0
+    @ObservationIgnored var syncGen = 0
+    @ObservationIgnored var syncTask: Task<Void, Never>?
+    @ObservationIgnored var wipeAnswer: CheckedContinuation<WipeAnswer, Never>?
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -83,15 +101,16 @@ final class AppEnvironment {
         projectStore = ProjectStore(root: root)
         backups = BackupService(store: recordStore)
         currentProjectId = UserDefaults.standard.string(forKey: "currentProjectId")
-        account = Self.storedAccount()
+        account = Self.storedAccount() ?? Self.forgetOrphanTokens()
+        localDataResetPending = Self.resetPending(root: root)
         installBundledTemplates()
-        reload()
+        reloadNow()
     }
 
     // MARK: templates
 
     /// Install shared templates on first launch and whenever a bundled version is missing; installed older versions stay.
-    private func installBundledTemplates() {
+    func installBundledTemplates() {
         let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "templates") ?? []
         for url in urls {
             do {
@@ -102,72 +121,8 @@ final class AppEnvironment {
         }
     }
 
-    func reload() {
-        editors.values.forEach { $0.flush() }
-        templates = templateStore.list()
-        let byKey = Dictionary(templates.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
-        // ERP projects this account sees; the others stay on the device, hidden with their records.
-        projects = projectStore.list().filter { !$0.archived }
-        projectAvatars = Dictionary(uniqueKeysWithValues: projects.compactMap { p in
-            projectStore.avatarURL(p.id).flatMap { UIImage(contentsOfFile: $0.path) }.map { (p.id, $0) }
-        })
-        if let id = currentProjectId, !projects.contains(where: { $0.id == id }) { currentProjectId = nil }
-        let visible = Set(projects.map(\.id))
-        siteCache = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, projectStore.sites($0.id).load()) })
-        var visited: [String: Set<String>] = [:], stats: [String: ProjectStats] = [:]
-        summaries = recordStore.listItems().compactMap { item in
-            guard let r = item.record else {
-                return RecordSummary(id: item.id, title: item.id, subtitle: item.error ?? "", updatedAt: item.modifiedAt,
-                                     status: .draft, progress: RequiredProgress(done: 0, total: 0), loadError: item.error ?? "Không đọc được")
-            }
-            guard let pid = r.projectId, visible.contains(pid) else { return nil }
-            stats[pid, default: ProjectStats()].add(r)
-            guard let t = byKey["\(r.templateId)@\(r.templateVersion)"] else {
-                return RecordSummary(id: r.id, title: "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"),
-                                     subtitle: "\(r.templateId) (thiếu mẫu)", updatedAt: r.updatedAt, status: r.status,
-                                     progress: RequiredProgress(done: 0, total: 0), projectId: pid, returned: r.returned, needsBackup: r.needsBackup)
-            }
-            for f in t.allFields where f.lookup != nil { if let code = r.values[f.id]?.v?.string, !code.isEmpty { visited[pid, default: []].insert(code) } }
-            let gps = t.allFields.filter { $0.type == .gps }.compactMap { GPSValue(r.values[$0.id]?.v) }.first
-            return RecordSummary(id: r.id, title: RecordNaming.title(t, r), subtitle: RecordInfo.subtitle(t, r), updatedAt: r.updatedAt,
-                                 status: r.status, progress: Validator.progress(t, r), projectId: pid, returned: r.returned, needsBackup: r.needsBackup,
-                                 thumbnail: RecordInfo.firstPhoto(t, r).map { recordStore.fileURL(r.id, $0.file) },
-                                 coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) })
-        }
-        visitedByProject = visited; projectStats = stats
-    }
-
     /// Newest version of each template: what new records are created from.
     var newestTemplates: [Template] { TemplateVersion.newest(templates) }
-
-    // MARK: backup
-
-    /// Backs up every readable record now (open editors through their model so no edit is lost).
-    func backupAll() async -> (done: Int, failed: Int) {
-        var done = 0, failed = 0
-        for s in summaries where s.loadError == nil {
-            if let m = editors[s.id] { await m.backup(force: true); if m.backupError == nil { done += 1 } else { failed += 1 }; continue }
-            guard var r = recordStore.load(s.id), let t = templateStore.load(id: r.templateId, version: r.templateVersion) else { failed += 1; continue }
-            do {
-                try await backups.write(t, r, project: project(of: r))
-                r.backupAt = BackupService.backupTime(snapshot: r.updatedAt, currentUpdatedAt: r.updatedAt)
-                try recordStore.save(r)
-                done += 1
-            } catch { failed += 1 }
-        }
-        reload()
-        return (done, failed)
-    }
-
-    /// App going to the background: save and back up whatever is open and changed.
-    func backupOpenEditors() {
-        editors.values.forEach { $0.flush() }
-        guard settings.autoBackup else { return }
-        let open = Array(editors.values)
-        BackupService.whileBackgrounded {
-            for m in open { await m.backup() }
-        }
-    }
 
     func template(for recordId: String) -> Template? {
         guard let r = recordStore.load(recordId) else { return nil }
@@ -197,66 +152,15 @@ final class AppEnvironment {
     }
 
     func overwriteTemplate(_ data: Data) throws {
+        let t = try TemplateLoader.decode(data)
         try templateStore.install(data)
+        // open editors of records on this template version still hold the old definition: save them, close their screens, let them reload it
+        closingEditors = closingEditors.filter { $0.value.template.id != t.id || $0.value.template.version != t.version }
+        let stale = Set(editors.filter { $0.value.template.id == t.id && $0.value.template.version == t.version }.keys)
+        stale.forEach { editors[$0]?.flush() }
+        recordsPath.removeAll { stale.contains($0.recordId) }
+        for id in stale { editors[id]?.close(); editors[id] = nil; closingEditors[id] = nil }
         reload()
-    }
-
-    // MARK: records
-
-    /// Entry point of every "create record" button: asks for the surveyor name once when Cài đặt has none, then creates.
-    func startCreate(from t: Template, in project: Project) {
-        if settings.surveyorName.isEmpty, !settings.surveyorAsked, t.field("HD-surveyor") != nil { askSurveyorFor = PendingCreate(template: t, project: project) }
-        else { createRecord(from: t, in: project) }
-    }
-
-    func answerSurveyor(_ name: String) {
-        guard let pending = askSurveyorFor else { return }
-        askSurveyorFor = nil
-        settings.surveyorAsked = true
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty { settings.surveyorName = trimmed }
-        createRecord(from: pending.template, in: pending.project)
-    }
-
-    func createRecord(from t: Template, in project: Project) {
-        var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName, projectId: project.id)
-        let mine = recordStore.list().filter { ($0.projectId ?? "") == project.id }
-        if let code = t.recordCodeField, r.values[code.id]?.v?.isBlank != false,
-           let proposed = RecordCodeProposal.propose(for: t, among: mine) {
-            r.values[code.id] = FieldValue(v: .string(proposed))
-        }
-        do {
-            try recordStore.save(r)
-            reload()
-            open(r.id)
-        } catch { errorMessage = "Không tạo được phiếu: \(error.localizedDescription)" }
-    }
-
-    func open(_ recordId: String) {
-        selectedTab = .records
-        recordsPath = [.editor(recordId)]
-    }
-
-    func duplicate(_ id: String) {
-        guard let r = recordStore.load(id) else { return }
-        let t = templateStore.load(id: r.templateId, version: r.templateVersion)
-        do { try recordStore.save(RecordFactory.duplicate(r, template: t)); reload() }
-        catch { errorMessage = "Không nhân bản được: \(error.localizedDescription)" }
-    }
-
-    func delete(_ id: String) {
-        editors[id] = nil
-        do { try recordStore.delete(id); reload() } catch { errorMessage = "Không xóa được: \(error.localizedDescription)" }
-    }
-
-    func editor(for id: String) -> RecordEditorModel? {
-        if let m = editors[id] { return m }
-        guard let r = recordStore.load(id), let t = templateStore.load(id: r.templateId, version: r.templateVersion) else { return nil }
-        let m = RecordEditorModel(template: t, record: r, store: recordStore, location: location, settings: settings, backups: backups,
-                              sites: { [unowned self] in self.sites(forProject: r.projectId) },
-                              project: { [unowned self] pid in self.project(id: pid) })
-        editors[id] = m
-        return m
     }
 
     func usedStorage() -> Int64 { RecordStore.directorySize(root) }

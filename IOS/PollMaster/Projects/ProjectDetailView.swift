@@ -18,7 +18,6 @@ struct ProjectDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { env.reload() }
     }
 
     private func content(_ p: Project) -> some View {

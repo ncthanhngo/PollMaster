@@ -46,19 +46,50 @@ struct LoginView: View {
                     .disabled(!canSubmit)
                 } footer: {
                     if env.localDataResetPending {
-                        Text("Dự án và phiếu đang có trên máy sẽ bị xóa khi đăng nhập (mẫu được giữ lại). Dự án lấy từ ERP.")
+                        Text("Phiếu và dự án đang có trên máy sẽ được sao lưu rồi xóa khi đăng nhập (mẫu được giữ lại). Dự án lấy từ ERP.")
                     }
                 }
             }
             .onAppear { focus = .email }
+            .modifier(WipeDialogs())
         }
     }
 
     private func submit() {
         busy = true; error = nil
         Task {
-            do { try await env.login(email: email, password: password) } catch { self.error = error.localizedDescription }
+            do { try await env.login(email: email, password: password) }
+            catch is CancellationError {}       // declined the wipe: back to the form
+            catch { self.error = error.localizedDescription }
             busy = false
         }
+    }
+}
+
+/// The two dialogs of the first-sign-in wipe (answers go to `AppEnvironment.answerWipe`).
+private struct WipeDialogs: ViewModifier {
+    @Environment(AppEnvironment.self) private var env
+
+    private func shown(_ match: @escaping (WipePrompt) -> Bool) -> Binding<Bool> {
+        Binding(get: { env.wipePrompt.map(match) ?? false }, set: { _ in })
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .alert("Xóa dữ liệu cũ trên máy?", isPresented: shown { if case .confirm = $0 { true } else { false } }, presenting: env.wipePrompt) { _ in
+                Button("Sao lưu rồi xóa", role: .destructive) { env.answerWipe(.proceed) }
+                Button("Hủy", role: .cancel) { env.answerWipe(.cancel) }
+            } message: { p in
+                if case .confirm(let records, let projects) = p {
+                    Text("Có \(records) phiếu và \(projects) dự án tạo trước khi dùng ERP. App sẽ sao lưu toàn bộ phiếu (Tệp > PollMaster > PollMaster Backup) rồi xóa; mẫu được giữ lại.")
+                }
+            }
+            .alert("Sao lưu chưa xong", isPresented: shown { if case .backupFailed = $0 { true } else { false } }, presenting: env.wipePrompt) { _ in
+                Button("Thử lại") { env.answerWipe(.retry) }
+                Button("Xóa không sao lưu", role: .destructive) { env.answerWipe(.proceed) }
+                Button("Hủy", role: .cancel) { env.answerWipe(.cancel) }
+            } message: { p in
+                if case .backupFailed(let failed, let total) = p { Text("Không sao lưu được \(failed) trong \(total) phiếu. Xóa ngay thì các phiếu này sẽ mất.") }
+            }
     }
 }

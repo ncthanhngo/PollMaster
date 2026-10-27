@@ -33,18 +33,37 @@ public enum ISODate {
     public static func dayString(_ date: Date = Date()) -> String { format(date, "yyyy-MM-dd") }
 
     public static func format(_ date: Date, _ pattern: String, timeZone: TimeZone = .current) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = timeZone
-        f.dateFormat = pattern
-        return f.string(from: date)
+        formatters.use(pattern) { f in
+            f.timeZone = timeZone
+            return f.string(from: date)
+        }
     }
 
     public static func parse(_ s: String, pattern: String) -> Date? {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = pattern
-        return f.date(from: s)
+        formatters.use(pattern) { f in
+            f.timeZone = .current
+            return f.date(from: s)
+        }
+    }
+
+    /// One `DateFormatter` per format string (creating them is slow); the lock serialises use because the time zone is set per call.
+    private static let formatters = FormatterCache()
+}
+
+private final class FormatterCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var byPattern: [String: DateFormatter] = [:]
+
+    func use<T>(_ pattern: String, _ body: (DateFormatter) -> T) -> T {
+        lock.lock(); defer { lock.unlock() }
+        let f: DateFormatter
+        if let cached = byPattern[pattern] { f = cached } else {
+            f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = pattern
+            byPattern[pattern] = f
+        }
+        return body(f)
     }
 }
 

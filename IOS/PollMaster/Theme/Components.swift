@@ -1,6 +1,14 @@
 import SwiftUI
 
 /// SF Symbol on a tinted rounded square: leading visual of list rows (templates, records, settings).
+extension View {
+    /// Hit area `slop` points wider than the control on the given sides, without taking room in the layout
+    /// (small controls reach the 44 pt minimum of ux-spec).
+    func hitSlop(_ slop: CGFloat, _ edges: Edge.Set = .all) -> some View {
+        padding(edges, slop).contentShape(Rectangle()).padding(edges, -slop)
+    }
+}
+
 struct IconBadge: View {
     let systemImage: String
     var tint: Color = .accentColor

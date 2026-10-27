@@ -28,7 +28,7 @@ struct CodeBadge: View {
     let id: String
     @Environment(\.pmTheme) private var theme
     var body: some View {
-        Text(id).font(.system(size: 11, design: .monospaced)).secondaryText()
+        Text(id).font(.caption2.monospaced()).secondaryText()
             .padding(.horizontal, 5).padding(.vertical, 1)
             .background(theme.inputBackground.opacity(0.7), in: RoundedRectangle(cornerRadius: PMRadius.s))
     }
@@ -73,7 +73,7 @@ struct FieldMenu: View {
             Menu { FieldMenuItems(field: field, fv: $fv, editingNote: $editingNote) }
             label: {
                 Image(systemName: "ellipsis").font(.body.weight(.semibold)).foregroundStyle(theme.secondaryText)
-                    .frame(minWidth: 36, minHeight: 36).contentShape(Rectangle())
+                    .frame(minWidth: 36, minHeight: 36).hitSlop(4)
             }
             .accessibilityLabel("Tùy chọn trường: ước lượng, không đo được, ghi chú")
         }

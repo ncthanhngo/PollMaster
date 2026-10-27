@@ -58,7 +58,9 @@ import com.ncthanhngo.pollmaster.core.model.mediaToJson
 import com.ncthanhngo.pollmaster.platform.LocationHelper
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
 import com.ncthanhngo.pollmaster.ui.common.PermissionRationale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -104,8 +106,10 @@ fun MediaField(
                 val dir = mediaDir
                 val name = nextMediaName(env.controller.template, record, scope.mediaKey(field.id), if (isVideo) src.extension.lowercase().ifEmpty { "mp4" } else "jpg", dir.list()?.toSet().orEmpty())
                 val loc = LocationHelper(context).lastKnown()
-                val media = if (isVideo) container.media.finishVideo(src, File(dir, name), loc, nowIso())
-                else container.media.finishImage(src, File(dir, name), loc, nowIso())
+                val media = withContext(Dispatchers.IO) {
+                    if (isVideo) container.media.finishVideo(src, File(dir, name), loc, nowIso())
+                    else container.media.finishImage(src, File(dir, name), loc, nowIso())
+                }
                 scope.update(field.id) { cur ->
                     if (asValue) cur.copy(v = mediaToJson(cur.mediaItems() + media)) else cur.copy(media = cur.media + media)
                 }
@@ -129,7 +133,7 @@ fun MediaField(
         uris.forEach { uri ->
             container.scope.launch {
                 try {
-                    addFile(container.media.copyToCapture(uri, if (isVideo) container.media.extensionOf(uri, "mp4") else "jpg"))
+                    addFile(withContext(Dispatchers.IO) { container.media.copyToCapture(uri, if (isVideo) container.media.extensionOf(uri, "mp4") else "jpg") })
                 } catch (e: Exception) {
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
                         Toast.makeText(context, context.getString(R.string.media_error, e.message.orEmpty()), Toast.LENGTH_LONG).show()
@@ -212,7 +216,7 @@ fun MediaField(
             Dialog(onDismissRequest = { viewing = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
                 Surface(color = androidx.compose.ui.graphics.Color.Black, modifier = Modifier.fillMaxSize()) {
                     Box {
-                        AsyncImage(model = file, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                        ZoomableImage(file, file.name, Modifier.fillMaxSize())
                         IconButton(onClick = { viewing = null }, modifier = Modifier.align(Alignment.TopEnd)) {
                             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close), tint = androidx.compose.ui.graphics.Color.White)
                         }
@@ -234,10 +238,10 @@ private fun Thumbnail(file: File, video: Boolean, onOpen: () -> Unit, onDelete: 
                 }
             }
         } else {
-            AsyncImage(model = file, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            AsyncImage(model = file, contentDescription = file.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
         if (onDelete != null) {
-            IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)) {
+            IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.media_delete_title), tint = androidx.compose.ui.graphics.Color.White)
             }
         }

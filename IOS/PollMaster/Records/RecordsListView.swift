@@ -77,7 +77,6 @@ struct RecordsListView: View {
                 ToolbarItem(placement: .primaryAction) { Button("Tạo phiếu", systemImage: "plus") { startNew() } }
             }
             .navigationDestination(for: Route.self) { RouteDestination(route: $0) }
-            .onAppear { env.reload() }
             .sheet(isPresented: $creating) { NewRecordSheet() }
             .sheet(isPresented: $env.showProjectSwitcher) { ProjectSwitcherSheet() }
             .confirmationDialog(moveTitle, isPresented: Binding(get: { moving != nil }, set: { if !$0 { moving = nil } }), titleVisibility: .visible) {
@@ -174,9 +173,9 @@ struct RecordRow: View {
 
     @ViewBuilder private var thumbnail: some View {
         if let url = summary.thumbnail {
-            Thumbnail(url: url, video: false, size: 44)
+            Thumbnail(url: url, video: false, size: 48)
         } else {
-            IconBadge(systemImage: statusIcon.name, tint: statusIcon.tint, size: 44)
+            IconBadge(systemImage: statusIcon.name, tint: statusIcon.tint, size: 48)
         }
     }
 

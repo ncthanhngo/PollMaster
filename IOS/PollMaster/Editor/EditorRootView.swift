@@ -1,34 +1,6 @@
 import SwiftUI
 import PollMasterCore
 
-/// Resolves a navigation route to the matching editor screen.
-struct RouteDestination: View {
-    let route: Route
-    @Environment(AppEnvironment.self) private var env
-
-    var body: some View {
-        Group {
-            destination
-        }
-        .toolbar(.hidden, for: .tabBar)      // the whole editing flow runs full screen
-    }
-
-    @ViewBuilder private var destination: some View {
-        if let model = env.editor(for: route.recordId) {
-            switch route {
-            case .editor: EditorRootView(model: model)
-            case .section(_, let index, let focus): SectionView(model: model, index: index, focus: focus)
-            case .row(_, let table, let row): RowFormView(model: model, tableId: table, rowId: row)
-            case .review: ReviewView(model: model)
-            case .fill: FillOneByOneView(model: model)
-            }
-        } else {
-            ContentUnavailableView("Không mở được phiếu", systemImage: "exclamationmark.triangle",
-                                   description: Text("Phiếu hoặc mẫu của phiếu không còn trên máy."))
-        }
-    }
-}
-
 /// Table of contents of a record: header + sections with neutral progress, resume button.
 struct EditorRootView: View {
     let model: RecordEditorModel
@@ -188,43 +160,6 @@ struct ProgressRow: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("\(progress.done)/\(progress.total) bắt buộc").font(.subheadline.weight(.medium))
             ProgressView(value: progress.fraction)
-        }
-    }
-}
-
-struct LockedBanner: View {
-    let model: RecordEditorModel
-    @State private var confirm = false
-    @Environment(\.pmTheme) private var theme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Đã hoàn thành lúc \(model.record.completedAt.map { ISODate.format($0, "HH:mm dd/MM/yyyy") } ?? "")",
-                  systemImage: "checkmark.circle.fill").foregroundStyle(theme.success)
-            HStack {
-                Button("Mở lại") { confirm = true }.buttonStyle(.bordered)
-                if !model.reviewMode { Button("Chế độ kiểm tra") { model.reviewMode = true }.buttonStyle(.bordered) }
-            }
-        }
-        .confirmationDialog("Mở lại phiếu để chỉnh sửa? Trạng thái sẽ về Nháp.", isPresented: $confirm, titleVisibility: .visible) {
-            Button("Mở lại") { model.reopen() }
-        }
-    }
-}
-
-struct InstructionsSheet: View {
-    let template: Template
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                Text(template.instructions ?? "Mẫu này không có hướng dẫn.")
-                    .frame(maxWidth: .infinity, alignment: .leading).padding()
-            }
-            .navigationTitle("Hướng dẫn")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } } }
         }
     }
 }

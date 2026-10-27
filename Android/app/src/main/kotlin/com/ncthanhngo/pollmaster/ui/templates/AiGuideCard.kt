@@ -135,7 +135,7 @@ private fun Step(n: Int, title: String, detail: String, action: String, icon: Im
             Text(detail, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
         }
         // same-size white pill for both steps, so the two actions line up
-        Surface(onClick = onClick, shape = RoundedCornerShape(50), color = Color.White, contentColor = ink, modifier = Modifier.size(width = 88.dp, height = 40.dp)) {
+        Surface(onClick = onClick, shape = RoundedCornerShape(50), color = Color.White, contentColor = ink, modifier = Modifier.size(width = 88.dp, height = 48.dp)) {
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(action, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)

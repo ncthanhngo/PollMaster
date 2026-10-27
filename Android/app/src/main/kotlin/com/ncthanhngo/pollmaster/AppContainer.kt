@@ -37,6 +37,7 @@ class AppContainer(context: Context) {
     val backup = BackupService(context, scope, recordStore, templates, records, settings, projects)
     init {
         records.onBackupTick = backup::requestIfNeeded
+        templates.onReplaced = records::releaseUsing
     }
     val export = ExportService(context, recordStore, templates, records, projects)
     val projectExport = ProjectExportService(context, projects, recordStore, templates, records)
@@ -44,7 +45,7 @@ class AppContainer(context: Context) {
     /** Package the user opened from another app, waiting for the preview dialog. */
     val pendingBundle = MutableStateFlow<Uri?>(null)
     val media = MediaProcessor(context, settings)
-    val erp = ErpSession(context, context.filesDir, ErpClient(context), projects, records, templates, recordStore, media)
+    val erp = ErpSession(context, context.filesDir, ErpClient(context), projects, records, templates, media, backup, scope)
 }
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }

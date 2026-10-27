@@ -43,6 +43,13 @@ class RecordStore(private val root: File) {
     /** Readable records only, most recently updated first. */
     fun list(): List<Record> = listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
 
+    /** Cheap change detector: name, modified time and size of every `record.json`, without decoding any of them. */
+    fun fingerprint(): List<Triple<String, Long, Long>> =
+        recordsDir.listFiles { f -> f.isDirectory }.orEmpty().sortedBy { it.name }.map {
+            val file = File(it, RECORD_FILE)
+            Triple(it.name, file.lastModified(), file.length())
+        }
+
     fun save(record: Record) {
         val bytes = PollJson.encodeToString(Record.serializer(), record).toByteArray(Charsets.UTF_8)
         writeAtomically(File(dir(record.id), RECORD_FILE), bytes)

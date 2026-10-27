@@ -25,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -149,7 +151,8 @@ fun AudioField(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv,
         }
         items.forEach { m ->
             val file = File(mediaDir, m.file.substringAfterLast('/'))
-            val duration = remember(file.path) { audioDurationSeconds(file) }
+            var duration by remember(file.path) { mutableStateOf<Long?>(null) }
+            LaunchedEffect(file.path) { duration = withContext(Dispatchers.IO) { audioDurationSeconds(file) } }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
                     if (playing == m.file) {

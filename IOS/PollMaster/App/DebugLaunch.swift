@@ -23,13 +23,13 @@ extension AppEnvironment {
         if d.object(forKey: "pmOneHand") != nil { settings.oneHand = d.bool(forKey: "pmOneHand") }
         if d.bool(forKey: "pmMap") { recordsShowMap = true }
         if d.bool(forKey: "pmSeedProjects") { seedProjects() }
-        if d.bool(forKey: "pmSites"), let p = currentProject ?? projects.first { try? projectStore.sites(p.id).save(sampleSites); reload() }
+        if d.bool(forKey: "pmSites"), let p = currentProject ?? projects.first { try? projectStore.sites(p.id).save(sampleSites); reloadNow() }
         if let code = d.string(forKey: "pmProject") { currentProjectId = projects.first { $0.code == code }?.id }
         if let code = d.string(forKey: "pmProjectDetail"), let p = projects.first(where: { $0.code == code }) { selectedTab = .projects; projectsPath = [ProjectRoute(id: p.id)] }
         if d.bool(forKey: "pmSwitcher") { showProjectSwitcher = true }
         if let path = d.string(forKey: "pmImportBundle") { openIncoming(URL(fileURLWithPath: path)) }
         if let tab = d.string(forKey: "pmTab") { selectedTab = ["templates": .templates, "settings": .settings, "projects": .projects][tab] ?? .records }
-        if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reload() }
+        if d.bool(forKey: "pmSeed"), let t = newestTemplates.first(where: { $0.id == "BB-TDP-01" }) { seed(t); reloadNow() }
         guard let tid = d.string(forKey: "pmCreate"), let t = newestTemplates.first(where: { $0.id == tid }) else { return }
         var r = RecordFactory.make(template: t, surveyorName: settings.surveyorName)
         if d.bool(forKey: "pmFill") || d.bool(forKey: "pmReview") { fillRequired(t, &r) }
@@ -38,7 +38,7 @@ extension AppEnvironment {
             let id = TableOps.addRow(&r, t, table: tb)
             r.tables[tb.id]?[0].values["kb"] = FieldValue(v: "S04")
             if let e = t.pairedTable(of: tb) { r.tables[e.id]?[0].values["kb"] = FieldValue(v: "S04") }
-            try? recordStore.save(r); reload(); open(r.id)
+            try? recordStore.save(r); reloadNow(); open(r.id)
             recordsPath.append(.row(record: r.id, table: tb.id, row: id))
             return
         }
@@ -47,7 +47,7 @@ extension AppEnvironment {
             r.values["B-02"]?.review = "Đo lại: ảnh P08 chưa thấy rõ thước."
         }
         do { try recordStore.save(r) } catch { errorMessage = error.localizedDescription; return }
-        reload(); open(r.id)
+        reloadNow(); open(r.id)
         let focus = d.string(forKey: "pmFocus")
         if d.bool(forKey: "pmReviewDraft") || d.bool(forKey: "pmFillStep") {
             if d.bool(forKey: "pmFillStep") { recordsPath.append(.fill(record: r.id)) } else { recordsPath.append(.review(record: r.id)) }
@@ -103,7 +103,7 @@ extension AppEnvironment {
             if i == 0 { try? projectStore.sites(e.id).save(sampleSites) }
             seed(t, projectId: e.id, count: i == 0 ? 3 : 1)
         }
-        reload()
+        reloadNow()
         currentProjectId = seeds[0].id
     }
 

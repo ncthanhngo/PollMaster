@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -170,7 +171,7 @@ fun ReviewScreen(
                         }
                     }
                     if (id in open) {
-                        items(list, key = { "${it.key}-${it.kind}" }) { issue ->
+                        itemsIndexed(list, key = { i, it -> "$id-$i-${it.key}-${it.kind}" }) { _, issue -> // the same field can have several issues of one kind
                             IssueRow(issue, color) {
                                 if (issue.rowId != null) onJumpRow(issue.targetId, issue.rowId, issue.columnId.orEmpty())
                                 else onJumpField(issue.sectionId, issue.targetId)
@@ -183,7 +184,7 @@ fun ReviewScreen(
                 item(key = "warn-title") {
                     Text(stringResource(R.string.review_group_warnings), style = MaterialTheme.typography.titleSmall, color = warnColor(), modifier = Modifier.padding(top = 8.dp))
                 }
-                items(warnings, key = { "w-${it.key}-${it.kind}" }) { w ->
+                itemsIndexed(warnings, key = { i, it -> "w-$i-${it.key}-${it.kind}" }) { _, w -> // a field and its parts can warn alike
                     ListRow("${w.targetId} · ${w.label}", w.message, warnColor()) {
                         if (w.rowId != null) onJumpRow(w.targetId, w.rowId, w.columnId.orEmpty()) else onJumpField(w.sectionId, w.targetId)
                     }

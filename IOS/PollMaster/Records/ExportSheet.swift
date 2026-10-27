@@ -48,7 +48,7 @@ struct ExportSheet: View {
     }
 
     private func run() {
-        env.reload()   // flushes any open editor so the export sees the latest data
+        env.flushEditors()   // any open editor so the export sees the latest data
         guard let record = env.recordStore.load(recordId), let template = env.template(for: recordId) else {
             error = "Không đọc được phiếu hoặc mẫu."; return
         }

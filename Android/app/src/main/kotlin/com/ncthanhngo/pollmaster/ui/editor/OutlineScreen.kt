@@ -252,7 +252,7 @@ private fun ProgressHero(project: Project?, progress: Progress, resume: Pair<Str
             }
             LinearProgressIndicator(progress = { fraction }, Modifier.fillMaxWidth(), color = tint, trackColor = MaterialTheme.colorScheme.surfaceVariant)
             resume?.let { (text, open) ->
-                Button(onClick = open, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
+                Button(onClick = open, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(stringResource(R.string.resume_at, text), Modifier.padding(start = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

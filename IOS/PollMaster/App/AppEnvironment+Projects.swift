@@ -88,20 +88,20 @@ extension AppEnvironment {
 
     /// Another active project of the same template, for "Chuyển dự án".
     func moveTargets(for summary: RecordSummary) -> [Project] {
-        guard let r = recordStore.load(summary.id) else { return [] }
-        return ProjectMove.targets(for: r, in: projects, currentId: summary.projectId)
+        ProjectMove.targets(templateId: summary.templateId, in: projects, currentId: summary.projectId)
     }
 
     func move(_ recordId: String, to target: Project) {
-        editors[recordId]?.flush()
+        editors[recordId]?.flush(); closingEditors[recordId]?.flush()
         guard var r = recordStore.load(recordId) else { return }
         let old = project(of: r)
-        editors[recordId] = nil
+        editors[recordId]?.discard(); closingEditors[recordId]?.discard()      // saved above; nothing pending may write the old project back
+        editors[recordId] = nil; closingEditors[recordId] = nil
         r.projectId = target.id; r.updatedAt = Date(); r.backupAt = nil
         do {
             try recordStore.save(r)
             if let t = templateStore.load(id: r.templateId, version: r.templateVersion) { BackupService.removeBackup(t, r, project: old) }
-            reload()
+            upsert(r)
             infoMessage = "Đã chuyển phiếu sang dự án \(target.name)."
         } catch { errorMessage = "Không chuyển được phiếu: \(error.localizedDescription)" }
     }

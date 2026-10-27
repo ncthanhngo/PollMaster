@@ -44,7 +44,7 @@ object ErpProjectSync {
      * of each template) goes to a new project that [ErpProject.startsWithLibrary].
      */
     fun apply(list: List<ErpProject>, store: ProjectStore, now: String, library: List<TemplateRef> = emptyList()): List<LogoChange> {
-        val listed = list.filter { it.type in Project.KINDS }
+        val listed = list.filter { it.type in Project.KINDS && isSafeId(it.id) } // the id becomes a folder name
         val ids = listed.map { it.id }.toSet()
         val all = store.list().toMutableList()
         all.filter { it.id !in ids && !it.archived }.forEach { store.save(it.copy(archived = true)) }
@@ -73,8 +73,17 @@ object ErpProjectSync {
         return changes
     }
 
+    private val SAFE_ID = Regex("^[A-Za-z0-9-]{1,64}$")
+
+    /** An ERP project id is used as a folder name, so only letters, digits and `-` (1-64) are accepted. */
+    fun isSafeId(id: String): Boolean = SAFE_ID.matches(id)
+
     /** Absolute URL of an ERP file path: uploads are served from the API host root, outside `/api/v1`. */
     fun fileUrl(path: String, host: String): String = if (path.startsWith("http")) path else host.trimEnd('/') + "/" + path.trimStart('/')
+
+    /** Folders of records and projects on the device (what a first-login wipe would delete), as (records, projects). */
+    fun localDataCounts(root: File): Pair<Int, Int> =
+        listOf("records", "projects").map { File(root, it).listFiles { f -> f.isDirectory }?.size ?: 0 }.let { it[0] to it[1] }
 
     /** One-time wipe when the app switches to ERP projects: projects and records made on the device go, templates stay. */
     fun resetLocalData(root: File) {

@@ -6,10 +6,14 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.ncthanhngo.pollmaster.core.model.PollJson
 import com.ncthanhngo.pollmaster.core.project.ErpEnvelope
+import com.ncthanhngo.pollmaster.core.project.ErpMessages
 import com.ncthanhngo.pollmaster.core.project.ErpPage
 import com.ncthanhngo.pollmaster.core.project.ErpProject
 import com.ncthanhngo.pollmaster.core.project.ErpProjectSync
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -42,6 +46,7 @@ class ErpException(message: String, val sessionExpired: Boolean = false) : Excep
 class ErpClient(context: Context) {
     private val tokens = TokenStore(context)
     private val refreshLock = Mutex()
+    private val revokeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val hasSession: Boolean get() = tokens.refresh != null
 
@@ -69,21 +74,31 @@ class ErpClient(context: Context) {
         val d = try {
             send("auth/login", LoginData.serializer(), "POST", body)
         } catch (e: HttpStatus) {
-            // the backend answers a wrong password or a malformed one with 400/401 and an English text
-            throw if (e.status == 400 || e.status == 401) ErpException("Sai email hoặc mật khẩu.") else e.toUser()
+            // the backend answers a wrong password or a malformed one with 400/401 and an English text or a code
+            throw if (e.status == 400 || e.status == 401) ErpException(e.error?.takeIf(ErpMessages::isUserSentence) ?: "Sai email hoặc mật khẩu.") else e.toUser()
         }
         if (d.mustChangePassword) throw ErpException("Tài khoản cần đổi mật khẩu. Hãy đăng nhập ERP trên web hoặc app ERP để đổi, rồi đăng nhập lại.")
-        tokens.save(d.token, d.refresh)
+        save(d.token, d.refresh)
         val name = listOf(d.user?.displayName, d.user?.name).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }
         return ErpAccount(name ?: email, d.user?.email ?: email, d.user?.org?.takeIf { it.isNotEmpty() })
     }
 
-    /** Revokes the refresh token (best effort) and forgets both tokens. */
-    suspend fun logout() {
-        tokens.refresh?.let { r ->
+    /** Forgets both tokens at once, then revokes the refresh token on the server in the background (best effort). */
+    fun logout() {
+        val r = tokens.refresh
+        tokens.clear()
+        if (r != null) revokeScope.launch {
             runCatching { send("auth/logout", JsonElement.serializer(), "POST", buildJsonObject { put("refresh_token", r) }.toString()) }
         }
-        tokens.clear()
+    }
+
+    /** Token store failures (Keystore unavailable, storage full) are reported as a sign-in error, not a crash. */
+    private fun save(access: String, refresh: String) {
+        try {
+            tokens.save(access, refresh)
+        } catch (e: Exception) {
+            throw ErpException("Không lưu được phiên đăng nhập an toàn trên máy này (${e.message ?: e.javaClass.simpleName}).")
+        }
     }
 
     /** Active projects the user may see (the backend scopes them by permission and organisation), every page. */
@@ -112,7 +127,7 @@ class ErpClient(context: Context) {
 
     private class HttpStatus(val status: Int, val error: String?) : Exception(error) {
         /** Machine codes (SCREAMING_SNAKE) are not for people; the backend's Vietnamese sentences are. */
-        fun toUser() = ErpException(error?.takeIf { it != it.uppercase() } ?: "Máy chủ ERP báo lỗi $status.")
+        fun toUser() = ErpException(error?.takeIf(ErpMessages::isUserSentence) ?: "Máy chủ ERP báo lỗi $status.")
     }
 
     /** GET with the access token; a 401 refreshes once (shared by concurrent calls) and retries. */
@@ -133,7 +148,7 @@ class ErpClient(context: Context) {
         val r = tokens.refresh ?: throw ErpException(EXPIRED, sessionExpired = true)
         try {
             val t = send("auth/refresh", Tokens.serializer(), "POST", buildJsonObject { put("refresh_token", r) }.toString())
-            tokens.save(t.token, t.refresh)
+            save(t.token, t.refresh)
         } catch (e: HttpStatus) {
             if (e.status == 400 || e.status == 401) {
                 tokens.clear()

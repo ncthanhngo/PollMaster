@@ -15,6 +15,8 @@
     <string name="action_duplicate">Nhân bản</string>
     <string name="action_edit">Sửa</string>
     <string name="action_export">Xuất</string>
+    <string name="map_cd">Bản đồ phiếu: %1$d phiếu có vị trí, %2$d điểm kế hoạch chưa có phiếu</string>
+    <string name="search_clear">Xóa nội dung tìm</string>
     <string name="action_more">Thêm tùy chọn</string>
     <string name="action_ok">OK</string>
     <string name="action_overwrite">Ghi đè</string>
@@ -358,7 +360,15 @@
     <string name="login_password">Mật khẩu</string>
     <string name="login_action">Đăng nhập</string>
     <string name="login_hint">Tài khoản của EVSELab và các tổ chức đối tác (vd. Kimsen) đều đăng nhập được. Cần mạng cho lần đăng nhập; sau đó dùng được khi mất mạng.</string>
-    <string name="login_reset_warning">Dự án và phiếu đang có trên máy sẽ bị xóa khi đăng nhập (mẫu được giữ lại). Dự án lấy từ ERP.</string>
+    <string name="login_wipe_title">Xóa dữ liệu cũ trên máy?</string>
+    <string name="login_wipe_message">Có %1$d phiếu và %2$d dự án tạo trước khi dùng ERP. App sẽ sao lưu toàn bộ phiếu (Download/PollMaster) rồi xóa; mẫu được giữ lại.</string>
+    <string name="login_wipe_confirm">Sao lưu rồi xóa</string>
+    <string name="login_wipe_busy">Đang sao lưu…</string>
+    <string name="login_wipe_failed_title">Sao lưu chưa xong</string>
+    <string name="login_wipe_failed_message">Không sao lưu được %1$d trong %2$d phiếu. Xóa ngay thì các phiếu này sẽ mất.</string>
+    <string name="login_wipe_retry">Thử lại</string>
+    <string name="login_wipe_force">Xóa không sao lưu</string>
+    <string name="login_reset_warning">Phiếu và dự án đang có trên máy sẽ được sao lưu rồi xóa khi đăng nhập (mẫu được giữ lại). Dự án lấy từ ERP.</string>
     <string name="account_title">Tài khoản ERP</string>
     <string name="account_note">Dự án lấy từ ERP. Đăng xuất không xóa phiếu trên máy.</string>
     <string name="account_logout">Đăng xuất</string>

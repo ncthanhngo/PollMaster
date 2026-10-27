@@ -34,17 +34,24 @@ class ProjectsRepository(
 
     fun get(id: String?): Project? = id?.let { wanted -> _projects.value.firstOrNull { it.id == wanted } }
 
+    private var lastPrint: List<Triple<String, Long, Long>>? = null
+
+    /** Re-reads the projects when their files changed since the last call; screens call this freely. */
     suspend fun refresh() {
-        val (list, avatars) = withContext(Dispatchers.IO) {
-            // ERP projects this account sees; the others stay on the device, hidden with their records.
-            val list = store.list().filter { !it.archived }.also { p -> sites.reload(p.map { it.id }) }
-            list to list.mapNotNull { p ->
-                store.avatarFile(p.id)?.let { BitmapFactory.decodeFile(it.path) }?.let { p.id to it.asImageBitmap() }
-            }.toMap()
+        val print = withContext(Dispatchers.IO) { store.fingerprint() }
+        if (print != lastPrint) {
+            val (list, avatars) = withContext(Dispatchers.IO) {
+                // ERP projects this account sees; the others stay on the device, hidden with their records.
+                val list = store.list().filter { !it.archived }.also { p -> sites.reload(p.map { it.id }) }
+                list to list.mapNotNull { p ->
+                    store.avatarFile(p.id)?.let { BitmapFactory.decodeFile(it.path) }?.let { p.id to it.asImageBitmap() }
+                }.toMap()
+            }
+            _avatars.value = avatars
+            _projects.value = list
+            lastPrint = print
         }
-        _avatars.value = avatars
-        _projects.value = list
-        if (currentId.value != null && list.none { it.id == currentId.value }) select(null)
+        if (currentId.value != null && _projects.value.none { it.id == currentId.value }) select(null)
     }
 
     /** Replaces the template list of a project. */

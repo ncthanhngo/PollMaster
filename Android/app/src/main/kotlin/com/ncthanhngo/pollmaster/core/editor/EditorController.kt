@@ -92,6 +92,9 @@ class EditorController(
 
     fun flush() = saver.flush()
 
+    /** Drops unsaved changes (the record is gone); nothing is written afterwards. */
+    fun discard() = saver.cancel()
+
     private val listeners = java.util.concurrent.CopyOnWriteArraySet<(Record) -> Unit>()
 
     /** Registers a callback invoked synchronously after every change; returns a function that removes it. */

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,14 +53,16 @@ fun LoginScreen() {
     var busy by remember { mutableStateOf(false) }
     val expired by container.erp.syncError.collectAsState()
     var error by remember { mutableStateOf(expired) }
-    val resetPending = remember { container.erp.localDataResetPending() }
+    val resetPending by produceState(false) { value = container.erp.localDataResetPending() }
+    val wipePrompt by container.erp.wipePrompt.collectAsState()
     val canSubmit = email.contains('@') && password.isNotEmpty() && !busy
 
-    fun submit() {
+    /** Runs one sign-in step; failures are shown on the screen. */
+    fun run(step: suspend () -> Unit) {
         busy = true; error = null
         scope.launch {
             try {
-                container.erp.login(email, password)
+                step()
             } catch (e: ErpException) {
                 error = e.message
             } catch (e: IOException) {
@@ -69,6 +72,17 @@ fun LoginScreen() {
             }
             busy = false
         }
+    }
+
+    fun submit() = run { container.erp.login(email, password) }
+
+    wipePrompt?.let {
+        WipeDialog(
+            it,
+            onBackup = { run(container.erp::backupThenWipe) },
+            onForce = { run(container.erp::wipeWithoutBackup) },
+            onCancel = container.erp::cancelWipe,
+        )
     }
 
     Scaffold { padding ->

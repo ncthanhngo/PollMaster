@@ -25,19 +25,31 @@ public struct RecordStore: Sendable {
 
     /// Every record folder, newest first; unreadable ones carry the error so they can be shown and deleted.
     public func listItems() -> [RecordListEntry] {
-        let ids = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
-        return ids.filter { !$0.hasPrefix(".") }.compactMap { id -> RecordListEntry? in
-            let file = folder(id).appendingPathComponent("record.json")
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: folder(id).path, isDirectory: &isDir), isDir.boolValue else { return nil }
-            let modified = (try? FileManager.default.attributesOfItem(atPath: file.path)[.modificationDate] as? Date) ?? Date()
-            do {
-                let r = try read(id)
-                return RecordListEntry(id: id, record: r, error: nil, modifiedAt: r.updatedAt)
-            } catch {
-                return RecordListEntry(id: id, record: nil, error: Self.describe(error), modifiedAt: modified)
-            }
-        }.sorted { $0.modifiedAt > $1.modifiedAt }
+        ids().compactMap(entry).sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
+    /// Names of the record folders (readable or not).
+    public func ids() -> [String] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        return names.filter { !$0.hasPrefix(".") && isFolder($0) }
+    }
+
+    private func isFolder(_ id: String) -> Bool {
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: folder(id).path, isDirectory: &isDir) && isDir.boolValue
+    }
+
+    /// One record folder as `listItems` reports it; nil when there is no such folder.
+    public func entry(_ id: String) -> RecordListEntry? {
+        guard isFolder(id) else { return nil }
+        let file = folder(id).appendingPathComponent("record.json")
+        let modified = (try? FileManager.default.attributesOfItem(atPath: file.path)[.modificationDate] as? Date) ?? Date()
+        do {
+            let r = try read(id)
+            return RecordListEntry(id: id, record: r, error: nil, modifiedAt: r.updatedAt)
+        } catch {
+            return RecordListEntry(id: id, record: nil, error: Self.describe(error), modifiedAt: modified)
+        }
     }
 
     private func read(_ id: String) throws -> Record {

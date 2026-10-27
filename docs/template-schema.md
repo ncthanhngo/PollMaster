@@ -382,6 +382,7 @@ Mỗi phiếu thuộc **đúng 1 dự án**. Mẫu nằm trong **thư viện chu
 
 ### 9.2 Dữ liệu cũ
 Lần đăng nhập ERP đầu tiên trên máy xóa `projects/` và `records/` tạo trước đó (mẫu giữ nguyên); làm một lần. Bỏ dự án "Chung".
+Trước khi xóa: hỏi xác nhận, sao lưu toàn bộ phiếu (§9.4); có phiếu sao lưu lỗi thì chỉ xóa khi người dùng chọn "Xóa không sao lưu".
 
 ### 9.3 Gói dự án `.pmproject` (zip)
 ```
@@ -413,4 +414,5 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
   (bỏ `personal`). Dự án mới về máy: chưa có mẫu, riêng dự án có "Phoenix" trong mã/tên được gán sẵn mọi mẫu của thư viện (bản mới nhất).
   Đồng bộ khi đăng nhập, khi mở app, khi kéo để tải lại; mất mạng → dùng danh sách đã lưu.
 - Ảnh đại diện: `customer_logo_url` (tương đối → ghép `https://api.evselab.com`), cắt vuông 256 px nền trắng → `avatar.jpg`.
-- Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình.
+- Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình. Đăng xuất hủy lần đồng bộ đang chạy (kết quả cũ bị bỏ).
+- Id dự án ERP dùng làm tên thư mục: chỉ nhận `^[A-Za-z0-9-]{1,64}$`, dòng khác bị bỏ qua.

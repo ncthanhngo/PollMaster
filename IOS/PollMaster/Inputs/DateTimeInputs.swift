@@ -32,8 +32,8 @@ struct DateTimeInput: View {
                 DatePicker("", selection: Binding(get: { d }, set: { value = encode($0) }), displayedComponents: components)
                     .labelsHidden()
                 Spacer()
-                Button { value = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText() }
-                    .buttonStyle(.plain)
+                Button { value = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText().hitSlop(14) }
+                    .buttonStyle(.plain).accessibilityLabel("Xóa ngày")
             }
         } else {
             Button(placeholder, systemImage: type == .time ? "clock" : "calendar") { value = encode(Date()) }
@@ -77,7 +77,8 @@ struct MonthInput: View {
                 Picker("Năm", selection: Binding(get: { cur.year }, set: { set($0, cur.month) })) {
                     ForEach(((now.year ?? 2026) - 30)...((now.year ?? 2026) + 2), id: \.self) { Text(String($0)).tag($0) }
                 }
-                Button { value = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText() }.buttonStyle(.plain)
+                Button { value = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText().hitSlop(14) }
+                    .buttonStyle(.plain).accessibilityLabel("Xóa ngày")
             }
         } else {
             Button("Chọn tháng", systemImage: "calendar") { set(now.year ?? 2026, now.month ?? 1) }
@@ -100,7 +101,7 @@ struct SessionTimeInput: View {
             Text("\(ISODate.format(st.start, "HH:mm")) → \(st.end.map { ISODate.format($0, "HH:mm") } ?? "…")")
                 .font(.body.monospacedDigit().weight(.medium))
             Spacer()
-            Button { editing = true } label: { Image(systemName: "pencil").frame(minWidth: 32, minHeight: 32) }
+            Button { editing = true } label: { Image(systemName: "pencil").frame(minWidth: 44, minHeight: 44) }
                 .buttonStyle(.bordered).accessibilityLabel("Sửa giờ")
         }
         .sheet(isPresented: $editing) { SessionTimeSheet(value: $value) }

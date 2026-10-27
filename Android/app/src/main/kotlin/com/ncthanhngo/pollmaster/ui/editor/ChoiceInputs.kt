@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -58,6 +59,7 @@ private const val GRID_MAX_LABEL = 4
 @Composable
 internal fun ChoiceChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     FilterChip(
+        modifier = Modifier.minimumInteractiveComponentSize(),
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
@@ -77,7 +79,7 @@ internal fun ChoiceChip(label: String, selected: Boolean, enabled: Boolean, onCl
 /** One-tap button used by the grids. */
 @Composable
 private fun GridButton(label: String, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val touch = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 44.dp
+    val touch = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 48.dp
     Surface(
         shape = RoundedCornerShape(10.dp),
         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,

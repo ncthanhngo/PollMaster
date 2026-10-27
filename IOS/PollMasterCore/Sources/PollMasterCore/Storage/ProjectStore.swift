@@ -136,7 +136,11 @@ public enum ProjectTemplates {
 public enum ProjectMove {
     /// Active projects other than the current one that use the record's template (any version).
     public static func targets(for r: Record, in all: [Project], currentId: String?) -> [Project] {
-        all.filter { !$0.archived && $0.id != currentId && $0.templates.contains { $0.id == r.templateId } }
+        targets(templateId: r.templateId, in: all, currentId: currentId)
+    }
+
+    public static func targets(templateId: String, in all: [Project], currentId: String?) -> [Project] {
+        all.filter { !$0.archived && $0.id != currentId && $0.templates.contains { $0.id == templateId } }
     }
 }
 
@@ -150,8 +154,10 @@ public struct ProjectStats: Equatable, Sendable {
     public init() {}
 
     /// "Cần sửa" records are drafts handed back, counted apart from plain drafts.
-    public mutating func add(_ r: Record) {
-        if r.status == .completed { completed += 1 } else if r.returned { returned += 1 } else { draft += 1 }
-        if latest.map({ r.updatedAt > $0 }) ?? true { latest = r.updatedAt }
+    public mutating func add(_ r: Record) { add(status: r.status, returned: r.returned, updatedAt: r.updatedAt) }
+
+    public mutating func add(status: RecordStatus, returned isReturned: Bool, updatedAt: Date) {
+        if status == .completed { completed += 1 } else if isReturned { returned += 1 } else { draft += 1 }
+        if latest.map({ updatedAt > $0 }) ?? true { latest = updatedAt }
     }
 }

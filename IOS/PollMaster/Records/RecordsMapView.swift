@@ -21,13 +21,19 @@ struct RecordsMapView: View {
             ForEach(located) { s in
                 if let c = s.coordinate {
                     Annotation("", coordinate: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lng), anchor: .bottom) {
-                        pin(icon(s), color: color(s), label: shortTitle(s), selected: selected == .record(s.id)).onTapGesture { selected = .record(s.id) }
+                        Button { selected = .record(s.id) } label: {
+                            pin(icon(s), color: color(s), label: shortTitle(s), selected: selected == .record(s.id))
+                        }
+                        .buttonStyle(.plain).accessibilityLabel("\(s.title), \(statusText(s))")
                     }
                 }
             }
             ForEach(unvisited) { site in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: site.lat ?? 0, longitude: site.lng ?? 0), anchor: .bottom) {
-                    pin("mappin.circle", color: .gray, label: site.code, selected: selected == .site(site.code)).onTapGesture { selected = .site(site.code) }
+                    Button { selected = .site(site.code) } label: {
+                        pin("mappin.circle", color: .gray, label: site.code, selected: selected == .site(site.code))
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("Điểm kế hoạch \(site.code), chưa có phiếu")
                 }
             }
         }
@@ -93,7 +99,8 @@ struct RecordsMapView: View {
                     HStack {
                         Text(s.title).font(.headline).lineLimit(1)
                         Spacer()
-                        Button { selected = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText() }.buttonStyle(.plain)
+                        Button { selected = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText().hitSlop(14) }
+                            .buttonStyle(.plain).accessibilityLabel("Đóng")
                     }
                     Text(s.subtitle).font(.subheadline).secondaryText().lineLimit(1)
                     Text("\(statusText(s)) · \(s.progress.done)/\(s.progress.total) bắt buộc").font(.caption).foregroundStyle(color(s))
@@ -107,7 +114,8 @@ struct RecordsMapView: View {
                     HStack {
                         Text(site.code).font(.headline)
                         Spacer()
-                        Button { selected = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText() }.buttonStyle(.plain)
+                        Button { selected = nil } label: { Image(systemName: "xmark.circle.fill").secondaryText().hitSlop(14) }
+                            .buttonStyle(.plain).accessibilityLabel("Đóng")
                     }
                     if !site.address.isEmpty { Text(site.address).font(.subheadline).secondaryText() }
                     Text("Điểm kế hoạch · chưa có phiếu").font(.caption).secondaryText()

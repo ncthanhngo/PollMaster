@@ -13,6 +13,8 @@ import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,26 +53,13 @@ class BackupService(
 
     /** Backs up every record now (Settings button); returns (done, total). */
     suspend fun backupAll(): Pair<Int, Int> {
-        val ids = store.list().map { it.id }
+        val ids = withContext(Dispatchers.IO) { store.list().map { it.id } }
         return ids.count { backup(it) } to ids.size
     }
 
     suspend fun backup(recordId: String): Boolean = mutex.withLock {
         try {
-            records.flushEditor(recordId)
-            val at = nowIso()
-            val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
-            val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
-            val project = projects.get(record.projectId)
-            val tmp = File(context.cacheDir, "backup-$recordId.zip")
-            try {
-                tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it, project?.ref()) }
-                write(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code), tmp)
-            } finally {
-                tmp.delete()
-            }
-            records.markBackedUp(recordId, at)
-            _status.value = BackupStatus(lastOkAt = at)
+            withContext(Dispatchers.IO) { backupBlocking(recordId) }
             true
         } catch (e: Exception) { // reported in Settings, never swallowed
             _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
@@ -78,14 +67,33 @@ class BackupService(
         }
     }
 
+    private fun backupBlocking(recordId: String) {
+        records.flushEditor(recordId)
+        val at = nowIso()
+        val record = store.load(recordId) ?: error("Không tìm thấy phiếu")
+        val template = templates.find(record.templateId, record.templateVersion) ?: error("Không tìm thấy mẫu ${record.templateId}")
+        val project = projects.get(record.projectId)
+        val tmp = File(context.cacheDir, "backup-$recordId.zip")
+        try {
+            tmp.outputStream().buffered().use { ZipExporter.write(template, record, store.dir(recordId), it, project?.ref()) }
+            write(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code), tmp)
+        } finally {
+            tmp.delete()
+        }
+        records.markBackedUp(record, at)
+        _status.value = BackupStatus(lastOkAt = at)
+    }
+
     /** Removes the backup file of [recordId] in its current project's folder (used before the record moves to another project). */
     suspend fun deleteBackup(recordId: String): Boolean = mutex.withLock {
         try {
-            records.flushEditor(recordId)
-            val record = store.load(recordId) ?: return@withLock true
-            val template = templates.find(record.templateId, record.templateVersion) ?: return@withLock true
-            val project = projects.get(record.projectId)
-            remove(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code))
+            withContext(Dispatchers.IO) {
+                records.flushEditor(recordId)
+                val record = store.load(recordId) ?: return@withContext
+                val template = templates.find(record.templateId, record.templateVersion) ?: return@withContext
+                val project = projects.get(record.projectId)
+                remove(Backup.fileName(template.recordCode(record), recordId, project?.code), Backup.folder(project?.code))
+            }
             true
         } catch (e: Exception) { // reported in Settings, never swallowed
             _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)

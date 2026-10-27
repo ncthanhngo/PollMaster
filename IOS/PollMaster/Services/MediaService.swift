@@ -9,10 +9,11 @@ enum MediaFailure: LocalizedError {
 }
 
 /// Writes captured images and videos into a record's media folder using the template naming pattern.
-struct MediaService {
+/// A value type that can run off the main thread (image decoding, JPEG encoding and file copies are slow).
+struct MediaService: Sendable {
     let store: RecordStore
     let recordId: String
-    let namer: (_ fieldId: String, _ seq: Int) -> String
+    let namer: @Sendable (_ fieldId: String, _ seq: Int) -> String
     let quality: PhotoQuality
 
     /// Smallest sequence number >= 1 whose file name is still free.
@@ -64,6 +65,7 @@ struct MediaService {
     }
 
     func remove(_ media: Media) {
+        ThumbnailLoader.forget(url(media))
         try? FileManager.default.removeItem(at: store.fileURL(recordId, media.file))
     }
 

@@ -7,14 +7,15 @@ import PollMasterCore
 @MainActor @Observable
 final class RecordEditorModel {
     let template: Template
+    // Derived values are written only by the model itself (`refresh()` in RecordEditorModel+Derived.swift); views just read.
     private(set) var record: Record
-    private(set) var computed: [String: JSONValue] = [:]
-    private(set) var issues: [ValidationIssue] = []
-    private(set) var progress = RequiredProgress(done: 0, total: 0)
-    private(set) var sectionProgress: [String: RequiredProgress] = [:]
-    private(set) var sectionStats: [String: SectionStats] = [:]
-    private(set) var warnings: [ReviewFinding] = []
-    private(set) var reviewNotes: [ReviewFinding] = []
+    var computed: [String: JSONValue] = [:]
+    var issues: [ValidationIssue] = []
+    var progress = RequiredProgress(done: 0, total: 0)
+    var sectionProgress: [String: RequiredProgress] = [:]
+    var sectionStats: [String: SectionStats] = [:]
+    var warnings: [ReviewFinding] = []
+    var reviewNotes: [ReviewFinding] = []
     /// Red error marks stay hidden until the user pressed "Kiểm tra" for the first time (this session).
     var showAllErrors = false
     /// Completed record opened by the checker: read-only, notes allowed.
@@ -24,10 +25,19 @@ final class RecordEditorModel {
     private(set) var lastSaved: Date?
     /// Warnings the user accepted when leaving the field ("Giữ nguyên"), by field key.
     private var acceptedWarnings: Set<String> = []
-    private var backingUp = false
     private var touched: Set<String> = []
-    private var dirty = false
-    private var saveTask: Task<Void, Never>?
+    @ObservationIgnored var dirty = false
+    /// Editor stack closed: later changes (a photo finishing, a backup stamp) are saved at once, never debounced.
+    @ObservationIgnored var closed = false
+    /// Record deleted / moved / wiped: nothing of this model may be written any more.
+    @ObservationIgnored var discarded = false
+    @ObservationIgnored var saveTask: Task<Void, Never>?
+    /// Validation, progress, stats and warnings are recomputed shortly after the last edit (`refresh()` forces it).
+    @ObservationIgnored var refreshTask: Task<Void, Never>?
+    @ObservationIgnored var derivedStale = false
+    @ObservationIgnored var backupTask: Task<Bool, Never>?
+    /// Distance (m) of each lookup-filled GPS field to its planned site, computed once per refresh.
+    var plannedDistances: [String: Double] = [:]
 
     @ObservationIgnored let store: RecordStore
     @ObservationIgnored let location: LocationService
@@ -36,6 +46,8 @@ final class RecordEditorModel {
     @ObservationIgnored let sites: () -> [Site]
     /// Project of a record (by `projectId`), for backup naming.
     @ObservationIgnored let project: (String?) -> Project?
+    /// Called with the record after every successful save (the records list keeps its summary current).
+    @ObservationIgnored var onSaved: ((Record) -> Void)?
 
     init(template: Template, record: Record, store: RecordStore, location: LocationService, settings: AppSettings,
          backups: BackupService, sites: @escaping () -> [Site], project: @escaping (String?) -> Project?) {
@@ -48,35 +60,6 @@ final class RecordEditorModel {
     var isLocked: Bool { record.status == .completed }
     var canEdit: Bool { !isLocked }
     var title: String { RecordNaming.title(template, record) }
-
-    /// Section list for the table of contents: header first, then template sections.
-    var sectionTitles: [(id: String, title: String)] {
-        [(Validator.headerSectionId, Validator.headerSectionTitle)] + template.sections.map { ($0.id, $0.title) }
-    }
-
-    func items(ofSection index: Int) -> [Item] {
-        index == 0 ? template.header.map { .field($0) } : template.sections[index - 1].items
-    }
-
-    func sectionNote(_ index: Int) -> String? { index == 0 ? nil : template.sections[index - 1].note }
-
-    func issueCount(section id: String) -> Int { issues.filter { $0.sectionId == id }.count }
-
-    func sectionIndex(of id: String) -> Int? { sectionTitles.firstIndex { $0.id == id } }
-
-    /// Index of the section (0 = header) holding the field or table `id`.
-    func sectionIndex(containing id: String) -> Int? {
-        if template.header.contains(where: { $0.id == id }) { return 0 }
-        return template.sections.firstIndex { $0.items.contains { $0.id == id } }.map { $0 + 1 }
-    }
-
-    /// "Tiếp tục" target: the last position if it still exists in the template.
-    var resumeTarget: (index: Int, fieldId: String, label: String)? {
-        guard let p = record.lastPosition, let i = sectionIndex(of: p.section) else { return nil }
-        let label = template.field(p.field)?.label ?? template.table(p.field)?.title
-        guard let label else { return nil }
-        return (i, p.field, label)
-    }
 
     /// Remembered without touching `updatedAt` (it is not an edit).
     func setPosition(section: String, field: String) {
@@ -165,6 +148,8 @@ final class RecordEditorModel {
     }
 
     func complete() {
+        refresh()
+        guard issues.isEmpty else { return }
         RecordFactory.complete(&record, template: template)
         reviewMode = false
         changed(); flush()
@@ -192,12 +177,6 @@ final class RecordEditorModel {
         return n
     }
 
-    func emptyFlaggableCount(section id: String) -> Int { SectionOps.emptyFlaggableFields(template, record, sectionId: id).count }
-
-    func otherRecords() -> [Record] { SectionOps.candidates(for: record, among: store.list()) }
-
-    func hasData(section id: String) -> Bool { SectionOps.hasData(template, record, sectionId: id) }
-
     @discardableResult
     func copySection(_ id: String, from source: Record) -> Int {
         let n = SectionOps.copySection(template, from: source, into: &record, sectionId: id)
@@ -210,25 +189,19 @@ final class RecordEditorModel {
         changed()
     }
 
-    func lookupConflicts(_ lookup: Lookup, site: Site) -> [String] {
-        SiteLookup.fillValues(lookup, site: site).keys.filter { record.values[$0]?.v?.isBlank == false }.sorted()
-    }
-
-    private func removeMediaFiles(of values: some Sequence<FieldValue>) {
-        let svc = mediaService
-        for v in values { (v.media ?? []).forEach(svc.remove); v.mediaInV.forEach(svc.remove) }
-    }
-
     // MARK: derived state & saving
 
     private func changed() {
         record.updatedAt = Date()
-        refresh()
+        computed = ComputedEngine(template: template, record: record).computeAll()    // values on screen stay exact
+        derivedStale = true
+        scheduleRefresh()
         scheduleSave()
     }
 
     private func scheduleSave() {
         dirty = true
+        if closed { flush(); return }
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
@@ -237,48 +210,57 @@ final class RecordEditorModel {
         }
     }
 
-    private func refresh() {
-        computed = ComputedEngine(template: template, record: record).computeAll()
-        issues = Validator.validate(template, record)
-        progress = Validator.progress(template, record)
-        sectionProgress = Validator.sectionProgress(template, record)
-        sectionStats = Dictionary(uniqueKeysWithValues: sectionTitles.map {
-            ($0.id, OutlineStats.compute(template, record, sectionId: $0.id, progress: sectionProgress[$0.id]))
-        })
-        warnings = Warnings.all(template, record, sites: sites())
-        reviewNotes = Warnings.reviewNotes(template, record)
+    /// Stamps a finished backup of `snapshot`: `backupAt` is the snapshot's time when the record changed meanwhile, so it still counts as unsaved.
+    func markBackedUp(snapshot: Record) {
+        guard !discarded else { return }
+        if closed {
+            // the stored record may have been deleted or moved since: reconcile with it instead of writing our copy
+            guard let stamped = BackupReconcile.stamped(snapshot: snapshot, current: store.load(record.id), editorOpen: false),
+                  (try? store.save(stamped)) != nil else { return }
+            onSaved?(stamped)
+            return
+        }
+        record.backupAt = BackupService.backupTime(snapshot: snapshot.updatedAt, currentUpdatedAt: record.updatedAt)
+        dirty = true
+        flush()
     }
 
-    // MARK: backup
-
-    /// Writes the folder backup of the current state; `force` also when nothing changed since the last one.
-    func backup(force: Bool = false) async {
-        guard force || (settings.autoBackup && record.needsBackup), !backingUp else { return }
-        flush()
-        backingUp = true; backupError = nil
-        defer { backingUp = false }
-        let snapshot = record
+    func flush() {
+        saveTask?.cancel()
+        guard !discarded else { return }
+        if derivedStale { refresh() }
+        guard dirty else { return }
+        if closed {      // deleted or moved to another project meanwhile: that wins
+            guard let stored = store.load(record.id), stored.projectId == record.projectId else { dirty = false; return }
+        }
         do {
-            try await backups.write(template, snapshot, project: project(snapshot.projectId))
-            record.backupAt = BackupService.backupTime(snapshot: snapshot.updatedAt, currentUpdatedAt: record.updatedAt)
-            scheduleSave()
-        } catch { backupError = "Không sao lưu được: \(error.localizedDescription)" }
+            try store.save(record)
+            dirty = false
+            lastSaved = Date()
+            onSaved?(record)
+        } catch { saveError = "Không lưu được phiếu: \(error.localizedDescription)" }
+    }
+
+    /// Editor stack closed: save what is pending; the model is dropped by the owner.
+    func close() { flush(); closed = true }
+
+    /// Forget unsaved edits and stop every pending task (local data is about to be wiped).
+    func discard() {
+        saveTask?.cancel(); refreshTask?.cancel(); backupTask?.cancel()
+        discarded = true
+        dirty = false
+        onSaved = nil
+    }
+
+    private func removeMediaFiles(of values: some Sequence<FieldValue>) {
+        let svc = mediaService
+        for v in values { (v.media ?? []).forEach(svc.remove); v.mediaInV.forEach(svc.remove) }
     }
 
     // MARK: warnings the user already accepted
 
     func isAccepted(_ key: String) -> Bool { acceptedWarnings.contains(key) }
     func accept(_ key: String) { acceptedWarnings.insert(key) }
-
-    func flush() {
-        saveTask?.cancel()
-        guard dirty else { return }
-        do {
-            try store.save(record)
-            dirty = false
-            lastSaved = Date()
-        } catch { saveError = "Không lưu được phiếu: \(error.localizedDescription)" }
-    }
 
     // MARK: field scope
 
@@ -291,10 +273,9 @@ final class RecordEditorModel {
     func touch(_ key: String) { touched.insert(key) }
 
     var mediaService: MediaService {
-        let t = template, rid = record.id
-        return MediaService(store: store, recordId: rid, namer: { [weak self] fid, seq in
-            guard let self else { return "\(fid)_\(seq)" }
-            return RecordNaming.mediaName(t, self.record, fieldId: fid, seq: seq)
+        let t = template, snapshot = record     // value copies: the service also runs off the main actor
+        return MediaService(store: store, recordId: snapshot.id, namer: { fid, seq in
+            RecordNaming.mediaName(t, snapshot, fieldId: fid, seq: seq)
         }, quality: settings.photoQuality)
     }
 }

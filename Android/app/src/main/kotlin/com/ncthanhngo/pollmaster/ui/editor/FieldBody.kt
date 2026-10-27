@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.editor.FieldLayoutRules
 import com.ncthanhngo.pollmaster.core.editor.RoundEntryRules
+import com.ncthanhngo.pollmaster.core.format.displayTime
+import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.Field
 import com.ncthanhngo.pollmaster.core.model.FieldValue
 import com.ncthanhngo.pollmaster.core.model.Part
@@ -44,7 +46,7 @@ fun FieldBody(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv, 
         when {
             field.type == "composite" -> Unit
             field.type == "sessionTime" -> SessionTimeInput(fv?.v, enabled, ::setV)
-            field.type == "gps" -> GpsInput(field, fv?.v, enabled, env.checker.siteDistance(env.record, field), ::setV)
+            field.type == "gps" -> GpsInput(field, fv?.v, enabled, env.siteDistance(field.id), ::setV)
             field.type == "audio" -> AudioField(field, fv, scope, env, enabled)
             field.isMedia -> MediaField(field, fv, scope, env, enabled, asValue = true)
             field.samples != null && round != null -> key(round.index) {
@@ -126,7 +128,7 @@ private fun PartsGrid(parts: List<Part>, cell: @Composable (Part) -> Unit) {
 /** First value typed in a round fills that round's time field with the current time (schema 8 `roundEntry`). */
 private fun fillRoundTime(round: RoundContext, field: Field, edited: JsonElement?, scope: ValueScope) {
     val timeField = round.entry.timeField ?: return
-    val now = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+    val now = displayTime(nowIso())
     RoundEntryRules.timeFill(round.entry, round.index, field.id, edited, scope.get(timeField), now)
         ?.let { filled -> scope.update(timeField) { it.copy(v = filled) } }
 }
