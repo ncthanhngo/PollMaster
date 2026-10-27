@@ -14,6 +14,8 @@ struct RecordsListView: View {
     @State private var moving: RecordSummary?
     @State private var deleting: RecordSummary?
     @State private var exporting: RecordSummary?
+    /// Height of the template tab on the card's top edge (caption2 + its padding), grows with Dynamic Type.
+    @ScaledMetric(relativeTo: .caption2) private var badgeHeight: CGFloat = 18
 
     private var shown: [RecordSummary] {
         env.projectSummaries.filter { s in
@@ -54,7 +56,7 @@ struct RecordsListView: View {
                             // the card draws its own background and outline: a list row background is clipped to the
                             // cell's rounded corners, which cut the outline at the corners
                             RecordRow(summary: s, project: env.project(id: s.projectId), me: env.currentUserId, failure: env.recordSyncIssues[s.id])
-                                .padding(.leading, 16).padding(.trailing, 12).padding(.top, 14).padding(.bottom, 10)
+                                .padding(.leading, 16).padding(.trailing, 12).padding(.top, s.badge == nil ? 14 : badgeHeight + 4).padding(.bottom, 10)
                                 .background(RecordFrame(summary: s))
                                 .overlay { NavigationLink(value: Route.editor(s.id)) { EmptyView() }.opacity(0) }
                                 .listRowInsets(EdgeInsets())
