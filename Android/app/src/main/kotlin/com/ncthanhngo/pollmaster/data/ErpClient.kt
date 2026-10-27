@@ -28,7 +28,6 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.KeyStore
-import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -36,7 +35,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** Signed-in ERP user, shown in Cài đặt. */
 @Serializable
-data class ErpAccount(val name: String, val email: String, val org: String? = null)
+data class ErpAccount(val name: String, val email: String, val org: String? = null, val userId: String? = null)
 
 /** Error with a message for the user; [sessionExpired] when the refresh token was refused (sign in again). */
 class ErpException(message: String, val sessionExpired: Boolean = false) : Exception(message)
@@ -64,6 +63,7 @@ class ErpClient(context: Context) {
     ) {
         @Serializable
         data class User(
+            val id: String? = null,
             val name: String? = null,
             @SerialName("display_name") val displayName: String? = null,
             val email: String? = null,
@@ -82,7 +82,7 @@ class ErpClient(context: Context) {
         if (d.mustChangePassword) throw ErpException("Tài khoản cần đổi mật khẩu. Hãy đăng nhập ERP trên web hoặc app ERP để đổi, rồi đăng nhập lại.")
         save(d.token, d.refresh)
         val name = listOf(d.user?.displayName, d.user?.name).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }
-        return ErpAccount(name ?: email, d.user?.email ?: email, d.user?.org?.takeIf { it.isNotEmpty() })
+        return ErpAccount(name ?: email, d.user?.email ?: email, d.user?.org?.takeIf { it.isNotEmpty() }, d.user?.id?.takeIf { it.isNotEmpty() })
     }
 
     /** Forgets both tokens at once, then revokes the refresh token on the server in the background (best effort). */
@@ -115,13 +115,10 @@ class ErpClient(context: Context) {
         }
     }
 
-    /**
-     * "Gửi lên ERP" (schema 9.6): multipart POST of [fields] plus the record [pdf] and [zip]. The files are streamed from disk with a
-     * fixed length (no 90 MB buffer); a 401 refreshes the token and sends everything again.
-     */
-    suspend fun uploadPoll(projectId: String, fields: List<Pair<String, String>>, pdf: File, zip: File) {
-        val path = "projects/$projectId/polls"
-        authorized { token -> multipart(path, token, fields, listOf(FilePart("pdf", pdf, "application/pdf"), FilePart("zip", zip, "application/zip"))) }
+    /** Id of the signed-in user (record ownership, schema 10). */
+    suspend fun me(): String {
+        @Serializable class Me(val id: String)
+        return authorized("auth/me", Me.serializer()).id
     }
 
     /** Project avatar / customer logo (public static file). */
@@ -204,53 +201,65 @@ class ErpClient(context: Context) {
             } finally { c.disconnect() }
         }
 
-    private class FilePart(val name: String, val file: File, val type: String)
+    /** An answer of the sync endpoints: non-2xx statuses are returned, not thrown, for the caller to read. */
+    class RawResponse(val status: Int, val text: String)
 
-    /** One multipart part: header bytes, then either [bytes] (a text field) or the content of [file]. */
-    private class Part(val head: ByteArray, val bytes: ByteArray?, val file: File?)
-
-    private suspend fun multipart(path: String, token: String?, fields: List<Pair<String, String>>, files: List<FilePart>) =
-        withContext(Dispatchers.IO) {
-            val boundary = "pollmaster" + UUID.randomUUID().toString().replace("-", "")
-            fun disposition(name: String, fileName: String? = null) =
-                "Content-Disposition: form-data; name=\"$name\"" + (fileName?.let { "; filename=\"$it\"" } ?: "")
-            val parts = fields.map { (k, v) -> Part("--$boundary\r\n${disposition(k)}\r\n\r\n".toByteArray(), v.toByteArray(), null) } +
-                files.map { Part("--$boundary\r\n${disposition(it.name, it.file.name.replace('"', '_'))}\r\nContent-Type: ${it.type}\r\n\r\n".toByteArray(), null, it.file) }
-            val crlf = "\r\n".toByteArray()
-            val tail = "--$boundary--\r\n".toByteArray()
-            val length = tail.size + parts.sumOf { it.head.size + (it.bytes?.size?.toLong() ?: it.file!!.length()) + crlf.size }
-            val c = URL("$HOST/api/v1/$path").openConnection() as HttpURLConnection
-            try {
-                c.requestMethod = "POST"
-                c.connectTimeout = TIMEOUT; c.readTimeout = UPLOAD_TIMEOUT
-                c.setRequestProperty("X-Client-App", "evs-mobile")
-                c.setRequestProperty("Accept", "application/json")
-                token?.let { c.setRequestProperty("Authorization", "Bearer $it") }
-                c.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                c.doOutput = true
-                c.setFixedLengthStreamingMode(length)
-                c.outputStream.use { out ->
-                    for (p in parts) {
-                        out.write(p.head)
-                        if (p.bytes != null) out.write(p.bytes) else p.file!!.inputStream().use { it.copyTo(out) }
-                        out.write(crlf)
-                    }
-                    out.write(tail)
-                }
-                val status = c.responseCode
-                if (status !in 200..299) {
-                    val text = c.errorStream?.use { it.readBytes().decodeToString() }.orEmpty()
-                    val error = runCatching { PollJson.decodeFromString(ErpEnvelope.serializer(JsonElement.serializer()), text).error }.getOrNull()
-                    throw HttpStatus(status, error)
-                }
-            } finally { c.disconnect() }
+    /**
+     * Any method with the access token (a 401 refreshes once). [upload] is streamed as the body with a fixed length; a 2xx body is
+     * written to [download] instead of memory.
+     */
+    suspend fun rawAuthorized(
+        method: String, path: String, query: Map<String, String> = emptyMap(), json: String? = null, upload: File? = null,
+        headers: Map<String, String> = emptyMap(), download: File? = null, timeoutMs: Int = TIMEOUT,
+    ): RawResponse {
+        val used = tokens.access
+        var r = rawOnce(used, method, path, query, json, upload, headers, download, timeoutMs)
+        if (r.status == 401) {
+            refresh(used)
+            r = rawOnce(tokens.access, method, path, query, json, upload, headers, download, timeoutMs)
+            if (r.status == 401) throw ErpException(EXPIRED, sessionExpired = true)
         }
+        return r
+    }
+
+    private suspend fun rawOnce(
+        token: String?, method: String, path: String, query: Map<String, String>, json: String?, upload: File?,
+        headers: Map<String, String>, download: File?, timeoutMs: Int,
+    ): RawResponse = withContext(Dispatchers.IO) {
+        val q = query.entries.sortedBy { it.key }.joinToString("&") { "${it.key}=${java.net.URLEncoder.encode(it.value, "UTF-8")}" }
+        val c = URL("$HOST/api/v1/$path" + if (q.isEmpty()) "" else "?$q").openConnection() as HttpURLConnection
+        try {
+            c.requestMethod = method
+            c.connectTimeout = TIMEOUT; c.readTimeout = timeoutMs
+            c.setRequestProperty("X-Client-App", "evs-mobile")
+            c.setRequestProperty("Accept", "application/json")
+            token?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+            headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
+            when {
+                upload != null -> {
+                    c.doOutput = true
+                    c.setFixedLengthStreamingMode(upload.length())
+                    c.outputStream.use { out -> upload.inputStream().use { it.copyTo(out) } }
+                }
+                json != null -> {
+                    c.doOutput = true
+                    c.setRequestProperty("Content-Type", "application/json")
+                    c.outputStream.use { it.write(json.toByteArray()) }
+                }
+            }
+            val status = c.responseCode
+            if (download != null && status in 200..299) {
+                c.inputStream.use { input -> download.outputStream().use { input.copyTo(it) } }
+                return@withContext RawResponse(status, "")
+            }
+            RawResponse(status, (if (status in 200..299) c.inputStream else c.errorStream)?.use { it.readBytes().decodeToString() }.orEmpty())
+        } finally { c.disconnect() }
+    }
 
     companion object {
         /** Uploaded files (`/uploads/…`) are served from the host root, the API under `/api/v1`. */
         const val HOST = "https://api.evselab.com"
         private const val TIMEOUT = 20_000
-        private const val UPLOAD_TIMEOUT = 120_000
         private const val EXPIRED = "Phiên đăng nhập ERP đã hết hạn. Hãy đăng nhập lại."
     }
 }

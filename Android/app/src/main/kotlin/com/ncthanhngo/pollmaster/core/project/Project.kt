@@ -25,6 +25,11 @@ data class Project(
     val logo: String? = null,
     @EncodeDefault val templates: List<TemplateRef> = emptyList(),
     @EncodeDefault val archived: Boolean = false,
+    /** What the signed-in account may do here, from `poll-sync` (schema 10.1); a project never synced is treated as writable. */
+    val canPost: Boolean = true,
+    val canManage: Boolean = false,
+    /** `server_time` of the last complete record sync: the `since` of the next pull (kept as the server wrote it). */
+    val recordsSyncedAt: String? = null,
     val createdAt: String = "",
     val updatedAt: String = "",
 ) {

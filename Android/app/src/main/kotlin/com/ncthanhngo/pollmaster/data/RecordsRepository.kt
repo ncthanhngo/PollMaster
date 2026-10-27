@@ -3,7 +3,6 @@ package com.ncthanhngo.pollmaster.data
 import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.editor.RecordCodes
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
-import com.ncthanhngo.pollmaster.core.export.ErpUpload
 import com.ncthanhngo.pollmaster.core.format.nextRecordSeq
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.format.nowIso
@@ -89,18 +88,26 @@ class RecordsRepository(
         return true
     }
 
-    /** Stores the time of a finished ERP upload of [uploaded] without touching `updatedAt`, unless the record was deleted or moved meanwhile. */
-    fun markErpUploaded(uploaded: Record, at: String) {
-        val editor = editors[uploaded.id]
-        if (editor != null) {
-            if (!ErpUpload.shouldStamp(uploaded, editor.record.value)) return
-            editor.markErpUploaded(at)
-            editor.flush()
-            return
-        }
-        val current = store.load(uploaded.id)
-        if (current != null && ErpUpload.shouldStamp(uploaded, current)) store.save(current.copy(erpUploadedAt = at))
+    /** True while [recordId] is open in an editor (a pull must not overwrite it). */
+    fun isOpen(recordId: String): Boolean = editors.containsKey(recordId)
+
+    /**
+     * Sync bookkeeping change to the current copy of a record: the open editor's, else the stored file. [change] returns null to leave it
+     * alone. Returns the record as saved, null when it is gone.
+     */
+    fun updateForSync(recordId: String, change: (Record) -> Record?): Record? {
+        editors[recordId]?.let { return it.applySync(change) }
+        val current = store.load(recordId) ?: return null
+        val next = change(current) ?: return current
+        store.save(next)
+        return next
     }
+
+    /** Server-side follow-ups (set by [AppContainer]): a record was created, deleted (with its last state) or moved from [Record]'s project. */
+    var onCreated: (Record) -> Unit = {}
+    var onDeleted: (Record) -> Unit = {}
+    var onMoved: (old: Record, new: Record) -> Unit = { _, _ -> }
+    var onEditorOpened: (Record) -> Unit = {}
 
     /** Called once per 15 minutes while a record is open; set by [AppContainer]. */
     var onBackupTick: (String) -> Unit = {}
@@ -147,7 +154,7 @@ class RecordsRepository(
             .filter { it.projectId == projectId } // codes are numbered per project
         RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId)
             .copy(seq = nextRecordSeq(existing, projectId, template.id))
-            .also { store.save(it) }
+            .also { store.save(it); onCreated(it) }
     }
 
     /** Moves a record to another project; the record keeps its template, values and media, and takes the next number there. */
@@ -155,7 +162,13 @@ class RecordsRepository(
         release(recordId)
         store.load(recordId)?.let {
             val seq = nextRecordSeq(loadedRecords(), projectId, it.templateId)
-            store.save(it.copy(projectId = projectId, seq = seq, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null)) // old backup is removed by the caller; a new one is due
+            // on the server this is a delete in the old project and a new record in the target (schema 9.6, 10)
+            val moved = it.copy(
+                projectId = projectId, seq = seq, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null,
+                serverRev = null, createdBy = null, createdByName = null, syncConflict = false,
+            ) // old backup is removed by the caller; a new one is due
+            store.save(moved)
+            onMoved(it, moved)
         }
     }
 
@@ -171,7 +184,9 @@ class RecordsRepository(
     suspend fun delete(recordId: String) = withContext(Dispatchers.IO) {
         tickers.remove(recordId)?.cancel()
         editors.remove(recordId)?.flush()
+        val old = store.load(recordId)
         store.delete(recordId)
+        old?.let(onDeleted)
     }
 
     /** Controller for editing [recordId]; cached until [release]. Null if record or template is missing. */
@@ -186,6 +201,7 @@ class RecordsRepository(
         }
         controller = EditorController(template, record, saver)
         editors[recordId] = controller
+        onEditorOpened(record)
         tickers[recordId] = scope.launch {
             while (true) {
                 delay(BACKUP_INTERVAL_MS)

@@ -36,6 +36,13 @@ data class Record(
     val backupAt: String? = null,
     /** Time of the last successful "Gửi lên ERP" (schema 9.6); bookkeeping, never bumps `updatedAt`. */
     val erpUploadedAt: String? = null,
+    /** ERP `user.id` of the creator (schema 10.1); null = not on the server yet (the signed-in account is the creator). */
+    val createdBy: String? = null,
+    val createdByName: String? = null,
+    /** `rev` of the server copy this one is based on; null = never on the server. */
+    val serverRev: Int? = null,
+    /** Device and server both changed (or the server deleted a record still edited here); waits for the user's choice. */
+    val syncConflict: Boolean = false,
 ) {
     val isCompleted: Boolean get() = status == STATUS_COMPLETED
 

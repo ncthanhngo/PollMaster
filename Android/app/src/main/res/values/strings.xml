@@ -175,13 +175,6 @@
     <string name="fmt_docx">Word (.docx)</string>
     <string name="exporting">Đang xuất…</string>
     <string name="export_error">Không xuất được: %1$s</string>
-    <string name="erp_send">Gửi lên ERP</string>
-    <string name="erp_sending">Đang gửi lên ERP…</string>
-    <string name="erp_sent">Đã gửi lên ERP</string>
-    <string name="erp_send_error">Không gửi được: %1$s</string>
-    <string name="erp_send_draft_title">Phiếu chưa hoàn thành</string>
-    <string name="erp_send_draft_message">Phiếu chưa hoàn thành — vẫn gửi?</string>
-    <string name="erp_need_online">Cần đăng nhập ERP và có mạng để gửi.</string>
     <string name="erp_sent_at">Đã gửi ERP %1$s</string>
     <string name="erp_unsent_changes">Có thay đổi chưa gửi</string>
     <string name="share_title">Chia sẻ phiếu</string>

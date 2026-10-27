@@ -48,6 +48,13 @@ class ErpSession(
     private fun stored(): ErpAccount? = if (!client.hasSession) null
     else prefs.getString(KEY_ACCOUNT, null)?.let { runCatching { PollJson.decodeFromString(ErpAccount.serializer(), it) }.getOrNull() }
 
+    /** Set by [AppContainer]: the record sync starts after every project fetch and stops on sign-out. */
+    var onProjectsSynced: () -> Unit = {}
+    var onLogout: () -> Unit = {}
+
+    /** Fills in details of the same account (the user id found later) without ending the session. */
+    fun updateAccount(a: ErpAccount) = setAccount(a)
+
     private fun setAccount(a: ErpAccount?) {
         _account.value = a
         prefs.edit().apply { if (a != null) putString(KEY_ACCOUNT, PollJson.encodeToString(ErpAccount.serializer(), a)) else remove(KEY_ACCOUNT) }.apply()
@@ -132,7 +139,8 @@ class ErpSession(
         finishLogin(a)
     }
 
-    private suspend fun finishLogin(a: ErpAccount) {
+    private suspend fun finishLogin(signedIn: ErpAccount) {
+        val a = if (signedIn.userId == null) signedIn.copy(userId = runCatching { client.me() }.getOrNull()) else signedIn
         _syncError.value = null
         setAccount(a)
         projects.refresh()
@@ -149,6 +157,7 @@ class ErpSession(
         generation++
         syncJob?.cancel()
         syncJob = null
+        onLogout()
         _syncing.value = false
         _syncError.value = null
         setAccount(null)
@@ -191,6 +200,7 @@ class ErpSession(
             _syncError.value = null
             projects.refresh()
             records.refresh()
+            onProjectsSynced()
         } catch (e: ErpException) {
             if (stale()) return // a deliberate sign-out must not show "expired"
             // expired: back to the sign-in screen, which shows this message

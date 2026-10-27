@@ -1,6 +1,8 @@
 package com.ncthanhngo.pollmaster
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -10,7 +12,7 @@ import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.data.BackupService
 import com.ncthanhngo.pollmaster.data.ErpClient
 import com.ncthanhngo.pollmaster.data.ErpSession
-import com.ncthanhngo.pollmaster.data.ErpUploadService
+import com.ncthanhngo.pollmaster.data.SyncService
 import com.ncthanhngo.pollmaster.data.ExportService
 import com.ncthanhngo.pollmaster.data.ProjectBundleService
 import com.ncthanhngo.pollmaster.data.ProjectExportService
@@ -25,6 +27,7 @@ import com.ncthanhngo.pollmaster.platform.isOnline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Process-wide wiring of stores and repositories. */
 class AppContainer(context: Context) {
@@ -51,10 +54,20 @@ class AppContainer(context: Context) {
     val updates = UpdateChecker(context)
     private val erpClient = ErpClient(context)
     val erp = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
-    val erpUpload = ErpUploadService(
-        erpClient, export, recordStore, templates, records, { erp.expire() }, scope,
-        signedIn = { erp.account.value != null }, online = { isOnline(context) },
-    )
+    val sync = SyncService(context, context.filesDir, erpClient, erp, projects, records, templates, scope) { isOnline(context) }
+
+    init {
+        erp.onProjectsSynced = { sync.request() }
+        erp.onLogout = sync::cancel
+        records.onCreated = { sync.request(it.projectId) }
+        records.onDeleted = sync::queueRemoteDelete
+        records.onMoved = { old, new -> sync.queueRemoteDelete(old); sync.request(new.projectId) }
+        records.onEditorOpened = sync::fetchMediaOnOpen
+        // network back after being gone: project list and records are fetched again
+        context.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { scope.launch { erp.sync() } }
+        })
+    }
 }
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }

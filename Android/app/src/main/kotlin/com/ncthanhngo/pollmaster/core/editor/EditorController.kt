@@ -123,8 +123,13 @@ class EditorController(
     /** Records a finished backup that covered everything up to [at]. */
     fun markBackedUp(at: String) = mutateQuietly { it.copy(backupAt = at) }
 
-    /** Records a finished ERP upload (schema 9.6) without counting as an edit. */
-    fun markErpUploaded(at: String) = mutateQuietly { it.copy(erpUploadedAt = at) }
+    /** Sync bookkeeping (rev, number, creator, conflict flag) applied to the current copy without counting as an edit; returns it as saved. */
+    fun applySync(change: (Record) -> Record?): Record {
+        var changed = false
+        val now = _record.updateAndGet { cur -> change(cur)?.also { changed = true } ?: cur }
+        if (changed) { saver.submit(now); flush() }
+        return now
+    }
 
     // ---- values ----
 
