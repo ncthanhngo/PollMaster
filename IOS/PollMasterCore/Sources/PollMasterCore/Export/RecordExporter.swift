@@ -44,10 +44,16 @@ public struct RecordExporter: Sendable {
         return (projectCode.map { "\($0)_" } ?? "") + "\(name)_backup.zip"
     }
 
+    /// Copy of the device version kept when the user takes the server's: `{code|id}[_{id8}]_ban-may_{yyyyMMdd-HHmmss}.zip`.
+    /// Unlike the safety copy it is never replaced by the next backup.
+    public static func conflictCopyFileName(_ t: Template, _ r: Record, projectCode: String? = nil, at: Date = Date()) -> String {
+        String(backupFileName(t, r, projectCode: projectCode).dropLast("_backup.zip".count)) + "_ban-may_" + ISODate.format(at, "yyyyMMdd-HHmmss") + ".zip"
+    }
+
     @discardableResult
-    public func writeBackup(_ t: Template, _ r: Record, into dir: URL, project: Project? = nil) throws -> URL {
+    public func writeBackup(_ t: Template, _ r: Record, into dir: URL, project: Project? = nil, fileName: String? = nil) throws -> URL {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let final = dir.appendingPathComponent(Self.backupFileName(t, r, projectCode: project?.code))
+        let final = dir.appendingPathComponent(fileName ?? Self.backupFileName(t, r, projectCode: project?.code))
         let tmp = dir.appendingPathComponent(".\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: tmp) }
         try writeZip(t, r, to: tmp, project: project)

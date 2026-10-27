@@ -51,6 +51,8 @@ private final class FakeRemote: SyncRemote, @unchecked Sendable {
     func delete(projectId: String, recordId: String) async throws {
         deleted.append(recordId); server[recordId] = nil
     }
+
+    func changes(projectId: String, recordId: String) async throws -> [RecordChange] { [] }
 }
 
 @Suite struct SyncEngineTests {
@@ -264,6 +266,7 @@ private final class Conflicting: SyncRemote, @unchecked Sendable {
     func getMedia(projectId: String, recordId: String, name: String, to dest: URL) async throws { try await inner.getMedia(projectId: projectId, recordId: recordId, name: name, to: dest) }
     func putPDF(projectId: String, recordId: String, file: URL) async throws {}
     func delete(projectId: String, recordId: String) async throws { try await inner.delete(projectId: projectId, recordId: recordId) }
+    func changes(projectId: String, recordId: String) async throws -> [RecordChange] { [] }
 }
 
 private extension URL {

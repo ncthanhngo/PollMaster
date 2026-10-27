@@ -10,17 +10,22 @@ extension SyncEngine {
     private struct LocalMedia { var name: String; var url: URL; var sha: String }
 
     /// Pushes one record (schema §10.2): PUT record, upload the media the server lacks, PUT again, then remember the answer.
-    func push(_ id: String, project: Project) async throws -> PushOutcome {
+    /// `force` ("Giữ bản của tôi"): on a revision conflict the push is repeated on top of the server's revision.
+    func push(_ id: String, project: Project, force: Bool = false) async throws -> PushOutcome {
         guard let record = records.load(id) else { return .skipped }
         guard let template = templates.load(id: record.templateId, version: record.templateVersion) else {
             throw SyncRecordFailure("Thiếu mẫu \(record.templateId) \(record.templateVersion) trên máy.")
         }
         let startedAt = now()
         let files = try await localMedia(project.id, record)
-        let body = SyncPutBody(baseRev: record.serverRev ?? 0, title: RecordNaming.title(template, record),
+        var body = SyncPutBody(baseRev: record.serverRev ?? 0, title: RecordNaming.title(template, record),
                                recordCode: RecordNaming.rawRecordCode(template, record), templateTitle: template.title,
                                media: Dictionary(files.map { ($0.name, $0.sha) }, uniquingKeysWith: { a, _ in a }), data: try SyncApply.pushData(record))
         var result = try await remote.put(projectId: project.id, body: body, recordId: id)
+        if force, case .conflict(let current) = result {
+            body.baseRev = current.rev
+            result = try await remote.put(projectId: project.id, body: body, recordId: id)
+        }
         if case .mediaMissing(let names) = result {
             for name in names {
                 guard let f = files.first(where: { $0.name == name }) else { throw SyncRecordFailure("Thiếu tệp \(name) trên máy.") }
@@ -31,7 +36,8 @@ extension SyncEngine {
         switch result {
         case .ok(let s):
             let saved = await update(id) { SyncApply.pushed(&$0, projectId: project.id, response: s, at: startedAt) }
-            if let saved, let make = hooks.makePDF, let pdf = await make(saved) { try? await remote.putPDF(projectId: project.id, recordId: id, file: pdf) }
+            // the web view only needs a PDF of a finished survey
+            if let saved, saved.status == .completed, let make = hooks.makePDF, let pdf = await make(saved) { try? await remote.putPDF(projectId: project.id, recordId: id, file: pdf) }
             return .pushed
         case .conflict(let current): return try await resolveConflict(current, id: id, project: project, startedAt: startedAt)
         case .mediaMissing(let names): throw SyncRecordFailure("Máy chủ chưa nhận được tệp \(names.first ?? "")")

@@ -1,5 +1,5 @@
 {
- "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing.",
+ "_doc": "Vectors for the record sync decisions (SyncPlanner), run by iOS and Android tests. plan.expect maps record id to action; ids missing from it need nothing. Phase 06 sections: labels/values (ChangeLabels, template file under shared/templates, tableRows = row ids of the record), canEdit, hidden (RecordAccess), syncState (RecordSyncState; text is rendered in UTC+7).",
  "plan": [
   {
    "name": "server has it, device does not -> create",
@@ -829,6 +829,687 @@
   {
    "name": "media/noext",
    "expect": false
+  }
+ ],
+ "labels": [
+  {
+   "name": "field value",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.v",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế)"
+  },
+  {
+   "name": "field without key",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế)"
+  },
+  {
+   "name": "note",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.note",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Ghi chú"
+  },
+  {
+   "name": "review",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.review",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Kiểm tra"
+  },
+  {
+   "name": "flag",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.flag",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Cờ"
+  },
+  {
+   "name": "reason",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.reason",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Lý do"
+  },
+  {
+   "name": "other",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.other",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Khác"
+  },
+  {
+   "name": "media",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.media",
+   "serverLabel": "",
+   "expect": "Chiều cao tổng H (kể cả chân đế) › Tệp"
+  },
+  {
+   "name": "sub-cell",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-06.parts.cols",
+   "serverLabel": "",
+   "expect": "Bố trí khoang (số hàng × số cột), vị trí màn hình › Số cột"
+  },
+  {
+   "name": "unknown sub-cell -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-06.parts.zzz",
+   "serverLabel": "",
+   "expect": "values.B-06.parts.zzz"
+  },
+  {
+   "name": "unknown field -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.ZZ.v",
+   "serverLabel": "",
+   "expect": "values.ZZ.v"
+  },
+  {
+   "name": "unknown key -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.weird",
+   "serverLabel": "",
+   "expect": "values.B-02.weird"
+  },
+  {
+   "name": "signature",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "signatures.surveyor",
+   "serverLabel": "",
+   "expect": "Người khảo sát"
+  },
+  {
+   "name": "unknown signature -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "signatures.nobody",
+   "serverLabel": "",
+   "expect": "signatures.nobody"
+  },
+  {
+   "name": "table row with rowLabel",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E1[r2]",
+   "serverLabel": "",
+   "expect": "E1. Nhật ký từng lượt đổi pin (Lượt 2)"
+  },
+  {
+   "name": "table cell",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E1[r2].mode.v",
+   "serverLabel": "",
+   "expect": "E1. Nhật ký từng lượt đổi pin (Lượt 2) › O/T"
+  },
+  {
+   "name": "table cell note",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E1[r1].kb.note",
+   "serverLabel": "",
+   "expect": "E1. Nhật ký từng lượt đổi pin (Lượt 1) › Mã KB › Ghi chú"
+  },
+  {
+   "name": "deleted row -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E1[r9].mode.v",
+   "serverLabel": "",
+   "expect": "tables.E1[r9].mode.v"
+  },
+  {
+   "name": "fixed table, no rowLabel -> Dòng",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E2[S04-10].entered.v",
+   "serverLabel": "",
+   "expect": "E2. Giới hạn sai lệch khi đút (nhóm tự thử) (Dòng 2) › Vào được / tủ nhận?"
+  },
+  {
+   "name": "unknown column -> path",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "tables.E1[r1].zzz.v",
+   "serverLabel": "",
+   "expect": "tables.E1[r1].zzz.v"
+  },
+  {
+   "name": "status",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "status",
+   "serverLabel": "",
+   "expect": "Trạng thái"
+  },
+  {
+   "name": "returned",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "returned",
+   "serverLabel": "",
+   "expect": "Trả lại để sửa"
+  },
+  {
+   "name": "completedAt",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "completedAt",
+   "serverLabel": "",
+   "expect": "Hoàn thành lúc"
+  },
+  {
+   "name": "server label wins",
+   "template": "bb-tdp-01.json",
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.v",
+   "serverLabel": "Nhãn của máy chủ",
+   "expect": "Nhãn của máy chủ"
+  },
+  {
+   "name": "no template -> path",
+   "template": null,
+   "tableRows": {
+    "E1": [
+     "r1",
+     "r2"
+    ]
+   },
+   "path": "values.B-02.v",
+   "serverLabel": "",
+   "expect": "values.B-02.v"
+  }
+ ],
+ "values": [
+  {
+   "name": "number",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.v",
+   "value": 1200,
+   "expect": "1200"
+  },
+  {
+   "name": "decimal",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.v",
+   "value": 12.5,
+   "expect": "12.5"
+  },
+  {
+   "name": "blank",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.v",
+   "value": null,
+   "expect": "(trống)"
+  },
+  {
+   "name": "empty string",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.note",
+   "value": "",
+   "expect": "(trống)"
+  },
+  {
+   "name": "choice shows option label",
+   "template": "bb-tdp-01.json",
+   "path": "values.A-05.v",
+   "value": "gas_station",
+   "expect": "Cây xăng"
+  },
+  {
+   "name": "sub-cell",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-06.parts.cols",
+   "value": 4,
+   "expect": "4"
+  },
+  {
+   "name": "sub-cell number with unit",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-16.parts.overhang",
+   "value": 30,
+   "expect": "30"
+  },
+  {
+   "name": "yes",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-16.v",
+   "value": true,
+   "expect": "Có"
+  },
+  {
+   "name": "no",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-16.v",
+   "value": false,
+   "expect": "Không"
+  },
+  {
+   "name": "not measurable",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.flag",
+   "value": "notMeasurable",
+   "expect": "KĐĐ"
+  },
+  {
+   "name": "estimate",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.flag",
+   "value": "estimate",
+   "expect": "Ước lượng"
+  },
+  {
+   "name": "note",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.note",
+   "value": "đo lại",
+   "expect": "đo lại"
+  },
+  {
+   "name": "other text",
+   "template": "bb-tdp-01.json",
+   "path": "values.A-05.other",
+   "value": {
+    "other": "Kho"
+   },
+   "expect": "Khác: Kho"
+  },
+  {
+   "name": "media names",
+   "template": "bb-tdp-01.json",
+   "path": "values.B-02.media",
+   "value": [
+    {
+     "file": "media/P05_01.jpg",
+     "takenAt": "2026-10-27T10:00:00+07:00"
+    },
+    {
+     "file": "media/P05_02.jpg",
+     "takenAt": "2026-10-27T10:01:00+07:00"
+    }
+   ],
+   "expect": "P05_01.jpg, P05_02.jpg"
+  },
+  {
+   "name": "table cell yes/no",
+   "template": "bb-tdp-01.json",
+   "path": "tables.E2[S04-10].entered.v",
+   "value": true,
+   "expect": "Có"
+  },
+  {
+   "name": "added row",
+   "template": "bb-tdp-01.json",
+   "path": "tables.E2[S04-10]",
+   "value": {
+    "id": "S04-10",
+    "values": {
+     "entered": {
+      "v": true
+     }
+    }
+   },
+   "expect": "Vào được / tủ nhận?: Có"
+  },
+  {
+   "name": "row gone",
+   "template": "bb-tdp-01.json",
+   "path": "tables.E1[r3]",
+   "value": null,
+   "expect": "(trống)"
+  },
+  {
+   "name": "signature name",
+   "template": "bb-tdp-01.json",
+   "path": "signatures.surveyor",
+   "value": {
+    "file": "media/sig_1.png",
+    "name": "An",
+    "signedAt": "2026-10-27T10:00:00+07:00"
+   },
+   "expect": "An"
+  },
+  {
+   "name": "status completed",
+   "template": "bb-tdp-01.json",
+   "path": "status",
+   "value": "completed",
+   "expect": "Hoàn thành"
+  },
+  {
+   "name": "status draft",
+   "template": "bb-tdp-01.json",
+   "path": "status",
+   "value": "draft",
+   "expect": "Nháp"
+  },
+  {
+   "name": "returned null",
+   "template": "bb-tdp-01.json",
+   "path": "returned",
+   "value": null,
+   "expect": "Không"
+  },
+  {
+   "name": "returned true",
+   "template": "bb-tdp-01.json",
+   "path": "returned",
+   "value": true,
+   "expect": "Có"
+  },
+  {
+   "name": "unknown field shows the raw value",
+   "template": "bb-tdp-01.json",
+   "path": "values.ZZ.v",
+   "value": "abc",
+   "expect": "abc"
+  },
+  {
+   "name": "unknown field number",
+   "template": "bb-tdp-01.json",
+   "path": "values.ZZ.v",
+   "value": 5,
+   "expect": "5"
+  },
+  {
+   "name": "no template",
+   "template": null,
+   "path": "values.B-02.v",
+   "value": 1200,
+   "expect": "1200"
+  }
+ ],
+ "canEdit": [
+  {
+   "name": "creator",
+   "createdBy": "u1",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "expect": true
+  },
+  {
+   "name": "no creator = made on this device",
+   "createdBy": null,
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "expect": true
+  },
+  {
+   "name": "someone else",
+   "createdBy": "u2",
+   "me": "u1",
+   "canPost": true,
+   "canManage": false,
+   "expect": false
+  },
+  {
+   "name": "someone else but manager",
+   "createdBy": "u2",
+   "me": "u1",
+   "canPost": true,
+   "canManage": true,
+   "expect": true
+  },
+  {
+   "name": "creator without post right",
+   "createdBy": "u1",
+   "me": "u1",
+   "canPost": false,
+   "canManage": false,
+   "expect": false
+  },
+  {
+   "name": "manager without post right",
+   "createdBy": "u2",
+   "me": "u1",
+   "canPost": false,
+   "canManage": true,
+   "expect": false
+  },
+  {
+   "name": "signed-in id unknown, record has a creator",
+   "createdBy": "u2",
+   "me": null,
+   "canPost": true,
+   "canManage": false,
+   "expect": false
+  },
+  {
+   "name": "signed-in id unknown, no creator",
+   "createdBy": null,
+   "me": null,
+   "canPost": true,
+   "canManage": false,
+   "expect": true
+  }
+ ],
+ "hidden": [
+  {
+   "name": "other account, unsent -> hidden",
+   "createdBy": "u2",
+   "me": "u1",
+   "dirty": true,
+   "canManage": false,
+   "expect": true
+  },
+  {
+   "name": "other account, unsent, manager -> shown",
+   "createdBy": "u2",
+   "me": "u1",
+   "dirty": true,
+   "canManage": true,
+   "expect": false
+  },
+  {
+   "name": "other account, synced -> shown",
+   "createdBy": "u2",
+   "me": "u1",
+   "dirty": false,
+   "canManage": false,
+   "expect": false
+  },
+  {
+   "name": "mine, unsent -> shown",
+   "createdBy": "u1",
+   "me": "u1",
+   "dirty": true,
+   "canManage": false,
+   "expect": false
+  },
+  {
+   "name": "no creator, unsent -> shown",
+   "createdBy": null,
+   "me": "u1",
+   "dirty": true,
+   "canManage": false,
+   "expect": false
+  }
+ ],
+ "syncState": [
+  {
+   "name": "clean",
+   "dirty": false,
+   "conflict": false,
+   "failure": null,
+   "syncedAt": "2026-10-27T09:05:00Z",
+   "expect": "synced",
+   "text": "Đã đồng bộ 27-10 16:05"
+  },
+  {
+   "name": "clean, time unknown",
+   "dirty": false,
+   "conflict": false,
+   "failure": null,
+   "syncedAt": null,
+   "expect": "synced",
+   "text": "Đã đồng bộ"
+  },
+  {
+   "name": "unsent changes",
+   "dirty": true,
+   "conflict": false,
+   "failure": null,
+   "syncedAt": "2026-10-27T09:05:00Z",
+   "expect": "pending",
+   "text": "Chờ đồng bộ"
+  },
+  {
+   "name": "conflict beats all",
+   "dirty": true,
+   "conflict": true,
+   "failure": "Ảnh lớn quá",
+   "syncedAt": "2026-10-27T09:05:00Z",
+   "expect": "conflict",
+   "text": "Xung đột"
+  },
+  {
+   "name": "error beats waiting",
+   "dirty": true,
+   "conflict": false,
+   "failure": "Ảnh P05_01.jpg lớn hơn 95 MB.",
+   "syncedAt": null,
+   "expect": "failed",
+   "text": "Lỗi: Ảnh P05_01.jpg lớn hơn 95 MB."
   }
  ]
 }
