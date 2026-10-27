@@ -12,9 +12,7 @@ struct TemplateDetailView: View {
     @Environment(\.pmTheme) private var theme
 
     @State private var choosing = false
-    @State private var renaming = false
-    @State private var newTitle = ""
-    @State private var renameError: String?
+    @State private var editing = false
 
     private var isNewest: Bool { env.newestTemplates.contains { $0.key == template.key } }
     /// Active projects that use exactly this template version.
@@ -70,27 +68,14 @@ struct TemplateDetailView: View {
         .confirmationDialog("Tạo phiếu trong dự án", isPresented: $choosing, titleVisibility: .visible) {
             ForEach(projects) { p in Button("\(p.name) (\(p.code))") { env.startCreate(from: template, in: p) } }
         }
-        .alert("Đổi tên mẫu", isPresented: $renaming) {
-            TextField("Tên mẫu", text: $newTitle)
-            Button("Lưu") { rename() }
-                .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("Hủy", role: .cancel) {}
-        } message: { Text("Chỉ đổi tên hiển thị. Mã \(template.id) và phiên bản giữ nguyên.") }
-        .alert("Không đổi được tên", isPresented: Binding(get: { renameError != nil }, set: { if !$0 { renameError = nil } })) {
-            Button("OK") { renameError = nil }
-        } message: { Text(renameError ?? "") }
+        .sheet(isPresented: $editing) { TemplateEditSheet(template: template) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Đổi tên", systemImage: "pencil") { newTitle = template.title; renaming = true }
+                Button("Sửa tên và màu", systemImage: "pencil") { editing = true }
             }
         }
         .navigationTitle(template.id)
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func rename() {
-        do { try env.renameTemplate(template, to: newTitle) }
-        catch { renameError = TemplateText.errorLines(error).joined(separator: "\n") }
     }
 
     private var summary: some View {
@@ -122,5 +107,67 @@ struct TemplateDetailView: View {
             Spacer(minLength: 8)
             Text(detail).font(.caption).secondaryText().monospacedDigit().fixedSize()
         }
+    }
+}
+
+/// Name, short name and colour of a template: the short name and colour mark the cards of its records.
+struct TemplateEditSheet: View {
+    let template: Template
+    @Environment(AppEnvironment.self) private var env
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var shortName = ""
+    @State private var color = ""
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Tên mẫu") { TextField("Tên mẫu", text: $title) }
+                Section {
+                    TextField(template.id, text: $shortName)
+                        .onChange(of: shortName) { if shortName.count > 12 { shortName = String(shortName.prefix(12)) } }
+                } header: { Text("Tên viết tắt") } footer: { Text("Hiện trên viền thẻ của các phiếu tạo từ mẫu này. Để trống thì dùng mã mẫu.") }
+                Section("Màu phiếu") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
+                        ForEach(Project.palette, id: \.self) { hex in
+                            Circle().fill(Color(hex: hex) ?? .gray).frame(width: 36, height: 36)
+                                .overlay { if hex == color { Image(systemName: "checkmark").font(.headline).foregroundStyle(.white) } }
+                                .onTapGesture { color = hex }
+                                .accessibilityAddTraits(hex == color ? [.isButton, .isSelected] : .isButton)
+                                .accessibilityLabel("Màu \(hex)")
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                Section { TemplateBadge(text: shortName.trimmingCharacters(in: .whitespaces).isEmpty ? template.id : shortName, hex: color) }
+                    header: { Text("Xem trước") }
+                if let error { Section { Text(error).foregroundStyle(.red) } }
+            }
+            .navigationTitle("Sửa mẫu").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Lưu", action: save).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear { title = template.title; shortName = template.shortName ?? ""; color = template.badgeColor }
+        }
+    }
+
+    private func save() {
+        do { try env.editTemplate(template, title: title, shortName: shortName, color: color); dismiss() }
+        catch { self.error = TemplateText.errorLines(error).joined(separator: "\n") }
+    }
+}
+
+/// The template's short name on a pill in its colour (record cards, template edit preview).
+struct TemplateBadge: View {
+    let text: String
+    let hex: String
+    var body: some View {
+        Text(text).font(.caption2.weight(.bold)).lineLimit(1).foregroundStyle(.white)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Color(hex: hex) ?? .gray, in: Capsule())
     }
 }

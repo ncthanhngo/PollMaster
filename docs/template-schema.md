@@ -14,9 +14,11 @@ ghi cùng định dạng record và xuất cùng nội dung. Mọi thay đổi �
   "id": "BB-TDP-01",                 // duy nhất; import trùng id+version → hỏi ghi đè
   "version": "1.0",
   "title": "Biên bản khảo sát thông số kỹ thuật",
+  "shortName": "TĐP",                // optional, ≤ 12 ký tự: nhãn trên viền thẻ phiếu; thiếu → id
+  "color": "#1F5FA8",                // optional, "#RRGGBB": màu viền thẻ phiếu; thiếu/sai → Project.palette[h % 10], h = (h·31 + byte) mod 1000003 trên byte UTF-8 của id
   "subtitle": "…",                   // optional
   "instructions": "…",               // optional, text nhiều dòng, hiển thị ở màn hình đầu phiếu
-  "recordTitle": "{HD-code} – {A-01}", // optional; {fieldId} thay bằng giá trị hiển thị
+  "recordTitle": "{HD-code} – {A-01}", // optional; không còn dùng cho tiêu đề phiếu (xem tiêu đề phiếu)
   "mediaNamePattern": "{recordCode}_{fieldId}_{seq}", // optional, mặc định như này
   "header": [ Field, ... ],          // trường đầu biên bản
   "sections": [ Section, ... ],

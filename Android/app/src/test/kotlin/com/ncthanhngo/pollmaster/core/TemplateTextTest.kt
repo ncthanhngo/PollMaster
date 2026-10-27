@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.core
 
+import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.storage.TemplateException
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
 import com.ncthanhngo.pollmaster.core.storage.TemplateText
@@ -38,16 +39,33 @@ class TemplateTextTest {
         assertEquals("P:\n- e1\n- e2", TemplateText.errorReport("P:", "e1\n\ne2\n"))
     }
 
-    @Test fun renameChangesOnlyTitle() {
+    @Test fun editChangesOnlyNameShortNameAndColor() {
         val before = TemplateParser.parse(TestData.templateText)
-        val after = TemplateParser.parse(TemplateText.renamed(TestData.templateText, "  Tủ đổi pin Hà Nội "))
+        val after = TemplateParser.parse(TemplateText.edited(TestData.templateText, "  Tủ đổi pin Hà Nội ", " TĐP ", "#B8312F"))
         assertEquals("Tủ đổi pin Hà Nội", after.title)
-        assertEquals(before.copy(title = after.title), after)
+        assertEquals("TĐP", after.badge)
+        assertEquals("#B8312F", after.badgeColor)
+        assertEquals(before.copy(title = after.title, shortName = after.shortName, color = after.color), after)
+        val cleared = TemplateParser.parse(TemplateText.edited(TemplateText.edited(TestData.templateText, "X", "S", "#000000"), "X", "", null))
+        assertNull(cleared.shortName)
+        assertNull(cleared.color)
+        assertEquals(cleared.id, cleared.badge)
+        assertTrue(cleared.badgeColor in Project.COLORS)
     }
 
     @Test(expected = TemplateException::class)
-    fun renameRejectsBlankTitle() {
-        TemplateText.renamed(TestData.templateText, "   ")
+    fun editRejectsBlankTitle() {
+        TemplateText.edited(TestData.templateText, "   ", null, null)
+    }
+
+    @Test(expected = TemplateException::class)
+    fun editRejectsBadColor() {
+        TemplateText.edited(TestData.templateText, "A", null, "red")
+    }
+
+    @Test fun defaultBadgeColorMatchesIos() {
+        // same hash rule as Template.badgeColor on iOS: h = (h * 31 + byte) % 1000003: "BB-TDP-01" -> 9, "KS-VF-SWAP-01" -> 7
+        assertEquals(Project.COLORS[9], TemplateParser.parse(TestData.templateText).badgeColor)
     }
 
     @Test fun guideExampleParses() {

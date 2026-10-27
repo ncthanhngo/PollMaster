@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.core.storage
 
+import com.ncthanhngo.pollmaster.core.model.Template
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -22,12 +23,21 @@ object TemplateText {
         return if (start in 0 until end) s.substring(start, end + 1).trim() else null
     }
 
-    /** The same template JSON with only `title` replaced (rename in the library: id and version stay, so records and projects keep pointing at it). */
-    fun renamed(json: String, title: String): String {
+    /**
+     * The same template JSON with only `title`, `shortName` and `color` replaced (edited in the library: id and version stay, so
+     * records and projects keep pointing at it). An empty short name or colour removes the key (the defaults apply).
+     */
+    fun edited(json: String, title: String, shortName: String?, color: String?): String {
         val name = title.trim()
         if (name.isEmpty()) throw TemplateException("Tên mẫu không được để trống.")
-        val obj = Json.parseToJsonElement(json).jsonObject
-        return JsonObject(obj + ("title" to JsonPrimitive(name))).toString()
+        val short = shortName?.trim()?.takeIf { it.isNotEmpty() }
+        val hex = color?.takeIf { it.isNotEmpty() }
+        if (hex != null && !Template.isHexColor(hex)) throw TemplateException("Màu phải có dạng #RRGGBB.")
+        val obj = Json.parseToJsonElement(json).jsonObject.toMutableMap()
+        obj["title"] = JsonPrimitive(name)
+        if (short != null) obj["shortName"] = JsonPrimitive(short) else obj.remove("shortName")
+        if (hex != null) obj["color"] = JsonPrimitive(hex) else obj.remove("color")
+        return JsonObject(obj).toString()
     }
 
     /** Message the user can send back to the AI after an import failure. */

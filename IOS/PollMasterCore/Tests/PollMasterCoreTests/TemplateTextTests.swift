@@ -27,17 +27,25 @@ import Foundation
         #expect(TemplateText.fixRequest(lines).hasSuffix("hãy sửa và trả lại toàn bộ JSON:\n- a\n- b"))
     }
 
-    @Test func renameChangesOnlyTitle() throws {
+    @Test func editChangesOnlyNameShortNameAndColor() throws {
         let data = try Fixtures.templateData()
         var before = try TemplateLoader.decode(data)
-        let after = try TemplateLoader.decode(TemplateText.renamed(data, to: "  Tủ đổi pin Hà Nội "))
-        #expect(after.title == "Tủ đổi pin Hà Nội")
-        before.title = after.title
+        let after = try TemplateLoader.decode(TemplateText.edited(data, title: "  Tủ đổi pin Hà Nội ", shortName: " TĐP ", color: "#B8312F"))
+        #expect(after.title == "Tủ đổi pin Hà Nội" && after.badge == "TĐP" && after.badgeColor == "#B8312F")
+        before.title = after.title; before.shortName = after.shortName; before.color = after.color
         #expect(after == before)
+        let cleared = try TemplateLoader.decode(TemplateText.edited(TemplateText.edited(data, title: "X", shortName: "S", color: "#000000"), title: "X", shortName: "", color: nil))
+        #expect(cleared.shortName == nil && cleared.color == nil && cleared.badge == cleared.id && Project.palette.contains(cleared.badgeColor))
     }
 
-    @Test func renameRejectsBlankTitle() throws {
-        #expect(throws: TemplateError.self) { try TemplateText.renamed(Fixtures.templateData(), to: "   ") }
+    @Test func editRejectsBlankTitleAndBadColor() throws {
+        #expect(throws: TemplateError.self) { try TemplateText.edited(Fixtures.templateData(), title: "   ", shortName: nil, color: nil) }
+        #expect(throws: TemplateError.self) { try TemplateText.edited(Fixtures.templateData(), title: "A", shortName: nil, color: "red") }
+    }
+
+    @Test func defaultBadgeColorMatchesAndroid() throws {
+        // same hash rule as Template.badgeColor on Android: h = (h * 31 + byte) % 1000003: "BB-TDP-01" -> 9, "KS-VF-SWAP-01" -> 7
+        #expect(try Fixtures.template().badgeColor == Project.palette[9])
     }
 
     @Test func guideExampleDecodes() throws {

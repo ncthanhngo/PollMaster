@@ -22,12 +22,18 @@ public enum TemplateText {
         }
     }
 
-    /// The same template JSON with only `title` replaced (rename in the library: id and version stay, so records and projects keep pointing at it).
-    public static func renamed(_ data: Data, to title: String) throws -> Data {
+    /// The same template JSON with only `title`, `shortName` and `color` replaced (edited in the library: id and version stay,
+    /// so records and projects keep pointing at it). An empty short name or colour removes the key (the defaults apply).
+    public static func edited(_ data: Data, title: String, shortName: String?, color: String?) throws -> Data {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { throw TemplateError.invalid(["Tên mẫu không được để trống."]) }
+        let short = shortName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let hex = color?.nilIfEmpty
+        if let hex, !Template.isHexColor(hex) { throw TemplateError.invalid(["Màu phải có dạng #RRGGBB."]) }
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw TemplateError.parse("Mẫu không phải đối tượng JSON.") }
         object["title"] = name
+        object["shortName"] = short
+        object["color"] = hex
         return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
 

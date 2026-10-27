@@ -50,6 +50,6 @@ enum RecordScan {
                              status: r.status, progress: Validator.progress(t, r), projectId: pid, templateId: r.templateId, returned: r.returned,
                              needsBackup: r.needsBackup, erpUploadedAt: r.erpUploadedAt, erpUnsent: r.hasUnsentErpChanges,
                              visitedSites: visited, thumbnail: RecordInfo.firstPhoto(t, r).map { store.fileURL(r.id, $0.file) },
-                             coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) })
+                             coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) }, badge: t.badge, badgeColor: t.badgeColor)
     }
 }

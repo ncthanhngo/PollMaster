@@ -56,8 +56,10 @@ dạng JSON** đúng tuyệt đối theo đặc tả bên dưới để nhập v
 | `id` | ✔ | Chữ in hoa, số, `-`. Duy nhất cho loại mẫu (VD `KS-NUOC-01`) |
 | `version` | ✔ | Chuỗi `"1.0"`. Sửa mẫu đã dùng → tăng version (`"1.1"`) |
 | `title` | ✔ | Tên mẫu |
+| `shortName` | | Tên viết tắt ≤ 12 ký tự, hiện trên viền thẻ phiếu (VD `"TĐP"`). Bỏ qua thì app dùng `id` |
+| `color` | | Màu thẻ phiếu dạng `"#RRGGBB"` (VD `"#1F5FA8"`). Bỏ qua thì app tự chọn |
 | `subtitle`, `instructions` | | `instructions` hiện ở đầu phiếu, xuống dòng bằng `\n` |
-| `recordTitle` | nên có | Tiêu đề mỗi phiếu trong danh sách, chèn giá trị bằng `{mã trường}` — chọn 1–2 trường nhận diện (mã điểm, tên, địa chỉ) |
+| `recordTitle` | | Không còn dùng: app tự đặt tên phiếu `01 - {title} {ngày tạo}`. Có thể bỏ |
 | `mediaNamePattern` | | Giữ mặc định như trên |
 | `header` | ✔ | Thông tin đầu biên bản (mảng Field, có thể rỗng `[]`). Nên có: mã phiếu (`role: "recordCode"`), ngày, người khảo sát |
 | `sections` | ✔ | Ít nhất 1 mục |

@@ -158,6 +158,10 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var version: String
     public var title: String
+    /// Short label on the cards of records made from this template (schema §1); falls back to `id`.
+    public var shortName: String?
+    /// "#RRGGBB" colour of those cards; falls back to a palette colour picked from `id`.
+    public var color: String?
     public var subtitle: String?
     public var instructions: String?
     public var recordTitle: String?
@@ -167,7 +171,7 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
     public var signatures: [SignatureDef]
 
     enum CodingKeys: String, CodingKey {
-        case schemaVersion, id, version, title, subtitle, instructions, recordTitle, mediaNamePattern, header, sections, signatures
+        case schemaVersion, id, version, title, shortName, color, subtitle, instructions, recordTitle, mediaNamePattern, header, sections, signatures
     }
 
     public init(from decoder: Decoder) throws {
@@ -176,6 +180,8 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
         id = try c.decode(String.self, forKey: .id)
         version = try c.decode(String.self, forKey: .version)
         title = try c.decode(String.self, forKey: .title)
+        shortName = c.lenient(String.self, .shortName)
+        color = c.lenient(String.self, .color)
         subtitle = try c.decodeIfPresent(String.self, forKey: .subtitle)
         instructions = try c.decodeIfPresent(String.self, forKey: .instructions)
         recordTitle = try c.decodeIfPresent(String.self, forKey: .recordTitle)
@@ -186,6 +192,20 @@ public struct Template: Codable, Equatable, Sendable, Identifiable {
     }
 
     public var key: String { "\(id)@\(version)" }
+
+    /// Label on record cards: `shortName`, else the template id.
+    public var badge: String { shortName?.trimmingCharacters(in: .whitespaces).nilIfEmpty ?? id }
+
+    /// Card colour: `color` when it is "#RRGGBB", else a `Project.palette` colour picked from the id (the same on every device).
+    public var badgeColor: String {
+        if let c = color, Self.isHexColor(c) { return c.uppercased() }
+        let p = Project.palette
+        return p[id.utf8.reduce(0) { ($0 * 31 + Int($1)) % 1_000_003 } % p.count]
+    }
+
+    public static func isHexColor(_ s: String) -> Bool {
+        s.count == 7 && s.first == "#" && s.dropFirst().allSatisfy(\.isHexDigit)
+    }
 
     /// Header + section fields (not table columns).
     public var allFields: [Field] { header + sections.flatMap(\.fields) }

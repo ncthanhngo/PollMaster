@@ -83,10 +83,10 @@ class TemplatesRepository(
         store.install(json, overwrite).also { reload(store.list()) }
     }
 
-    /** Renames every installed version of [id] (title only: records and projects keep their id+version). */
-    suspend fun rename(id: String, title: String) = withContext(Dispatchers.IO) {
+    /** Sets name, short name and colour on every installed version of [id] (records and projects keep their id+version). */
+    suspend fun edit(id: String, title: String, shortName: String?, color: String?) = withContext(Dispatchers.IO) {
         store.list().filter { it.id == id }.forEach { t ->
-            store.raw(t.id, t.version)?.let { store.install(TemplateText.renamed(it, title), overwrite = true) }
+            store.raw(t.id, t.version)?.let { store.install(TemplateText.edited(it, title, shortName, color), overwrite = true) }
         }
         reload(store.list())
     }

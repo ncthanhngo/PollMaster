@@ -88,9 +88,11 @@
     <string name="template_instructions">Hướng dẫn</string>
     <string name="template_sections">Các mục</string>
     <string name="template_create_record">Tạo phiếu mới</string>
-    <string name="template_rename">Đổi tên mẫu</string>
+    <string name="template_rename">Sửa tên và màu</string>
     <string name="template_rename_label">Tên mẫu</string>
-    <string name="template_rename_note">Chỉ đổi tên hiển thị. Mã %1$s và phiên bản giữ nguyên.</string>
+    <string name="template_short_name">Tên viết tắt</string>
+    <string name="template_short_name_hint">Hiện trên viền thẻ của các phiếu tạo từ mẫu này. Để trống thì dùng mã mẫu.</string>
+    <string name="template_color">Màu phiếu</string>
     <string name="template_delete">Xóa mẫu</string>
     <string name="template_delete_message">Xóa mẫu \"%1$s\"?</string>
     <string name="template_in_use" tools:ignore="PluralsCandidate">Không thể xóa: còn %1$d phiếu đang dùng mẫu này.</string>

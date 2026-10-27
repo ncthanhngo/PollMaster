@@ -50,6 +50,7 @@ struct RecordsListView: View {
                                 .contextMenu { Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s } }
                         } else {
                             NavigationLink(value: Route.editor(s.id)) { RecordRow(summary: s, project: env.project(id: s.projectId)) }
+                                .listRowBackground(RecordFrame(summary: s))
                                 .swipeActions(edge: .trailing) {
                                     Button("Xóa", systemImage: "trash", role: .destructive) { deleting = s }
                                     Button("Xuất", systemImage: "square.and.arrow.up") { exporting = s }.tint(.blue)
@@ -192,5 +193,25 @@ struct RecordRow: View {
         if summary.returned && summary.status == .draft { out.append(("Cần sửa", theme.attention)) }
         else { out.append(summary.status == .draft ? ("Nháp", .gray) : ("Hoàn thành", theme.success)) }
         return out
+    }
+}
+
+/// Card of a record in its template's colour, with the template's short name on the top edge.
+struct RecordFrame: View {
+    let summary: RecordSummary
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: PMRadius.m)
+        shape.fill(Color(.secondarySystemGroupedBackground))
+            .overlay { shape.strokeBorder(Color(hex: summary.badgeColor) ?? .clear, lineWidth: 2) }
+            .overlay(alignment: .topTrailing) {
+                if let b = summary.badge, let tint = Color(hex: summary.badgeColor) {
+                    // a tab hanging from the top edge of the outline (inside the card, so the list never clips it)
+                    Text(b).font(.caption2.weight(.bold)).lineLimit(1).foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.top, 2).padding(.bottom, 3)
+                        .background(tint, in: UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
+                        .padding(.trailing, 18).accessibilityHidden(true)
+                }
+            }
     }
 }

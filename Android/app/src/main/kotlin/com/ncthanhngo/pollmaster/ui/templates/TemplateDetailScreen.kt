@@ -25,7 +25,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.ncthanhngo.pollmaster.ui.common.TemplateBadge
+import com.ncthanhngo.pollmaster.ui.common.hexColor
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
@@ -184,9 +198,9 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     }
 
     if (renaming && template != null) {
-        RenameTemplateDialog(
+        EditTemplateDialog(
             template = template,
-            onSave = { title -> scope.launch { container.templates.rename(template.id, title) } },
+            onSave = { title, short, color -> scope.launch { container.templates.edit(template.id, title, short, color) } },
             onDismiss = { renaming = false },
         )
     }
@@ -224,20 +238,41 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
 }
 
 
+/** Name, short name and colour of a template: the short name and colour mark the cards of its records. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RenameTemplateDialog(template: Template, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+private fun EditTemplateDialog(template: Template, onSave: (String, String, String) -> Unit, onDismiss: () -> Unit) {
     var title by rememberSaveable { mutableStateOf(template.title) }
+    var short by rememberSaveable { mutableStateOf(template.shortName.orEmpty()) }
+    var color by rememberSaveable { mutableStateOf(template.badgeColor) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.template_rename)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.template_rename_label)) })
-                Text(stringResource(R.string.template_rename_note, template.id), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    short, { short = it.take(12) }, singleLine = true,
+                    label = { Text(stringResource(R.string.template_short_name)) }, placeholder = { Text(template.id) },
+                    supportingText = { Text(stringResource(R.string.template_short_name_hint)) },
+                )
+                Text(stringResource(R.string.template_color), style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Project.COLORS.forEach { hex ->
+                        val selected = hex.equals(color, ignoreCase = true)
+                        Box(
+                            Modifier.size(36.dp).clip(CircleShape).background(hexColor(hex))
+                                .selectable(selected = selected, role = Role.RadioButton, onClick = { color = hex })
+                                .semantics { contentDescription = hex },
+                            contentAlignment = Alignment.Center,
+                        ) { if (selected) Icon(Icons.Filled.Check, null, tint = Color.White) }
+                    }
+                }
+                TemplateBadge(short.trim().ifEmpty { template.id }, color)
             }
         },
         confirmButton = {
-            TextButton(enabled = title.isNotBlank(), onClick = { onSave(title); onDismiss() }) { Text(stringResource(R.string.action_save)) }
+            TextButton(enabled = title.isNotBlank(), onClick = { onSave(title, short, color); onDismiss() }) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )

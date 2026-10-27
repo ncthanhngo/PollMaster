@@ -13,7 +13,8 @@ Tab gốc (iOS TabView / Android NavigationBar): **Phiếu khảo sát** · **M�
   Trùng id+version → hỏi "Ghi đè?".
 - Chạm mẫu → chi tiết: hướng dẫn (`instructions`), danh sách section, nút **Tạo phiếu mới**.
 - Xóa mẫu: chỉ khi không còn phiếu dùng mẫu đó (nếu có, báo số phiếu).
-- Đổi tên mẫu (chi tiết mẫu → bút chì): chỉ sửa `title` của mọi phiên bản cùng id trên máy; id, version giữ nguyên.
+- Sửa mẫu (chi tiết mẫu → bút chì): tên, tên viết tắt, màu (bảng 10 màu) cho mọi phiên bản cùng id trên máy; id, version giữ nguyên.
+- Thẻ phiếu trong danh sách: viền 2 pt màu của mẫu, tab tên viết tắt treo ở viền trên bên phải.
 
 ### 2. Phiếu khảo sát (Records)
 - Danh sách mọi phiếu, mới nhất trước. Mỗi dòng: `recordTitle`, tên mẫu, cập nhật lúc, chip trạng thái

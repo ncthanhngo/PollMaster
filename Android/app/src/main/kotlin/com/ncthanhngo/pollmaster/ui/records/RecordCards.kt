@@ -48,6 +48,9 @@ import com.ncthanhngo.pollmaster.core.storage.StoredRecord
 import com.ncthanhngo.pollmaster.ui.common.AppCard
 import com.ncthanhngo.pollmaster.ui.common.ErpMarker
 import com.ncthanhngo.pollmaster.ui.common.FirstFitText
+import com.ncthanhngo.pollmaster.ui.common.TemplateBadge
+import com.ncthanhngo.pollmaster.ui.common.hexColor
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
@@ -57,8 +60,16 @@ import com.ncthanhngo.pollmaster.ui.projects.ProjectAvatar
 internal fun RecordCard(item: RecordItem, project: Project?, onMove: () -> Unit, onOpen: () -> Unit, onDuplicate: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
-    AppCard(Modifier.clickable(onClick = onOpen)) {
-        Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    val t = item.template
+    AppCard(Modifier.clickable(onClick = onOpen), borderColor = t?.let { hexColor(it.badgeColor) }, borderWidth = 2.dp) {
+        // the template's short name hangs from the top edge of the outline, in its colour
+        if (t != null) {
+            TemplateBadge(
+                t.badge, t.badgeColor, Modifier.align(Alignment.End).padding(end = 18.dp).clearAndSetSemantics {},
+                shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+            )
+        }
+        Row(Modifier.padding(start = 12.dp, top = if (t != null) 0.dp else 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Thumb(item)
             Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.core.model
 
+import com.ncthanhngo.pollmaster.core.project.Project
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -9,6 +10,10 @@ data class Template(
     val id: String,
     val version: String,
     val title: String,
+    /** Short label on the cards of records made from this template (schema §1); falls back to [id]. */
+    val shortName: String? = null,
+    /** "#RRGGBB" colour of those cards; falls back to a palette colour picked from [id]. */
+    val color: String? = null,
     val subtitle: String? = null,
     val instructions: String? = null,
     val recordTitle: String? = null,
@@ -16,7 +21,18 @@ data class Template(
     val header: List<Field> = emptyList(),
     val sections: List<Section> = emptyList(),
     val signatures: List<SignatureDef> = emptyList(),
-)
+) {
+    /** Label on record cards: [shortName], else the template id. */
+    val badge: String get() = shortName?.trim()?.takeIf { it.isNotEmpty() } ?: id
+
+    /** Card colour: [color] when it is "#RRGGBB", else a [Project.COLORS] colour picked from the id (the same on every device, and as on iOS). */
+    val badgeColor: String get() = color?.takeIf { isHexColor(it) }?.uppercase()
+        ?: Project.COLORS[id.toByteArray(Charsets.UTF_8).fold(0) { h, b -> (h * 31 + (b.toInt() and 0xFF)) % 1_000_003 } % Project.COLORS.size]
+
+    companion object {
+        fun isHexColor(s: String): Boolean = s.length == 7 && s[0] == '#' && s.drop(1).all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
+    }
+}
 
 @Serializable
 data class Section(

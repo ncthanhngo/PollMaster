@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 
@@ -22,10 +23,11 @@ fun AppCard(
     modifier: Modifier = Modifier,
     container: Color = MaterialTheme.colorScheme.surface,
     borderColor: Color? = null,
+    borderWidth: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hc = LocalUiPrefs.current.highContrast
-    val width = if (hc) 2.dp else 1.dp
+    val width = borderWidth ?: if (hc) 2.dp else 1.dp
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),

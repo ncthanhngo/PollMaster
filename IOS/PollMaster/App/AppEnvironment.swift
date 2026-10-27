@@ -26,6 +26,9 @@ struct RecordSummary: Identifiable, Equatable {
     var coordinate: GPSCoordinate?
     /// Set when record.json could not be read ("Lỗi đọc"); such entries can only be deleted.
     var loadError: String?
+    /// Template short name and "#RRGGBB" colour: the label and outline of the record's card.
+    var badge: String?
+    var badgeColor: String?
 }
 
 struct GPSCoordinate: Equatable { var lat: Double; var lng: Double }
@@ -181,11 +184,11 @@ final class AppEnvironment {
         reload()
     }
 
-    /// Renames every installed version of the template (title only: records and projects keep their id+version).
-    func renameTemplate(_ t: Template, to title: String) throws {
+    /// Sets name, short name and colour on every installed version of the template (records and projects keep their id+version).
+    func editTemplate(_ t: Template, title: String, shortName: String?, color: String?) throws {
         for v in templates where v.id == t.id {
             guard let data = templateStore.data(id: v.id, version: v.version) else { continue }
-            try overwriteTemplate(TemplateText.renamed(data, to: title))
+            try overwriteTemplate(TemplateText.edited(data, title: title, shortName: shortName, color: color))
         }
     }
 
