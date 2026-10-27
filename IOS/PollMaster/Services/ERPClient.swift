@@ -4,6 +4,8 @@ import PollMasterCore
 
 /// Signed-in ERP user, shown in Cài đặt.
 struct ERPAccount: Codable, Equatable {
+    /// ERP `user.id`; missing in sessions made before record sync (filled from `/auth/me`).
+    var userId: String?
     var name: String
     var email: String
     var org: String?
@@ -47,7 +49,7 @@ actor ERPClient {
     }
 
     private struct LoginData: Decodable {
-        struct User: Decodable { var name: String?; var display_name: String?; var email: String?; var org_name: String? }
+        struct User: Decodable { var id: String?; var name: String?; var display_name: String?; var email: String?; var org_name: String? }
         var token: String
         var refresh_token: String
         var user: User?
@@ -69,7 +71,7 @@ actor ERPClient {
             throw ERPError.server("Không lưu được phiên đăng nhập vào Keychain của máy. Hãy thử lại.")
         }
         let name = [d.user?.display_name, d.user?.name].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
-        return ERPAccount(name: name ?? email, email: d.user?.email ?? email, org: d.user?.org_name.flatMap { $0.isEmpty ? nil : $0 })
+        return ERPAccount(userId: d.user?.id.flatMap { $0.isEmpty ? nil : $0 }, name: name ?? email, email: d.user?.email ?? email, org: d.user?.org_name.flatMap { $0.isEmpty ? nil : $0 })
     }
 
     /// Forgets both tokens at once; revoking the refresh token on the server is best effort in the background (never waited for).
@@ -92,17 +94,11 @@ actor ERPClient {
         }
     }
 
-    /// "Gửi lên ERP" (schema §9.6): multipart POST of `fields` plus the record PDF and zip. The body is written to a temp file and
-    /// streamed from disk; a 401 refreshes the token and sends it again.
-    func uploadPoll(projectId: String, fields: [(name: String, value: String)], pdf: URL, zip: URL) async throws {
-        let boundary = "pollmaster" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
-        let body = FileManager.default.temporaryDirectory.appendingPathComponent("erp-upload-\(UUID().uuidString).tmp")
-        defer { try? FileManager.default.removeItem(at: body) }
-        try ERPUpload.writeBody(fields: fields, files: [("pdf", pdf, "application/pdf"), ("zip", zip, "application/zip")], boundary: boundary, to: body)
-        var r = request("projects/\(projectId)/polls", method: "POST")
-        r.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        r.timeoutInterval = 120
-        let _: JSONValue = try await authorized(r, bodyFile: body)
+    /// Id of the signed-in user (record ownership, schema §10).
+    func me() async throws -> String {
+        struct Me: Decodable { var id: String }
+        let m: Me = try await authorized("auth/me", query: [:])
+        return m.id
     }
 
     /// Project avatar / customer logo (public static file).
@@ -115,7 +111,7 @@ actor ERPClient {
 
     // MARK: plumbing
 
-    private func request(_ path: String, method: String = "GET", query: [String: String] = [:], body: Data? = nil) -> URLRequest {
+    func request(_ path: String, method: String = "GET", query: [String: String] = [:], body: Data? = nil) -> URLRequest {
         var c = URLComponents(url: Self.api.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { c.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var r = URLRequest(url: c.url!)
@@ -143,6 +139,35 @@ actor ERPClient {
             // refused again right after a refresh: the session is of no use any more
             throw code == 401 ? ERPError.sessionExpired : Self.userError(code, message)
         }
+    }
+
+    /// Any method with the access token (a 401 refreshes once); non-2xx answers are returned, not thrown, for the caller to read.
+    /// `bodyFile` is streamed up, `downloadTo` receives a 2xx body (moved, never held in memory).
+    func rawAuthorized(_ request: URLRequest, bodyFile: URL? = nil, downloadTo: URL? = nil) async throws -> (data: Data, status: Int) {
+        var r = request
+        let used = TokenStore.access
+        r.setValue("Bearer \(used ?? "")", forHTTPHeaderField: "Authorization")
+        var out = try await rawSend(r, bodyFile, downloadTo)
+        if out.status == 401 {
+            if TokenStore.access == used { try await refresh() }
+            r.setValue("Bearer \(TokenStore.access ?? "")", forHTTPHeaderField: "Authorization")
+            out = try await rawSend(r, bodyFile, downloadTo)
+            if out.status == 401 { throw ERPError.sessionExpired }
+        }
+        return out
+    }
+
+    private func rawSend(_ r: URLRequest, _ bodyFile: URL?, _ downloadTo: URL?) async throws -> (data: Data, status: Int) {
+        if let downloadTo {
+            let (tmp, res) = try await session.download(for: r)
+            let status = (res as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200..<300).contains(status) else { return ((try? Data(contentsOf: tmp)) ?? Data(), status) }
+            try? FileManager.default.removeItem(at: downloadTo)
+            try FileManager.default.moveItem(at: tmp, to: downloadTo)
+            return (Data(), status)
+        }
+        let (data, res) = if let bodyFile { try await session.upload(for: r, fromFile: bodyFile) } else { try await session.data(for: r) }
+        return (data, (res as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     private func refresh() async throws {

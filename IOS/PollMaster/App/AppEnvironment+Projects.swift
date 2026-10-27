@@ -98,9 +98,14 @@ extension AppEnvironment {
         editors[recordId]?.discard(); closingEditors[recordId]?.discard()      // saved above; nothing pending may write the old project back
         editors[recordId] = nil; closingEditors[recordId] = nil
         r.seq = RecordNaming.nextSeq(among: recordStore.list(), projectId: target.id, templateId: r.templateId)
+        let before = r
+        // on the server this is a delete in the old project and a new record in the target (schema §9.6, §10)
         r.projectId = target.id; r.updatedAt = Date(); r.backupAt = nil; r.erpUploadedAt = nil
+        r.serverRev = nil; r.createdBy = nil; r.createdByName = nil; r.syncConflict = false
         do {
             try recordStore.save(r)
+            queueRemoteDelete(before)
+            requestRecordSync(project: target.id)
             if let t = templateStore.load(id: r.templateId, version: r.templateVersion) { BackupService.removeBackup(t, r, project: old) }
             upsert(r)
             infoMessage = "Đã chuyển phiếu sang dự án \(target.name)."

@@ -40,6 +40,17 @@ extension AppEnvironment {
         else { UserDefaults.standard.removeObject(forKey: Self.accountKey) }
     }
 
+    /// Fills in details of the same account (the user id found later) without ending the session.
+    func updateAccountDetails(_ a: ERPAccount) {
+        account = a
+        if let d = try? JSONEncoder().encode(a) { UserDefaults.standard.set(d, forKey: Self.accountKey) }
+    }
+
+    func setSessionExpired() {
+        setAccount(nil)
+        errorMessage = ERPError.sessionExpired.localizedDescription
+    }
+
     /// Launched before the first unlock nothing was readable: look again when the app becomes active.
     func recheckAccount() {
         guard account == nil, let a = Self.storedAccount() else { return }
@@ -50,7 +61,8 @@ extension AppEnvironment {
     }
 
     func login(email: String, password: String) async throws {
-        let a = try await erp.login(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        var a = try await erp.login(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        if a.userId == nil { a.userId = try? await erp.me() }
         if !UserDefaults.standard.bool(forKey: Self.resetKey) {
             do { try await wipeLocalDataForERP() } catch {
                 await erp.logout()          // declined or failed: stay on the sign-in screen without tokens
@@ -109,6 +121,7 @@ extension AppEnvironment {
     func logout() async {
         flushEditors()
         syncTask?.cancel(); syncTask = nil; syncing = false
+        cancelRecordSync()
         setAccount(nil)
         currentProjectId = nil
         projectsPath = []; recordsPath = []
@@ -147,57 +160,13 @@ extension AppEnvironment {
             guard gen == sessionGen else { return }
             syncError = nil
             reload()
+            requestRecordSync()
         } catch ERPError.sessionExpired {
             guard gen == sessionGen else { return }        // signed out meanwhile: nothing to report
-            setAccount(nil)
-            errorMessage = ERPError.sessionExpired.localizedDescription
+            setSessionExpired()
         } catch {
             guard gen == sessionGen else { return }
             syncError = "Chưa tải được danh sách dự án từ ERP: \(error.localizedDescription)"
         }
-    }
-
-    // MARK: send a record
-
-    /// "Gửi lên ERP" (schema §9.6): PDF + zip of the record are made with the export code, uploaded to its project, then
-    /// `erpUploadedAt` is stamped with the time the upload started. Throws an error with a message fit for the user.
-    func uploadToERP(recordId: String) async throws {
-        guard uploading.insert(recordId).inserted else { throw ERPError.server("Phiếu đang được gửi lên ERP, thử lại sau ít giây.") }
-        defer { uploading.remove(recordId) }
-        let startedAt = Date()
-        editors[recordId]?.flush(); closingEditors[recordId]?.flush()
-        guard let record = recordStore.load(recordId), let template = template(for: recordId) else {
-            throw ERPError.server("Không đọc được phiếu hoặc mẫu.")
-        }
-        guard let projectId = record.projectId else { throw ERPError.server("Phiếu chưa thuộc dự án nào.") }
-        let exporter = RecordExporter(store: recordStore), project = self.project(of: record)
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("erp-send/\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: dir) }
-        do {
-            let files = try await Task.detached(priority: .userInitiated) {
-                try exporter.export(template, record, formats: [.pdf, .zip], into: dir, project: project)
-            }.value
-            guard let pdf = files.first(where: { $0.pathExtension == "pdf" }), let zip = files.first(where: { $0.pathExtension == "zip" }) else {
-                throw ERPError.badResponse
-            }
-            let size = { (u: URL) in Int64((try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
-            if let tooBig = ERPUpload.sizeError(pdfBytes: size(pdf), zipBytes: size(zip)) { throw ERPError.server(tooBig) }
-            try await erp.uploadPoll(projectId: projectId, fields: ERPUpload.fields(template, record), pdf: pdf, zip: zip)
-        } catch ERPError.sessionExpired {
-            setAccount(nil)
-            throw ERPError.sessionExpired
-        } catch let e as URLError {
-            throw ERPError.server("Không kết nối được máy chủ ERP (\(e.localizedDescription)). Kiểm tra mạng rồi thử lại.")
-        }
-        if let m = editors[recordId] ?? closingEditors[recordId] { m.markERPUploaded(snapshot: record, at: startedAt) }
-        else if let stamped = ERPUpload.stamped(snapshot: record, current: recordStore.load(recordId), at: startedAt),
-                (try? recordStore.save(stamped)) != nil { upsert(stamped) }
-    }
-
-    /// Editor left: a record sent before and changed since is sent again in the background, silently (a failure keeps "Có thay đổi chưa gửi").
-    func autoResendToERP(_ recordId: String) {
-        guard let r = recordStore.load(recordId),
-              ERPUpload.shouldAutoResend(r, signedIn: account != nil, online: network.online, alreadyRunning: uploading.contains(recordId)) else { return }
-        Task { try? await uploadToERP(recordId: recordId) }
     }
 }

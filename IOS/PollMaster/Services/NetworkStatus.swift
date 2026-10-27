@@ -6,12 +6,19 @@ import Observation
 @MainActor @Observable
 final class NetworkStatus {
     private(set) var online = true
+    /// Called when the network comes back after being gone.
+    @ObservationIgnored var onReconnect: (() -> Void)?
     @ObservationIgnored private let monitor = NWPathMonitor()
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let ok = path.status == .satisfied
-            Task { @MainActor in self?.online = ok }
+            Task { @MainActor in
+                guard let self else { return }
+                let back = ok && !self.online
+                self.online = ok
+                if back { self.onReconnect?() }
+            }
         }
         monitor.start(queue: DispatchQueue(label: "pollmaster.network"))
     }

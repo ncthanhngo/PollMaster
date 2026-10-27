@@ -33,6 +33,8 @@ struct RecordSummary: Identifiable, Equatable {
 
 struct GPSCoordinate: Equatable { var lat: Double; var lng: Double }
 
+struct SyncProgress: Equatable { var done: Int; var total: Int }
+
 struct PendingCreate { var template: Template; var project: Project }
 
 enum ImportOutcome { case installed(Template), needsOverwrite(Template, Data) }
@@ -90,8 +92,13 @@ final class AppEnvironment {
     var availableUpdate: AppUpdate?
     var updatePrompt: AppUpdate?
     @ObservationIgnored let network = NetworkStatus()
-    /// Records being sent to the ERP right now (one upload per record at a time).
-    @ObservationIgnored var uploading: Set<String> = []
+    /// "Đang đồng bộ n/N phiếu" while a record sync pushes; nil otherwise.
+    var syncProgress: SyncProgress?
+    /// Short sentence per record the last sync could not push (e.g. "Tệp P05_01.jpg lớn hơn 95 MB.").
+    var recordSyncIssues: [String: String] = [:]
+    @ObservationIgnored var recordSyncTask: Task<Void, Never>?
+    @ObservationIgnored var queuedSyncProjects: Set<String> = []
+    @ObservationIgnored var queuedSyncAll = false
     @ObservationIgnored var editors: [String: RecordEditorModel] = [:]
     /// Models closed by the last navigation change: screens still sliding out keep showing them; reopening the record reuses them.
     @ObservationIgnored var closingEditors: [String: RecordEditorModel] = [:]
@@ -118,6 +125,7 @@ final class AppEnvironment {
         localDataResetPending = Self.resetPending(root: root)
         installBundledTemplates()
         reloadNow()
+        network.onReconnect = { [weak self] in Task { await self?.syncProjects() } }
     }
 
     // MARK: templates

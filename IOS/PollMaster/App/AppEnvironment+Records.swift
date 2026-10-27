@@ -35,6 +35,7 @@ extension AppEnvironment {
                 try recordStore.save(r)
                 upsert(r)
                 open(r.id)
+                requestRecordSync(project: project.id)
             } catch { errorMessage = "Không tạo được phiếu: \(error.localizedDescription)" }
         }
     }
@@ -56,7 +57,11 @@ extension AppEnvironment {
     func delete(_ id: String) {
         editors[id]?.discard(); closingEditors[id]?.discard()      // a pending autosave must not bring the folder back
         editors[id] = nil; closingEditors[id] = nil
-        do { try recordStore.delete(id); removeSummary(id) } catch { errorMessage = "Không xóa được: \(error.localizedDescription)" }
+        let old = recordStore.load(id)
+        do {
+            try recordStore.delete(id); removeSummary(id)
+            if let old { queueRemoteDelete(old) }
+        } catch { errorMessage = "Không xóa được: \(error.localizedDescription)" }
     }
 
     func editor(for id: String) -> RecordEditorModel? {
@@ -76,6 +81,7 @@ extension AppEnvironment {
                               project: { [unowned self] pid in self.project(id: pid) })
         m.onSaved = { [weak self] saved in self?.upsert(saved) }
         editors[id] = m
+        fetchMediaOnOpen(r)
         return m
     }
 
@@ -87,7 +93,7 @@ extension AppEnvironment {
             m.close()
             editors[id] = nil
             closingEditors[id] = m
-            autoResendToERP(id)
+            requestRecordSync(project: m.record.projectId)
         }
     }
 }

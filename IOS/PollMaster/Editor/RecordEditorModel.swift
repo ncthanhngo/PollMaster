@@ -225,19 +225,17 @@ final class RecordEditorModel {
         flush()
     }
 
-    /// Stamps a finished ERP upload that started at `at` from `snapshot`; an edit made meanwhile stays newer, so it shows as unsent.
-    func markERPUploaded(snapshot: Record, at: Date) {
-        guard !discarded else { return }
+    /// Sync bookkeeping (rev, number, creator, conflict flag) applied to the current copy without touching `updatedAt`.
+    /// Returns the record as saved, nil when this model was discarded or the record is gone.
+    func applySync(_ change: (inout Record) -> Bool) -> Record? {
+        guard !discarded else { return nil }
         if closed {
-            guard let stamped = ERPUpload.stamped(snapshot: snapshot, current: store.load(record.id), at: at),
-                  (try? store.save(stamped)) != nil else { return }
-            onSaved?(stamped)
-            return
+            guard var r = store.load(record.id) else { return nil }
+            if change(&r) { guard (try? store.save(r)) != nil else { return r }; record = r; onSaved?(r) }
+            return r
         }
-        guard record.projectId == snapshot.projectId else { return }
-        record.erpUploadedAt = at
-        dirty = true
-        flush()
+        if change(&record) { dirty = true; flush() }
+        return record
     }
 
     func flush() {
