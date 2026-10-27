@@ -19,6 +19,7 @@ import com.ncthanhngo.pollmaster.data.SitesRepository
 import com.ncthanhngo.pollmaster.data.RecordsRepository
 import com.ncthanhngo.pollmaster.data.Settings
 import com.ncthanhngo.pollmaster.data.TemplatesRepository
+import com.ncthanhngo.pollmaster.data.UpdateChecker
 import com.ncthanhngo.pollmaster.platform.MediaProcessor
 import com.ncthanhngo.pollmaster.platform.isOnline
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +48,7 @@ class AppContainer(context: Context) {
     /** Package the user opened from another app, waiting for the preview dialog. */
     val pendingBundle = MutableStateFlow<Uri?>(null)
     val media = MediaProcessor(context, settings)
+    val updates = UpdateChecker(context)
     private val erpClient = ErpClient(context)
     val erp = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
     val erpUpload = ErpUploadService(

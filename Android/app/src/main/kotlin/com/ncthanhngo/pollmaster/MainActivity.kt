@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.content.IntentCompat
 import androidx.compose.runtime.CompositionLocalProvider
 import com.ncthanhngo.pollmaster.ui.AppNav
+import com.ncthanhngo.pollmaster.ui.common.UpdatePrompt
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.ncthanhngo.pollmaster.ui.theme.PollMasterTheme
@@ -45,7 +46,10 @@ class MainActivity : ComponentActivity() {
                 val mode by container.settings.themeMode.collectAsState()
                 val dark = mode.isDark(isSystemInDarkTheme())
                 LaunchedEffect(dark) { applyWindowTheme(dark) }
-                PollMasterTheme(UiPrefs(compact, contrast, dark, oneHand)) { AppNav() }
+                PollMasterTheme(UiPrefs(compact, contrast, dark, oneHand)) {
+                    AppNav()
+                    UpdatePrompt()
+                }
             }
         }
     }
@@ -77,6 +81,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         container.scope.launch { container.erp.sync() }
+        container.scope.launch { container.updates.check() }
     }
 
     override fun onStop() {

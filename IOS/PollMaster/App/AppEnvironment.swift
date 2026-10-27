@@ -83,6 +83,9 @@ final class AppEnvironment {
     var askSurveyorFor: PendingCreate?
     /// Records tab shows the map instead of the list.
     var recordsShowMap = false
+    /// Newer TestFlight build (AppEnvironment+Update.swift); `updatePrompt` asks once per build.
+    var availableUpdate: AppUpdate?
+    var updatePrompt: AppUpdate?
     @ObservationIgnored let network = NetworkStatus()
     /// Records being sent to the ERP right now (one upload per record at a time).
     @ObservationIgnored var uploading: Set<String> = []
@@ -97,6 +100,7 @@ final class AppEnvironment {
     @ObservationIgnored var syncGen = 0
     @ObservationIgnored var syncTask: Task<Void, Never>?
     @ObservationIgnored var wipeAnswer: CheckedContinuation<WipeAnswer, Never>?
+    @ObservationIgnored var updateCheckedAt: Date?
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

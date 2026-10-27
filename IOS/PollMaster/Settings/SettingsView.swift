@@ -57,6 +57,11 @@ struct SettingsView: View {
                 Section("Thông tin") {
                     LabeledContent { Text(ByteCountFormatter.string(fromByteCount: used, countStyle: .file)) } label: { row("Dung lượng đã dùng", "internaldrive.fill", .gray) }
                     LabeledContent { Text(version) } label: { row("Phiên bản", "info.circle.fill", .gray) }
+                    if let u = env.availableUpdate {
+                        Button { env.openUpdate() } label: {
+                            LabeledContent { Text("\(u.version) (\(u.build))") } label: { row("Cập nhật bản mới", "arrow.down.circle.fill", .green) }
+                        }
+                    }
                 }
             }
             .navigationTitle("Cài đặt")

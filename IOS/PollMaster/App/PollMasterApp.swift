@@ -13,7 +13,7 @@ struct PollMasterApp: App {
                 .tint(Color.accentColor)
                 .appearance(env.settings.appearance)
                 .environment(env)
-                .task { env.applyDebugLaunchArguments() }
+                .task { env.applyDebugLaunchArguments(); await env.checkForUpdate() }
                 .onOpenURL { url in if url.pathExtension.lowercased() == ProjectBundle.fileExtension { env.openIncoming(url) } }
                 .alert("Lỗi", isPresented: Binding(get: { env.errorMessage != nil }, set: { if !$0 { env.errorMessage = nil } })) {
                     Button("OK") { env.errorMessage = nil }
@@ -21,12 +21,18 @@ struct PollMasterApp: App {
                 .alert("Thông báo", isPresented: Binding(get: { env.infoMessage != nil }, set: { if !$0 { env.infoMessage = nil } })) {
                     Button("OK") { env.infoMessage = nil }
                 } message: { Text(env.infoMessage ?? "") }
+                .alert("Có bản mới", isPresented: Binding(get: { env.updatePrompt != nil }, set: { if !$0 { env.updatePrompt = nil } }),
+                       presenting: env.updatePrompt) { _ in
+                    Button("Cập nhật") { env.openUpdate() }
+                    Button("Để sau", role: .cancel) {}
+                } message: { u in Text("PollMaster \(u.version) (\(u.build)) đã có trên TestFlight. Phiếu trên máy được giữ nguyên khi cập nhật.") }
                 .onChange(of: phase) { _, p in
                     if p != .active { env.flushEditors() }
                     if p == .background { env.backupOpenEditors() }
                     if p == .active {
                         env.recheckAccount()
                         Task { await env.syncProjects() }
+                        Task { await env.checkForUpdate() }
                     }
                 }
         }

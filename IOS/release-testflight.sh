@@ -41,6 +41,8 @@ if [[ -n "$(git status --porcelain -- . ../shared)" ]]; then
 	echo "uncommitted changes in IOS/ or shared/ — commit first so the build number maps to real code" >&2
 	exit 1
 fi
+git fetch -q origin
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse @{u})" ]] || { echo "HEAD is not pushed — push first so the release tag points at code on GitHub" >&2; exit 1; }
 
 log "provisioning (bundle id, profile, app record)"
 ASC_KEY_ID="$KEY_ID" ASC_ISSUER_ID="$POLLMASTER_ASC_ISSUER_ID" \
@@ -129,5 +131,15 @@ result=$(xcrun altool --upload-app --type ios -f "$IPA" \
 echo "$result"
 grep -qiE "UPLOAD SUCCEEDED|No errors uploading" <<<"$result" || { echo "upload refused — read the output above" >&2; exit 1; }
 
-log "uploaded build $build_number"
-echo "Apple needs a few minutes to process it; internal testers can install as soon as it shows in TestFlight."
+log "uploaded build $build_number — waiting for Apple to process it"
+ASC_KEY_ID="$KEY_ID" ASC_ISSUER_ID="$POLLMASTER_ASC_ISSUER_ID" \
+	"$HOME/.claude/skills/.venv/bin/python3" scripts/asc-wait-build.py "$build_number"
+
+# The app's "Có bản mới" notice reads this release; it goes up only once testers can install the build.
+version=$(plutil -extract CFBundleShortVersionString raw "$app/Info.plist")
+tag="ios-v$version-$build_number"
+log "publishing $tag (in-app update notice)"
+gh release view "$tag" >/dev/null 2>&1 ||
+	gh release create "$tag" --target "$(git rev-parse HEAD)" --latest=false \
+		--title "PollMaster iOS $version ($build_number)" --notes "Build $build_number trên TestFlight."
+echo "build $build_number is in TestFlight; installed apps now offer the update"

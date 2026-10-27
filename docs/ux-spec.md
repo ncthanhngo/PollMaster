@@ -212,3 +212,7 @@ Camera, Thư viện ảnh, Vị trí khi dùng app, Microphone (quay video). Chu
   mỗi mẫu đúng 2 dòng không xuống dòng: tên mẫu · "BB-TDP-01 · v1.2 · 180 trường" + avatar các dự án đang dùng; sau khi nhập/dán mẫu mới → hỏi "Thêm vào dự án …?" (chọn nhiều).
 - Settings "Danh sách điểm" chuyển vào chi tiết dự án (Cài đặt bỏ mục này).
 - Mở tệp `.pmproject` từ app khác → mở app, hiện xem trước (tên, mã, số mẫu, số điểm) + **chọn dự án ERP để nhập vào** + nút Nhập.
+- **Có bản mới**: lúc mở app và khi quay lại (tối đa 1 lần/giờ) app đọc GitHub Release của repo (`android-v<ver>-<build>` /
+  `ios-v<ver>-<build>`, build = số commit). Build lớn hơn bản đang chạy → hộp thoại "Có bản mới" **một lần cho mỗi build**
+  (Cập nhật / Để sau), Cài đặt › Thông tin có dòng "Cập nhật bản mới …" tới khi cài. Android: mở link APK (trình duyệt tải về
+  rồi hỏi cài). iOS: mở PollMaster trong TestFlight; release `ios-…` chỉ được tạo sau khi Apple xử lý xong build.

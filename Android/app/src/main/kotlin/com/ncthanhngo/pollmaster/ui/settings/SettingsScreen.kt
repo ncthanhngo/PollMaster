@@ -53,6 +53,7 @@ import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.storage.Backup
 import com.ncthanhngo.pollmaster.data.PhotoQuality
 import com.ncthanhngo.pollmaster.ui.common.ConfirmDialog
+import com.ncthanhngo.pollmaster.ui.common.openUpdate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,6 +70,7 @@ fun SettingsScreen() {
     val oneHand by container.settings.oneHand.collectAsState()
     val themeMode by container.settings.themeMode.collectAsState()
     val account by container.erp.account.collectAsState()
+    val update by container.updates.available.collectAsState()
     val scope = rememberCoroutineScope()
     var confirmLogout by remember { mutableStateOf(false) }
     var used by remember { mutableLongStateOf(0L) }
@@ -135,7 +137,12 @@ fun SettingsScreen() {
             BackupSection()
             HorizontalDivider()
             InfoRow(Icons.Filled.Storage, stringResource(R.string.settings_storage), Formatter.formatShortFileSize(context, used))
-            InfoRow(Icons.Filled.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
+            InfoRow(Icons.Filled.Info, stringResource(R.string.settings_version), "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            update?.let { u ->
+                OutlinedButton(onClick = { openUpdate(context, u) }, Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.update_settings_row, u.version, u.build))
+                }
+            }
         }
     }
     if (confirmLogout) {
