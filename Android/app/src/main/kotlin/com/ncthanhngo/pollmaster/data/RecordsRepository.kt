@@ -3,6 +3,7 @@ package com.ncthanhngo.pollmaster.data
 import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.editor.RecordCodes
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
+import com.ncthanhngo.pollmaster.core.export.ErpUpload
 import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.format.nowIso
 import com.ncthanhngo.pollmaster.core.model.Record
@@ -87,6 +88,19 @@ class RecordsRepository(
         return true
     }
 
+    /** Stores the time of a finished ERP upload of [uploaded] without touching `updatedAt`, unless the record was deleted or moved meanwhile. */
+    fun markErpUploaded(uploaded: Record, at: String) {
+        val editor = editors[uploaded.id]
+        if (editor != null) {
+            if (!ErpUpload.shouldStamp(uploaded, editor.record.value)) return
+            editor.markErpUploaded(at)
+            editor.flush()
+            return
+        }
+        val current = store.load(uploaded.id)
+        if (current != null && ErpUpload.shouldStamp(uploaded, current)) store.save(current.copy(erpUploadedAt = at))
+    }
+
     /** Called once per 15 minutes while a record is open; set by [AppContainer]. */
     var onBackupTick: (String) -> Unit = {}
 
@@ -137,7 +151,7 @@ class RecordsRepository(
     /** Moves a record to another project; the record keeps its template, values and media. */
     suspend fun move(recordId: String, projectId: String) = withContext(Dispatchers.IO) {
         release(recordId)
-        store.load(recordId)?.let { store.save(it.copy(projectId = projectId, updatedAt = nowIso(), backupAt = null)) } // old backup is removed by the caller; a new one is due
+        store.load(recordId)?.let { store.save(it.copy(projectId = projectId, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null)) } // old backup is removed by the caller; a new one is due
     }
 
     suspend fun duplicate(item: RecordItem): Record? = withContext(Dispatchers.IO) {

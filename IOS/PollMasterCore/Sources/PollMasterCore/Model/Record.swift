@@ -208,13 +208,15 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
     public var lastPosition: LastPosition?
     /// Last automatic backup; the record counts as unsaved when `updatedAt` is later.
     public var backupAt: Date?
+    /// Last successful "Gửi lên ERP" (schema §9.6); bookkeeping, never bumps `updatedAt`.
+    public var erpUploadedAt: Date?
     public var rawTimes = RawTimes()
     /// Owning project (schema §9.1); nil only for records written before projects existed (read as "Chung").
     public var projectId: String?
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, id, templateId, templateVersion, status, createdAt, updatedAt, completedAt, values, tables, signatures
-        case returned, lastPosition, backupAt, projectId
+        case returned, lastPosition, backupAt, erpUploadedAt, projectId
     }
 
     /// Every key except `id` is optional on read (Android omits keys).
@@ -235,6 +237,7 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         returned = c.lenient(Bool.self, .returned) ?? false
         lastPosition = c.lenient(LastPosition.self, .lastPosition)
         backupAt = c.lenient(Date.self, .backupAt)
+        erpUploadedAt = c.lenient(Date.self, .erpUploadedAt)
         projectId = c.lenient(String.self, .projectId)?.nilIfEmpty
         rawTimes = RawTimes(created: c.lenient(String.self, .createdAt), updated: c.lenient(String.self, .updatedAt),
                             completed: c.lenient(String.self, .completedAt))
@@ -260,11 +263,15 @@ public struct Record: Codable, Equatable, Sendable, Identifiable {
         if returned { try c.encode(true, forKey: .returned) }
         try c.encodeIfPresent(lastPosition, forKey: .lastPosition)
         try c.encodeIfPresent(backupAt, forKey: .backupAt)
+        try c.encodeIfPresent(erpUploadedAt, forKey: .erpUploadedAt)
         try c.encodeIfPresent(projectId, forKey: .projectId)
     }
 
     /// Edited since the last automatic backup (or never backed up).
     public var needsBackup: Bool { backupAt.map { updatedAt > $0 } ?? true }
+
+    /// Sent to the ERP before and edited since ("Có thay đổi chưa gửi"); never sent is false.
+    public var hasUnsentErpChanges: Bool { erpUploadedAt.map { updatedAt > $0 } ?? false }
 
     public func value(_ id: String) -> FieldValue { values[id] ?? FieldValue() }
     public func rows(_ tableId: String) -> [Row] { tables[tableId] ?? [] }

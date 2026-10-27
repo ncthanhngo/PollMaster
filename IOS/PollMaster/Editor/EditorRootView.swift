@@ -18,7 +18,10 @@ struct EditorRootView: View {
                 Section { Label("Phiếu được trả lại để sửa. Xem các ghi chú kiểm tra màu cam.", systemImage: "arrow.uturn.backward.circle.fill")
                     .foregroundStyle(theme.attention).font(.subheadline) }
             }
-            Section { progressHero }
+            Section {
+                progressHero
+                if model.record.erpUploadedAt != nil { ERPMarker(uploadedAt: model.record.erpUploadedAt, unsent: model.record.hasUnsentErpChanges) }
+            }
             Section("Mục lục") {
                 ForEach(Array(model.sectionTitles.enumerated()), id: \.offset) { i, s in
                     NavigationLink(value: Route.section(record: model.record.id, index: i, focus: nil)) {

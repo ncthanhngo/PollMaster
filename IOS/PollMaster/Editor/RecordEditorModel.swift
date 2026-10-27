@@ -225,6 +225,21 @@ final class RecordEditorModel {
         flush()
     }
 
+    /// Stamps a finished ERP upload that started at `at` from `snapshot`; an edit made meanwhile stays newer, so it shows as unsent.
+    func markERPUploaded(snapshot: Record, at: Date) {
+        guard !discarded else { return }
+        if closed {
+            guard let stamped = ERPUpload.stamped(snapshot: snapshot, current: store.load(record.id), at: at),
+                  (try? store.save(stamped)) != nil else { return }
+            onSaved?(stamped)
+            return
+        }
+        guard record.projectId == snapshot.projectId else { return }
+        record.erpUploadedAt = at
+        dirty = true
+        flush()
+    }
+
     func flush() {
         saveTask?.cancel()
         guard !discarded else { return }

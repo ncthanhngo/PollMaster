@@ -156,4 +156,37 @@ extension AppEnvironment {
             syncError = "Chưa tải được danh sách dự án từ ERP: \(error.localizedDescription)"
         }
     }
+
+    // MARK: send a record
+
+    /// "Gửi lên ERP" (schema §9.6): PDF + zip of the record are made with the export code, uploaded to its project, then
+    /// `erpUploadedAt` is stamped with the time the upload started. Throws an error with a message fit for the user.
+    func uploadToERP(recordId: String) async throws {
+        let startedAt = Date()
+        editors[recordId]?.flush(); closingEditors[recordId]?.flush()
+        guard let record = recordStore.load(recordId), let template = template(for: recordId) else {
+            throw ERPError.server("Không đọc được phiếu hoặc mẫu.")
+        }
+        guard let projectId = record.projectId else { throw ERPError.server("Phiếu chưa thuộc dự án nào.") }
+        let exporter = RecordExporter(store: recordStore), project = self.project(of: record)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("erp-send/\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        do {
+            let files = try await Task.detached(priority: .userInitiated) {
+                try exporter.export(template, record, formats: [.pdf, .zip], into: dir, project: project)
+            }.value
+            guard let pdf = files.first(where: { $0.pathExtension == "pdf" }), let zip = files.first(where: { $0.pathExtension == "zip" }) else {
+                throw ERPError.badResponse
+            }
+            try await erp.uploadPoll(projectId: projectId, fields: ERPUpload.fields(template, record), pdf: pdf, zip: zip)
+        } catch ERPError.sessionExpired {
+            setAccount(nil)
+            throw ERPError.sessionExpired
+        } catch let e as URLError {
+            throw ERPError.server("Không kết nối được máy chủ ERP (\(e.localizedDescription)). Kiểm tra mạng rồi thử lại.")
+        }
+        if let m = editors[recordId] ?? closingEditors[recordId] { m.markERPUploaded(snapshot: record, at: startedAt) }
+        else if let stamped = ERPUpload.stamped(snapshot: record, current: recordStore.load(recordId), at: startedAt),
+                (try? recordStore.save(stamped)) != nil { upsert(stamped) }
+    }
 }

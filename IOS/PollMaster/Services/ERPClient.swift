@@ -92,6 +92,19 @@ actor ERPClient {
         }
     }
 
+    /// "Gửi lên ERP" (schema §9.6): multipart POST of `fields` plus the record PDF and zip. The body is written to a temp file and
+    /// streamed from disk; a 401 refreshes the token and sends it again.
+    func uploadPoll(projectId: String, fields: [(name: String, value: String)], pdf: URL, zip: URL) async throws {
+        let boundary = "pollmaster" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let body = FileManager.default.temporaryDirectory.appendingPathComponent("erp-upload-\(UUID().uuidString).tmp")
+        defer { try? FileManager.default.removeItem(at: body) }
+        try ERPUpload.writeBody(fields: fields, files: [("pdf", pdf, "application/pdf"), ("zip", zip, "application/zip")], boundary: boundary, to: body)
+        var r = request("projects/\(projectId)/polls", method: "POST")
+        r.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        r.timeoutInterval = 120
+        let _: JSONValue = try await authorized(r, bodyFile: body)
+    }
+
     /// Project avatar / customer logo (public static file).
     func file(_ path: String) async throws -> Data {
         guard let url = ERPProjectSync.fileURL(path, host: Self.host) else { throw ERPError.badResponse }
@@ -113,15 +126,20 @@ actor ERPClient {
 
     /// GET with the access token; a 401 refreshes once (shared by concurrent calls, skipped when another call already did) and retries.
     private func authorized<T: Decodable>(_ path: String, query: [String: String]) async throws -> T {
-        var r = request(path, query: query)
+        try await authorized(request(path, query: query), bodyFile: nil)
+    }
+
+    /// Same for any request; `bodyFile` is streamed from disk as the request body.
+    private func authorized<T: Decodable>(_ request: URLRequest, bodyFile: URL?) async throws -> T {
+        var r = request
         let used = TokenStore.access
         r.setValue("Bearer \(used ?? "")", forHTTPHeaderField: "Authorization")
-        do { return try await send(r) } catch let ERPHTTPError.status(code, message) {
+        do { return try await send(r, bodyFile: bodyFile) } catch let ERPHTTPError.status(code, message) {
             guard code == 401 else { throw Self.userError(code, message) }
         }
         if TokenStore.access == used { try await refresh() }
         r.setValue("Bearer \(TokenStore.access ?? "")", forHTTPHeaderField: "Authorization")
-        do { return try await send(r) } catch let ERPHTTPError.status(code, message) {
+        do { return try await send(r, bodyFile: bodyFile) } catch let ERPHTTPError.status(code, message) {
             // refused again right after a refresh: the session is of no use any more
             throw code == 401 ? ERPError.sessionExpired : Self.userError(code, message)
         }
@@ -151,8 +169,9 @@ actor ERPClient {
     }
 
     /// Any non-2xx answer is an `ERPHTTPError`; callers decide what it means (401 refreshes, login 400/401 is a wrong password).
-    private func send<T: Decodable>(_ r: URLRequest) async throws -> T {
-        let (data, res) = try await session.data(for: r)
+    private func send<T: Decodable>(_ r: URLRequest, bodyFile: URL? = nil) async throws -> T {
+        let (data, res): (Data, URLResponse)
+        if let bodyFile { (data, res) = try await session.upload(for: r, fromFile: bodyFile) } else { (data, res) = try await session.data(for: r) }
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             throw ERPHTTPError.status(status, (try? JSONDecoder().decode(ERPEnvelope<JSONValue>.self, from: data))?.error)
@@ -162,7 +181,12 @@ actor ERPClient {
     }
 
     private static func userError(_ status: Int, _ message: String?) -> ERPError {
-        .server(ERPMessage.readable(message) ?? "Máy chủ ERP báo lỗi \(status).")
+        let fallback = switch status {
+        case 404: "Không tìm thấy dự án trên ERP hoặc tài khoản không có quyền gửi vào dự án này."
+        case 413: "Tệp quá lớn, ERP từ chối nhận."
+        default: "Máy chủ ERP báo lỗi \(status)."
+        }
+        return .server(ERPMessage.readable(message) ?? fallback)
     }
 }
 

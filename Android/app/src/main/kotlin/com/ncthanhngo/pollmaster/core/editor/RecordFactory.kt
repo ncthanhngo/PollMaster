@@ -74,6 +74,7 @@ object RecordFactory {
             values = values,
             tables = tables,
             signatures = emptyMap(),
+            erpUploadedAt = null,
         )
     }
 

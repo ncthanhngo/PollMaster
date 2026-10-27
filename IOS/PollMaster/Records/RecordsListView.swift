@@ -166,6 +166,7 @@ struct RecordRow: View {
                         Text("\(summary.progress.done)/\(summary.progress.total)").font(.caption).monospacedDigit().secondaryText().fixedSize()
                     }
                 }
+                if summary.loadError == nil { ERPMarker(uploadedAt: summary.erpUploadedAt, unsent: summary.erpUnsent) }
             }
         }
         .padding(.vertical, 4)

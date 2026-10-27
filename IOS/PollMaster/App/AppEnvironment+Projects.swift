@@ -97,7 +97,7 @@ extension AppEnvironment {
         let old = project(of: r)
         editors[recordId]?.discard(); closingEditors[recordId]?.discard()      // saved above; nothing pending may write the old project back
         editors[recordId] = nil; closingEditors[recordId] = nil
-        r.projectId = target.id; r.updatedAt = Date(); r.backupAt = nil
+        r.projectId = target.id; r.updatedAt = Date(); r.backupAt = nil; r.erpUploadedAt = nil
         do {
             try recordStore.save(r)
             if let t = templateStore.load(id: r.templateId, version: r.templateVersion) { BackupService.removeBackup(t, r, project: old) }

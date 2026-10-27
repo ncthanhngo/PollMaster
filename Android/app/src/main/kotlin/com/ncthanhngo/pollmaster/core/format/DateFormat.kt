@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter
 
 private val dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private val dateTimeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+private val dashDateTimeFmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")
 private val dayMonthTimeFmt = DateTimeFormatter.ofPattern("dd/MM HH:mm")
 private val dayMonthFmt = DateTimeFormatter.ofPattern("dd/MM")
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
@@ -49,3 +50,7 @@ fun displayDayMonth(iso: String, zone: ZoneId = ZoneId.systemDefault()): String 
 /** `HH:mm` ("Đã lưu 14:05"). */
 fun displayTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
     runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(timeFmt) }.getOrDefault(iso)
+
+/** `dd-MM-yyyy HH:mm` (ERP upload marker). */
+fun displayDateTimeDashed(iso: String, zone: ZoneId = ZoneId.systemDefault()): String =
+    runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(dashDateTimeFmt) }.getOrDefault(iso)

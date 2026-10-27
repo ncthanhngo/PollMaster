@@ -1,4 +1,5 @@
 import SwiftUI
+import PollMasterCore
 
 /// SF Symbol on a tinted rounded square: leading visual of list rows (templates, records, settings).
 extension View {
@@ -68,6 +69,19 @@ extension View {
                 .padding(.horizontal).padding(.top, 10).padding(.bottom, 6)
                 .frame(maxWidth: .infinity)
                 .background(.bar)
+        }
+    }
+}
+
+/// "Đã gửi ERP dd-MM-yyyy HH:mm" or "Có thay đổi chưa gửi" (schema §9.6); nothing for a record never sent.
+struct ERPMarker: View {
+    let uploadedAt: Date?
+    let unsent: Bool
+    @Environment(\.pmTheme) private var theme
+
+    var body: some View {
+        if let text = ERPUpload.marker(uploadedAt: uploadedAt, hasUnsentChanges: unsent) {
+            Text(text).font(.caption).foregroundStyle(unsent ? theme.warning : theme.secondaryText).lineLimit(1)
         }
     }
 }

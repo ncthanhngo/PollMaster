@@ -46,6 +46,7 @@ import com.ncthanhngo.pollmaster.core.format.displayDayMonthTime
 import com.ncthanhngo.pollmaster.data.RecordItem
 import com.ncthanhngo.pollmaster.core.storage.StoredRecord
 import com.ncthanhngo.pollmaster.ui.common.AppCard
+import com.ncthanhngo.pollmaster.ui.common.ErpMarker
 import com.ncthanhngo.pollmaster.ui.common.FirstFitText
 import com.ncthanhngo.pollmaster.ui.common.StatusChip
 import com.ncthanhngo.pollmaster.core.project.Project
@@ -82,6 +83,7 @@ internal fun RecordCard(item: RecordItem, project: Project?, onMove: () -> Unit,
                         Text("${p.filled}/${p.total}", style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1, softWrap = false)
                     }
                 }
+                ErpMarker(item.record)
             }
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))

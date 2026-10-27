@@ -140,6 +140,9 @@ class ErpSession(
         sync()
     }
 
+    /** The refresh token was refused during a call outside the project sync: back to the sign-in screen. */
+    fun expire() = setAccount(null)
+
     /** Records stay on the device; projects the next account cannot see stay hidden. In-flight project fetches are dropped. */
     fun logout() {
         records.releaseAll()

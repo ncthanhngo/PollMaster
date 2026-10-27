@@ -16,6 +16,9 @@ struct RecordSummary: Identifiable, Equatable {
     var templateId = ""
     var returned = false
     var needsBackup = false
+    /// Last "Gửi lên ERP" and whether the record changed after it (schema §9.6).
+    var erpUploadedAt: Date?
+    var erpUnsent = false
     /// Codes of planned sites this record visited (a lookup field holds the code).
     var visitedSites: Set<String> = []
     var thumbnail: URL?

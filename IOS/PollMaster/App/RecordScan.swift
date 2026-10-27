@@ -41,14 +41,14 @@ enum RecordScan {
             return RecordSummary(id: r.id, title: "Phiếu mới · " + ISODate.format(r.createdAt, "dd/MM/yyyy HH:mm"),
                                  subtitle: "\(r.templateId) (thiếu mẫu)", updatedAt: r.updatedAt, status: r.status,
                                  progress: RequiredProgress(done: 0, total: 0), projectId: pid, templateId: r.templateId, returned: r.returned,
-                                 needsBackup: r.needsBackup)
+                                 needsBackup: r.needsBackup, erpUploadedAt: r.erpUploadedAt, erpUnsent: r.hasUnsentErpChanges)
         }
         var visited = Set<String>()
         for f in t.allFields where f.lookup != nil { if let code = r.values[f.id]?.v?.string, !code.isEmpty { visited.insert(code) } }
         let gps = t.allFields.filter { $0.type == .gps }.compactMap { GPSValue(r.values[$0.id]?.v) }.first
         return RecordSummary(id: r.id, title: RecordNaming.title(t, r), subtitle: RecordInfo.subtitle(t, r), updatedAt: r.updatedAt,
                              status: r.status, progress: Validator.progress(t, r), projectId: pid, templateId: r.templateId, returned: r.returned,
-                             needsBackup: r.needsBackup,
+                             needsBackup: r.needsBackup, erpUploadedAt: r.erpUploadedAt, erpUnsent: r.hasUnsentErpChanges,
                              visitedSites: visited, thumbnail: RecordInfo.firstPhoto(t, r).map { store.fileURL(r.id, $0.file) },
                              coordinate: gps.map { GPSCoordinate(lat: $0.lat, lng: $0.lng) })
     }

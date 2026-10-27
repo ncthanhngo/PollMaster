@@ -18,12 +18,14 @@ fun Template.sectionOf(itemId: String): Section? =
 /** Number of input fields (header + sections + table columns) used for the template list. */
 fun Template.fieldCount(): Int = allFields().size + tables().sumOf { it.columns.size }
 
-/** Record code (role = recordCode) made safe for use in file names. */
-fun Template.recordCode(record: Record): String? {
+/** Record code (role = recordCode) exactly as typed, or null when empty. */
+fun Template.rawRecordCode(record: Record): String? {
     val field = header.firstOrNull { it.role == "recordCode" } ?: allFields().firstOrNull { it.role == "recordCode" }
-    val raw = field?.let { record.values[it.id]?.v.asText() }?.trim().orEmpty()
-    return raw.takeIf { it.isNotEmpty() }?.let(::sanitizeFileName)
+    return field?.let { record.values[it.id]?.v.asText() }?.trim()?.takeIf { it.isNotEmpty() }
 }
+
+/** Record code (role = recordCode) made safe for use in file names. */
+fun Template.recordCode(record: Record): String? = rawRecordCode(record)?.let(::sanitizeFileName)
 
 fun sanitizeFileName(raw: String): String =
     raw.replace(Regex("[/\\\\:*?\"<>|\\s]+"), "-").trim('-')

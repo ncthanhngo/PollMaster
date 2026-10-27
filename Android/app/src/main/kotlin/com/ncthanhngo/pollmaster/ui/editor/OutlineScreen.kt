@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
 import com.ncthanhngo.pollmaster.R
+import com.ncthanhngo.pollmaster.ui.common.ErpMarker
 import com.ncthanhngo.pollmaster.core.format.displayDateTime
 import com.ncthanhngo.pollmaster.core.format.displayTime
 import com.ncthanhngo.pollmaster.core.format.recordTitle
@@ -129,6 +130,7 @@ fun OutlineScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        ErpMarker(record)
                     }
                 },
                 navigationIcon = { BackButton(::leave) },

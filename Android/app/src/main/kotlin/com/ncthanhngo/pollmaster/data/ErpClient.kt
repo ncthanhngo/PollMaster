@@ -23,10 +23,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.KeyStore
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -113,6 +115,15 @@ class ErpClient(context: Context) {
         }
     }
 
+    /**
+     * "Gửi lên ERP" (schema 9.6): multipart POST of [fields] plus the record [pdf] and [zip]. The files are streamed from disk with a
+     * fixed length (no 90 MB buffer); a 401 refreshes the token and sends everything again.
+     */
+    suspend fun uploadPoll(projectId: String, fields: List<Pair<String, String>>, pdf: File, zip: File) {
+        val path = "projects/$projectId/polls"
+        authorized { token -> multipart(path, token, fields, listOf(FilePart("pdf", pdf, "application/pdf"), FilePart("zip", zip, "application/zip"))) }
+    }
+
     /** Project avatar / customer logo (public static file). */
     suspend fun file(path: String): ByteArray = withContext(Dispatchers.IO) {
         val c = URL(ErpProjectSync.fileUrl(path, HOST)).openConnection() as HttpURLConnection
@@ -127,18 +138,27 @@ class ErpClient(context: Context) {
 
     private class HttpStatus(val status: Int, val error: String?) : Exception(error) {
         /** Machine codes (SCREAMING_SNAKE) are not for people; the backend's Vietnamese sentences are. */
-        fun toUser() = ErpException(error?.takeIf(ErpMessages::isUserSentence) ?: "Máy chủ ERP báo lỗi $status.")
+        fun toUser() = ErpException(
+            error?.takeIf(ErpMessages::isUserSentence) ?: when (status) {
+                404 -> "Không tìm thấy dự án trên ERP hoặc tài khoản không có quyền gửi vào dự án này."
+                413 -> "Tệp quá lớn, ERP từ chối nhận."
+                else -> "Máy chủ ERP báo lỗi $status."
+            },
+        )
     }
 
     /** GET with the access token; a 401 refreshes once (shared by concurrent calls) and retries. */
-    private suspend fun <T> authorized(path: String, ser: KSerializer<T>): T {
+    private suspend fun <T> authorized(path: String, ser: KSerializer<T>): T = authorized { send(path, ser, token = it) }
+
+    /** Runs [call] with the access token; a 401 refreshes once and runs it again. */
+    private suspend fun <T> authorized(call: suspend (token: String?) -> T): T {
         val used = tokens.access
         return try {
-            send(path, ser, token = used)
+            call(used)
         } catch (e: HttpStatus) {
             if (e.status != 401) throw e.toUser()
             refresh(used)
-            try { send(path, ser, token = tokens.access) } catch (e2: HttpStatus) { throw e2.toUser() }
+            try { call(tokens.access) } catch (e2: HttpStatus) { throw e2.toUser() }
         }
     }
 
@@ -184,10 +204,53 @@ class ErpClient(context: Context) {
             } finally { c.disconnect() }
         }
 
+    private class FilePart(val name: String, val file: File, val type: String)
+
+    /** One multipart part: header bytes, then either [bytes] (a text field) or the content of [file]. */
+    private class Part(val head: ByteArray, val bytes: ByteArray?, val file: File?)
+
+    private suspend fun multipart(path: String, token: String?, fields: List<Pair<String, String>>, files: List<FilePart>) =
+        withContext(Dispatchers.IO) {
+            val boundary = "pollmaster" + UUID.randomUUID().toString().replace("-", "")
+            fun disposition(name: String, fileName: String? = null) =
+                "Content-Disposition: form-data; name=\"$name\"" + (fileName?.let { "; filename=\"$it\"" } ?: "")
+            val parts = fields.map { (k, v) -> Part("--$boundary\r\n${disposition(k)}\r\n\r\n".toByteArray(), v.toByteArray(), null) } +
+                files.map { Part("--$boundary\r\n${disposition(it.name, it.file.name.replace('"', '_'))}\r\nContent-Type: ${it.type}\r\n\r\n".toByteArray(), null, it.file) }
+            val crlf = "\r\n".toByteArray()
+            val tail = "--$boundary--\r\n".toByteArray()
+            val length = tail.size + parts.sumOf { it.head.size + (it.bytes?.size?.toLong() ?: it.file!!.length()) + crlf.size }
+            val c = URL("$HOST/api/v1/$path").openConnection() as HttpURLConnection
+            try {
+                c.requestMethod = "POST"
+                c.connectTimeout = TIMEOUT; c.readTimeout = UPLOAD_TIMEOUT
+                c.setRequestProperty("X-Client-App", "evs-mobile")
+                c.setRequestProperty("Accept", "application/json")
+                token?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+                c.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                c.doOutput = true
+                c.setFixedLengthStreamingMode(length)
+                c.outputStream.use { out ->
+                    for (p in parts) {
+                        out.write(p.head)
+                        if (p.bytes != null) out.write(p.bytes) else p.file!!.inputStream().use { it.copyTo(out) }
+                        out.write(crlf)
+                    }
+                    out.write(tail)
+                }
+                val status = c.responseCode
+                if (status !in 200..299) {
+                    val text = c.errorStream?.use { it.readBytes().decodeToString() }.orEmpty()
+                    val error = runCatching { PollJson.decodeFromString(ErpEnvelope.serializer(JsonElement.serializer()), text).error }.getOrNull()
+                    throw HttpStatus(status, error)
+                }
+            } finally { c.disconnect() }
+        }
+
     companion object {
         /** Uploaded files (`/uploads/…`) are served from the host root, the API under `/api/v1`. */
         const val HOST = "https://api.evselab.com"
         private const val TIMEOUT = 20_000
+        private const val UPLOAD_TIMEOUT = 120_000
         private const val EXPIRED = "Phiên đăng nhập ERP đã hết hạn. Hãy đăng nhập lại."
     }
 }

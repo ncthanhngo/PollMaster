@@ -118,8 +118,8 @@ public enum RecordNaming {
         return out.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }
 
-    /// Sanitized raw value (`v`) of the recordCode field; nil when empty (callers fall back to the record id).
-    public static func recordCode(_ t: Template, _ r: Record) -> String? {
+    /// Raw value (`v`) of the recordCode field as typed (trimmed); nil when empty.
+    public static func rawRecordCode(_ t: Template, _ r: Record) -> String? {
         guard let f = t.recordCodeField, let v = r.values[f.id], v.flag != .notMeasurable, let raw = v.v else { return nil }
         let text: String
         switch raw {
@@ -127,7 +127,12 @@ public enum RecordNaming {
         case .number(let d): text = ValueFormatter.number(d)
         default: return nil
         }
-        return sanitize(text).nilIfEmpty
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    /// Sanitized raw value (`v`) of the recordCode field; nil when empty (callers fall back to the record id).
+    public static func recordCode(_ t: Template, _ r: Record) -> String? {
+        rawRecordCode(t, r).flatMap { sanitize($0).nilIfEmpty }
     }
 
     private static let titleTrim = CharacterSet(charactersIn: " –-/·").union(.whitespacesAndNewlines)

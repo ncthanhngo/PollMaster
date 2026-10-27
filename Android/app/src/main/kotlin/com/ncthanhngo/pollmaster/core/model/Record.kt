@@ -32,6 +32,8 @@ data class Record(
     val returned: Boolean = false,
     val lastPosition: Position? = null,
     val backupAt: String? = null,
+    /** Time of the last successful "Gửi lên ERP" (schema 9.6); bookkeeping, never bumps `updatedAt`. */
+    val erpUploadedAt: String? = null,
 ) {
     val isCompleted: Boolean get() = status == STATUS_COMPLETED
 

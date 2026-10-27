@@ -416,3 +416,29 @@ Android intent-filter ACTION_VIEW/SEND cho đuôi `.pmproject` và `application/
 - Ảnh đại diện: `customer_logo_url` (tương đối → ghép `https://api.evselab.com`), cắt vuông 256 px nền trắng → `avatar.jpg`.
 - Đăng xuất không xóa phiếu; tài khoản khác đăng nhập chỉ thấy dự án của mình. Đăng xuất hủy lần đồng bộ đang chạy (kết quả cũ bị bỏ).
 - Id dự án ERP dùng làm tên thư mục: chỉ nhận `^[A-Za-z0-9-]{1,64}$`, dòng khác bị bỏ qua.
+
+### 9.6 Gửi phiếu lên ERP
+Nút **Gửi lên ERP** ở màn xuất / màn phiếu (bật khi đã đăng nhập ERP và có mạng). Phiếu nháp gửi được sau khi xác nhận "Phiếu chưa hoàn thành — vẫn gửi?".
+App tạo PDF + zip "JSON + media" của phiếu bằng đúng code xuất §5 rồi tải lên; không có hàng đợi/thử lại nền.
+
+`POST /api/v1/projects/{record.projectId}/polls` — `multipart/form-data`, Bearer (401 → refresh như §9.5), header `X-Client-App: evs-mobile`, timeout 120 s.
+
+| Trường | Bắt buộc | Giá trị |
+|---|---|---|
+| `record_id` | có | `record.id` (≤64) |
+| `record_code` | không | giá trị thô của trường `role: recordCode` (không làm sạch tên tệp), bỏ khi rỗng (≤100) |
+| `title` | có | tiêu đề hiển thị §6.5 (≤300) |
+| `template_id` / `template_version` / `template_title` | có | ≤100 / ≤20 / ≤300 |
+| `status` | có | `draft` \| `completed` |
+| `recorded_at` | có | `record.createdAt`, RFC3339 |
+| `completed_at` | không | `record.completedAt`, bỏ khi null |
+| `pdf` (file) | có | PDF của phiếu, `application/pdf`, ≤30 MB |
+| `zip` (file) | có | JSON + media, `application/zip`, ≤90 MB |
+
+- Upsert theo (dự án, `record_id`): gửi lại ghi đè bản trước. 200 → `{"data": {"id", "project_id", "record_id", "updated_at", …}}`.
+- Lỗi cùng phong bì §9.5: câu tiếng Việt trong `error` hiện cho người dùng, mã SCREAMING_SNAKE thì không. 404 = không thấy dự án / không có quyền gửi; 400 = dữ liệu sai; 413 = quá lớn.
+- Tệp được stream từ đĩa (không nạp 90 MB vào bộ nhớ).
+
+Record thêm khóa optional `"erpUploadedAt": ISO` — thời điểm **bắt đầu** lần gửi thành công gần nhất (ghi như `backupAt`: không đổi `updatedAt`;
+không ghi nếu phiếu bị xóa hoặc chuyển dự án trong lúc gửi; xóa khi chuyển dự án; bản nhân bản không mang theo).
+Hiển thị (dòng phiếu + màn phiếu + màn xuất): `Đã gửi ERP dd-MM-yyyy HH:mm`; nếu `updatedAt > erpUploadedAt` thì `Có thay đổi chưa gửi`; chưa gửi lần nào thì không hiện gì.

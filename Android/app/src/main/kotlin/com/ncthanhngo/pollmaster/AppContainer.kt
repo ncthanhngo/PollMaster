@@ -10,6 +10,7 @@ import com.ncthanhngo.pollmaster.core.project.ProjectStore
 import com.ncthanhngo.pollmaster.data.BackupService
 import com.ncthanhngo.pollmaster.data.ErpClient
 import com.ncthanhngo.pollmaster.data.ErpSession
+import com.ncthanhngo.pollmaster.data.ErpUploadService
 import com.ncthanhngo.pollmaster.data.ExportService
 import com.ncthanhngo.pollmaster.data.ProjectBundleService
 import com.ncthanhngo.pollmaster.data.ProjectExportService
@@ -45,7 +46,9 @@ class AppContainer(context: Context) {
     /** Package the user opened from another app, waiting for the preview dialog. */
     val pendingBundle = MutableStateFlow<Uri?>(null)
     val media = MediaProcessor(context, settings)
-    val erp = ErpSession(context, context.filesDir, ErpClient(context), projects, records, templates, media, backup, scope)
+    private val erpClient = ErpClient(context)
+    val erp = ErpSession(context, context.filesDir, erpClient, projects, records, templates, media, backup, scope)
+    val erpUpload = ErpUploadService(erpClient, export, recordStore, templates, records) { erp.expire() }
 }
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
