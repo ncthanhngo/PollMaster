@@ -17,9 +17,21 @@ import java.util.UUID
 
 const val SURVEYOR_FIELD_ID = "HD-surveyor"
 
+/** The signed-in ERP account a new record is attributed to at creation (schema 10.1); a null [id] = unknown, nothing is written. */
+data class RecordCreator(val id: String?, val name: String?)
+
 object RecordFactory {
 
-    fun create(template: Template, surveyorName: String?, now: String = nowIso(), recordCode: String? = null, projectId: String? = null): Record {
+    /** `createdBy`/`createdByName` of a record made on this device, so another account on the same device never pushes it under its own name. */
+    private fun Record.by(creator: RecordCreator?): Record {
+        val id = creator?.id?.takeIf { it.isNotEmpty() } ?: return copy(createdBy = null, createdByName = null)
+        return copy(createdBy = id, createdByName = creator.name?.takeIf { it.isNotEmpty() })
+    }
+
+    fun create(
+        template: Template, surveyorName: String?, now: String = nowIso(), recordCode: String? = null, projectId: String? = null,
+        creator: RecordCreator? = null,
+    ): Record {
         val values = HashMap<String, FieldValue>()
         for (f in template.allFields()) {
             val v: JsonElement? = when {
@@ -38,11 +50,11 @@ object RecordFactory {
             createdAt = now,
             updatedAt = now,
             values = values,
-        )
+        ).by(creator)
     }
 
     /** Copies values (without media), resets status to draft and restarts the session time. */
-    fun duplicate(template: Template, source: Record, now: String = nowIso()): Record {
+    fun duplicate(template: Template, source: Record, now: String = nowIso(), creator: RecordCreator? = null): Record {
         val mediaFields = template.allFields().filter { it.isMedia }.map { it.id }.toSet()
         val values = source.values.mapNotNull { (id, fv) ->
             val stripped = fv.copy(media = emptyList(), v = if (id in mediaFields) null else fv.v)
@@ -75,7 +87,10 @@ object RecordFactory {
             tables = tables,
             signatures = emptyMap(),
             erpUploadedAt = null,
-        )
+            serverRev = null,
+            syncConflict = false,
+            backupAt = null,
+        ).by(creator)
     }
 
     fun sessionStart(now: String): JsonElement = JsonObject(mapOf("start" to JsonPrimitive(now), "end" to JsonNull))

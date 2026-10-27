@@ -42,6 +42,9 @@ private class RevRemote : SyncRemote {
     override suspend fun pull(projectId: String, since: String?, cursor: String?) =
         SyncPage("T1", true, false, emptyList(), server.values.map { SyncRef(it.recordId, it.rev) })
 
+    var gets = 0
+    override suspend fun get(projectId: String, recordId: String): SyncRecord? { gets++; return server[recordId] }
+
     override suspend fun put(projectId: String, recordId: String, body: SyncPutBody): SyncPutResult {
         puts += body
         val cur = server[recordId]
@@ -95,7 +98,7 @@ class SyncResolveTest {
         val e = setup()
         e.store.save(e.record.copy(lastPosition = com.ncthanhngo.pollmaster.core.model.Position("A", "A-01")))
         val got = engine(e).takeServer(pid, e.record.id)
-        assertEquals(1, e.remote.puts.size); assertEquals(0, e.remote.puts[0].baseRev); assertEquals(3, e.remote.server.getValue(e.record.id).rev)
+        assertEquals(1, e.remote.gets); assertTrue(e.remote.puts.isEmpty()); assertEquals(3, e.remote.server.getValue(e.record.id).rev)      // read with GET, nothing written
         val saved = e.store.load(e.record.id)!!
         assertEquals(got, saved)
         assertEquals(JsonPrimitive("theirs"), saved.values["P1"]?.v)
@@ -109,6 +112,15 @@ class SyncResolveTest {
         engine(e).takeServer(pid, e.record.id)
         val saved = e.store.load(e.record.id)!!
         assertEquals(3, saved.serverRev); assertFalse(saved.syncConflict); assertEquals(JsonPrimitive("mine"), saved.values["P1"]?.v)
+    }
+
+    @Test fun takeServerOfARecordTheServerLostFailsAndKeepsTheDeviceCopy() = runBlocking {
+        val e = setup()
+        e.remote.server.clear()
+        val failure = runCatching { engine(e).takeServer(pid, e.record.id) }.exceptionOrNull()
+        assertTrue(failure is SyncRecordFailure)
+        val kept = e.store.load(e.record.id)!!
+        assertEquals(JsonPrimitive("mine"), kept.values["P1"]?.v); assertTrue(kept.syncConflict); assertTrue(e.remote.puts.isEmpty())
     }
 
     @Test fun inspectTellsWhoEditedOrThatTheServerLostIt() = runBlocking {

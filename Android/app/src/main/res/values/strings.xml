@@ -349,6 +349,9 @@
     <string name="project_templates">Mẫu của dự án</string>
     <string name="project_templates_empty">Dự án chưa có mẫu nào.</string>
     <string name="project_template_add">Thêm mẫu từ thư viện</string>
+    <string name="project_templates_shared">Mẫu của dự án dùng chung cho mọi người trong dự án; chỉ quản lý dự án (khi có mạng) thêm, gỡ hoặc đổi bản mẫu.</string>
+    <string name="template_apply_all_title">Áp dụng cho mọi dự án dùng mẫu này</string>
+    <string name="template_apply_all_message">Tên, viết tắt và màu được lưu trên máy chủ cho cả tổ chức; máy khác thấy sau lần đồng bộ kế tiếp.</string>
     <string name="project_template_remove">Gỡ khỏi dự án</string>
     <string name="project_template_newer">Có bản v%1$s — dùng cho phiếu mới?</string>
     <string name="project_template_use">Dùng</string>

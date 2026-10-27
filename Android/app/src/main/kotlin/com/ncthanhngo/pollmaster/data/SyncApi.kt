@@ -48,6 +48,13 @@ class ErpSyncRemote(private val client: ErpClient) : SyncRemote {
         return data(r.text, SyncPage.serializer())
     }
 
+    override suspend fun get(projectId: String, recordId: String): SyncRecord? {
+        val r = client.rawAuthorized("GET", record(projectId, recordId))
+        if (r.status == 404) return null
+        if (r.status != 200) throw fail(r, "Không đọc được phiếu trên máy chủ.")
+        return data(r.text, SyncRecord.serializer())
+    }
+
     override suspend fun put(projectId: String, recordId: String, body: SyncPutBody): SyncPutResult {
         val r = client.rawAuthorized("PUT", record(projectId, recordId), json = PollJson.encodeToString(SyncPutBody.serializer(), body), timeoutMs = 60_000)
         when (r.status) {

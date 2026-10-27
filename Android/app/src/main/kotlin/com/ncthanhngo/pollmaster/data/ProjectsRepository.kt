@@ -59,12 +59,4 @@ class ProjectsRepository(
         withContext(Dispatchers.IO) { store.setTemplates(id, refs, nowIso()) }
         refresh()
     }
-
-    /** Adds [ref] to each of [projectIds] (no duplicates). */
-    suspend fun addTemplate(ref: TemplateRef, projectIds: Collection<String>) {
-        withContext(Dispatchers.IO) {
-            projectIds.forEach { id -> store.get(id)?.let { store.setTemplates(id, it.templates + ref, nowIso()) } }
-        }
-        refresh()
-    }
 }

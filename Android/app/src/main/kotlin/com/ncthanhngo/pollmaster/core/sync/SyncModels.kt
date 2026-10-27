@@ -85,6 +85,8 @@ class SyncRecordFailure(message: String) : Exception(message)
 /** The ERP side of a sync run. The app implements it over HTTP; tests use a fake. */
 interface SyncRemote {
     suspend fun pull(projectId: String, since: String?, cursor: String?): SyncPage
+    /** The record as the server has it now (`GET poll-records/:id`); null when it is not there (404). */
+    suspend fun get(projectId: String, recordId: String): SyncRecord?
     suspend fun put(projectId: String, recordId: String, body: SyncPutBody): SyncPutResult
     suspend fun putMedia(projectId: String, recordId: String, name: String, file: File, sha256: String)
 

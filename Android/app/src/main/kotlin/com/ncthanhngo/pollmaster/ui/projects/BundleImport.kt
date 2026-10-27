@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,7 @@ import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.project.BundleContents
 import com.ncthanhngo.pollmaster.core.project.BundleException
 import com.ncthanhngo.pollmaster.core.project.ImportPlan
+import com.ncthanhngo.pollmaster.data.SyncService
 import com.ncthanhngo.pollmaster.ui.templates.ImportErrorDialog
 import kotlinx.coroutines.launch
 
@@ -72,9 +74,20 @@ fun ImportBundleHost(onImported: (String) -> Unit) {
     }
 
     fun import(contents: BundleContents, targetId: String, overwrite: Boolean) {
+        val target = container.projects.get(targetId)
+        if (!container.sync.canChangeTemplates(target)) {
+            Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show()
+            return
+        }
         scope.launch {
             try {
+                val before = target?.templates.orEmpty().toSet()
                 val outcome = container.bundles.import(contents, targetId, overwrite)
+                // the templates the package put on the project also go to the server (it decides what stays)
+                val added = outcome.project.templates.filter { it !in before }
+                if (container.erp.account.value != null && added.isNotEmpty()) {
+                    container.sync.assignTemplates(targetId, added)?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                }
                 Toast.makeText(context, context.getString(R.string.bundle_done, outcome.project.name), Toast.LENGTH_SHORT).show()
                 close()
                 onImported(outcome.project.id)
@@ -143,7 +156,11 @@ private fun PreviewDialog(contents: BundleContents, plan: ImportPlan, onImport: 
             }
         },
         confirmButton = {
-            TextButton(onClick = { target?.let(onImport) }, enabled = target != null) { Text(stringResource(R.string.bundle_import)) }
+            val sync = LocalContainer.current.sync
+            TextButton(
+                onClick = { target?.let(onImport) }, enabled = target != null,
+                modifier = Modifier.alpha(if (sync.canChangeTemplates(projects.firstOrNull { it.id == target })) 1f else 0.45f),
+            ) { Text(stringResource(R.string.bundle_import)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )

@@ -2,6 +2,7 @@ package com.ncthanhngo.pollmaster.data
 
 import com.ncthanhngo.pollmaster.core.editor.EditorController
 import com.ncthanhngo.pollmaster.core.editor.RecordCodes
+import com.ncthanhngo.pollmaster.core.editor.RecordCreator
 import com.ncthanhngo.pollmaster.core.editor.RecordFactory
 import com.ncthanhngo.pollmaster.core.format.nextRecordSeq
 import com.ncthanhngo.pollmaster.core.format.recordTitle
@@ -59,6 +60,8 @@ class RecordsRepository(
     /** Signed-in ERP user id and the project of a record: who may edit it, and which leftovers of other accounts stay hidden. */
     private val me: () -> String? = { null },
     private val projectOf: (String?) -> Project? = { null },
+    /** The signed-in account: new, duplicated and moved records are made out in its name straight away (schema 10.1). */
+    private val creator: () -> RecordCreator? = { null },
 ) {
     private val _items = MutableStateFlow<List<RecordItem>>(emptyList())
     val items: StateFlow<List<RecordItem>> = _items.asStateFlow()
@@ -184,7 +187,7 @@ class RecordsRepository(
     suspend fun create(template: Template, projectId: String?): Record = withContext(Dispatchers.IO) {
         val existing = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }
             .filter { it.projectId == projectId } // codes are numbered per project
-        RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId)
+        RecordFactory.create(template, settings.surveyorName.value, recordCode = RecordCodes.propose(template, existing), projectId = projectId, creator = creator())
             .copy(seq = nextRecordSeq(existing, projectId, template.id))
             .also { store.save(it); onCreated(it) }
     }
@@ -197,7 +200,7 @@ class RecordsRepository(
             // on the server this is a delete in the old project and a new record in the target (schema 9.6, 10)
             val moved = it.copy(
                 projectId = projectId, seq = seq, updatedAt = nowIso(), backupAt = null, erpUploadedAt = null,
-                serverRev = null, createdBy = null, createdByName = null, syncConflict = false,
+                serverRev = null, createdBy = creator()?.id, createdByName = creator()?.name, syncConflict = false,
             ) // old backup is removed by the caller; a new one is due
             store.save(moved)
             onMoved(it, moved)
@@ -208,7 +211,7 @@ class RecordsRepository(
         val t = item.template ?: return@withContext null
         flushEditor(item.record.id)
         val source = store.load(item.record.id)?.takeIf { canPost(it.projectId) } ?: return@withContext null
-        RecordFactory.duplicate(t, source).let { it.copy(seq = nextRecordSeq(loadedRecords(), it.projectId, it.templateId)) }.also { store.save(it) }
+        RecordFactory.duplicate(t, source, creator = creator()).let { it.copy(seq = nextRecordSeq(loadedRecords(), it.projectId, it.templateId)) }.also { store.save(it) }
     }
 
     private fun loadedRecords(): List<Record> = store.listAll().filterIsInstance<StoredRecord.Loaded>().map { it.record }

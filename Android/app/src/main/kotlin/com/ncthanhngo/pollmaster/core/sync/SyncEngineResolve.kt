@@ -1,7 +1,6 @@
 package com.ncthanhngo.pollmaster.core.sync
 
 import com.ncthanhngo.pollmaster.core.format.parseInstant
-import com.ncthanhngo.pollmaster.core.format.recordTitle
 import com.ncthanhngo.pollmaster.core.project.Project
 import java.time.Instant
 
@@ -36,28 +35,15 @@ suspend fun SyncEngine.keepMine(projectId: String, recordId: String) {
 
 /**
  * "Lấy bản máy chủ": replaces the device copy with the server's. The caller backs the device copy up first.
- * The server copy is read by a push that cannot win (`base_rev` 0): a record that exists answers 409 with its content.
+ * The record not being on the server any more (404) is the "deleted" case of the conflict dialog.
  */
 suspend fun SyncEngine.takeServer(projectId: String, recordId: String): com.ncthanhngo.pollmaster.core.model.Record {
-    val project = projectOf(projectId)
+    projectOf(projectId)
     val local = records.load(recordId) ?: throw SyncRecordFailure("Không tìm thấy phiếu trên máy.")
-    val template = templates.get(local.templateId, local.templateVersion)
-    val probe = SyncPutBody(
-        baseRev = 0, title = template?.let { recordTitle(it, local) } ?: "Phiếu", templateTitle = template?.title ?: local.templateId,
-        media = emptyMap(), data = SyncApply.pushData(local),
-    )
-    return when (val r = remote.put(projectId, recordId, probe)) {
-        is SyncPutResult.Conflict -> {
-            val next = SyncApply.overwrite(local, SyncApply.record(r.current, projectId))
-            records.save(next)
-            pruneMedia(next)
-            fetchMedia(projectId, next, r.current.media, includeVideo = false)
-            next
-        }
-        is SyncPutResult.Ok -> { // identical content: nothing to take
-            val started = now()
-            update(recordId) { SyncApply.pushed(it, project.id, r.record, started) } ?: local
-        }
-        is SyncPutResult.MediaMissing -> throw SyncRecordFailure("Phiếu đã bị xoá trên máy chủ.")
-    }
+    val server = remote.get(projectId, recordId) ?: throw SyncRecordFailure("Phiếu đã bị xoá trên máy chủ.")
+    val next = SyncApply.overwrite(local, SyncApply.record(server, projectId))
+    records.save(next)
+    pruneMedia(next)
+    fetchMedia(projectId, next, server.media, includeVideo = false)
+    return next
 }

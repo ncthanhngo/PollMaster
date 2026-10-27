@@ -11,6 +11,7 @@ import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateParser
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateText
+import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,14 @@ class TemplatesRepository(
         ErpProjectSync.addNewTemplates(fresh, projects, nowIso())
         settings.installedBundled = done
         reload(store.list())
+    }
+
+    /** Newest bundled version of each bundled template (what the Phoenix rule uploads to the server). */
+    val bundledNewest: List<TemplateRef> by lazy {
+        val all = context.assets.list("").orEmpty().filter { it.endsWith(".json") }.mapNotNull { name ->
+            runCatching { TemplateParser.parse(context.assets.open(name).use { it.readBytes().decodeToString() }) }.getOrNull()
+        }
+        newestVersions(all).map { TemplateRef(it.id, it.version) }
     }
 
     suspend fun install(json: String, overwrite: Boolean): InstallResult = withContext(Dispatchers.IO) {

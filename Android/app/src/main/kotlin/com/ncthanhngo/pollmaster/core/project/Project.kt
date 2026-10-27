@@ -30,6 +30,8 @@ data class Project(
     val canManage: Boolean = false,
     /** `server_time` of the last complete record sync: the `since` of the next pull (kept as the server wrote it). */
     val recordsSyncedAt: String? = null,
+    /** Template ids the server remembers as removed from this project (`removed_ids` of `poll-templates`): they do not come back by themselves. */
+    val removedTemplateIds: List<String> = emptyList(),
     val createdAt: String = "",
     val updatedAt: String = "",
 ) {

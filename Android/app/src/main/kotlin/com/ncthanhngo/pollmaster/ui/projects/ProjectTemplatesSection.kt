@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.projects
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
@@ -35,6 +38,7 @@ import com.ncthanhngo.pollmaster.core.project.ProjectRules
 import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.storage.compareVersions
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
+import com.ncthanhngo.pollmaster.data.SyncService
 import com.ncthanhngo.pollmaster.ui.common.AppCard
 import kotlinx.coroutines.launch
 
@@ -45,6 +49,16 @@ fun ProjectTemplatesSection(project: Project) {
     val scope = rememberCoroutineScope()
     val library by container.templates.templates.collectAsState()
     var adding by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    // Changes go through the server: they need the network and the manager role (dimmed otherwise; a tap says why).
+    val allowed = container.sync.canChangeTemplates(project)
+    val signedIn = container.erp.account.collectAsState().value != null
+
+    /** Runs [action] when allowed; the sentence it returns (a refusal, no network) is shown. */
+    fun change(action: suspend () -> String?) {
+        if (!allowed) { Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show(); return }
+        scope.launch { action()?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
+    }
     val libraryRefs = library.map { TemplateRef(it.id, it.version) }
 
     AppCard {
@@ -61,18 +75,23 @@ fun ProjectTemplatesSection(project: Project) {
                         if (newer != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.project_template_newer, newer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.weight(1f, fill = false))
-                                TextButton(onClick = {
-                                    scope.launch { container.projects.setTemplates(project.id, project.templates.map { if (it == ref) TemplateRef(ref.id, newer) else it }) }
-                                }) { Text(stringResource(R.string.project_template_use)) }
+                                TextButton(
+                                    onClick = { change { container.sync.useTemplateVersion(project.id, TemplateRef(ref.id, newer)) } },
+                                    modifier = Modifier.alpha(if (allowed) 1f else 0.45f),
+                                ) { Text(stringResource(R.string.project_template_use)) }
                             }
                         }
                     }
-                    IconButton(onClick = { scope.launch { container.projects.setTemplates(project.id, project.templates - ref) } }) {
+                    IconButton(onClick = { change { container.sync.removeTemplate(project.id, ref) } }, modifier = Modifier.alpha(if (allowed) 1f else 0.45f)) {
                         Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.project_template_remove))
                     }
                 }
             }
-            OutlinedButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.project_template_add)) }
+            OutlinedButton(
+                onClick = { if (allowed) adding = true else Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show() },
+                modifier = Modifier.fillMaxWidth().alpha(if (allowed) 1f else 0.45f),
+            ) { Text(stringResource(R.string.project_template_add)) }
+            if (signedIn) Text(stringResource(R.string.project_templates_shared), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
@@ -87,7 +106,7 @@ fun ProjectTemplatesSection(project: Project) {
                     items(candidates, key = { "${it.id}@${it.version}" }) { t ->
                         Column(Modifier.fillMaxWidth().clickable {
                             adding = false
-                            scope.launch { container.projects.setTemplates(project.id, project.templates + TemplateRef(t.id, t.version)) }
+                            change { container.sync.assignTemplates(project.id, listOf(TemplateRef(t.id, t.version))) }
                         }.padding(vertical = 10.dp)) {
                             Text(t.title, style = MaterialTheme.typography.titleSmall)
                             Text("${t.id} · v${t.version}", style = MaterialTheme.typography.bodySmall)

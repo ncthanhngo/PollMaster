@@ -2,7 +2,11 @@ package com.ncthanhngo.pollmaster.ui.templates
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import android.widget.Toast
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
+import com.ncthanhngo.pollmaster.data.SyncService
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -79,6 +83,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onRecordCreated: (String) -> Unit) {
     val container = LocalContainer.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val all by container.templates.templates.collectAsState()
     val template = remember(all, id, version) { container.templates.find(id, version) }
@@ -112,7 +117,11 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
                 navigationIcon = { BackButton(onBack) },
                 actions = {
                     if (template != null) {
-                        IconButton(onClick = { renaming = true }) {
+                        val canEdit = container.sync.canEditTemplate(template)
+                        IconButton(
+                            onClick = { if (canEdit) renaming = true else Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show() },
+                            modifier = Modifier.alpha(if (canEdit) 1f else 0.45f),
+                        ) {
                             Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.template_rename))
                         }
                         IconButton(onClick = { confirmDelete = true }) {
@@ -200,7 +209,10 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
     if (renaming && template != null) {
         EditTemplateDialog(
             template = template,
-            onSave = { title, short, color -> scope.launch { container.templates.edit(template.id, title, short, color) } },
+            signedIn = container.erp.account.collectAsState().value != null,
+            onSave = { title, short, color ->
+                scope.launch { container.sync.editTemplate(template, title, short, color)?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
+            },
             onDismiss = { renaming = false },
         )
     }
@@ -241,10 +253,20 @@ fun TemplateDetailScreen(id: String, version: String, onBack: () -> Unit, onReco
 /** Name, short name and colour of a template: the short name and colour mark the cards of its records. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun EditTemplateDialog(template: Template, onSave: (String, String, String) -> Unit, onDismiss: () -> Unit) {
+private fun EditTemplateDialog(template: Template, signedIn: Boolean, onSave: (String, String, String) -> Unit, onDismiss: () -> Unit) {
+    var confirming by rememberSaveable { mutableStateOf(false) }
     var title by rememberSaveable { mutableStateOf(template.title) }
     var short by rememberSaveable { mutableStateOf(template.shortName.orEmpty()) }
     var color by rememberSaveable { mutableStateOf(template.badgeColor) }
+    if (confirming) {
+        ConfirmDialog(
+            title = stringResource(R.string.template_apply_all_title),
+            message = stringResource(R.string.template_apply_all_message),
+            confirmLabel = stringResource(R.string.action_save),
+            onConfirm = { onSave(title, short, color); onDismiss() },
+            onDismiss = { confirming = false },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.template_rename)) },
@@ -272,7 +294,9 @@ private fun EditTemplateDialog(template: Template, onSave: (String, String, Stri
             }
         },
         confirmButton = {
-            TextButton(enabled = title.isNotBlank(), onClick = { onSave(title, short, color); onDismiss() }) { Text(stringResource(R.string.action_save)) }
+            TextButton(enabled = title.isNotBlank(), onClick = { if (signedIn) confirming = true else { onSave(title, short, color); onDismiss() } }) {
+                Text(stringResource(R.string.action_save))
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )

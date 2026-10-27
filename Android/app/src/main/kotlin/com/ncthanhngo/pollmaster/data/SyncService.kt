@@ -3,15 +3,23 @@ package com.ncthanhngo.pollmaster.data
 import android.content.Context
 import com.ncthanhngo.pollmaster.core.export.ExportBuilder
 import com.ncthanhngo.pollmaster.core.model.Record
+import com.ncthanhngo.pollmaster.core.model.Template
+import com.ncthanhngo.pollmaster.core.project.Project
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
+import com.ncthanhngo.pollmaster.core.project.TemplateRef
 import com.ncthanhngo.pollmaster.core.project.ref
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
+import com.ncthanhngo.pollmaster.core.storage.TemplateException
+import com.ncthanhngo.pollmaster.core.storage.TemplateStore
+import com.ncthanhngo.pollmaster.core.storage.TemplateText
+import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.sync.ConflictInfo
 import com.ncthanhngo.pollmaster.core.sync.PendingDelete
 import com.ncthanhngo.pollmaster.core.sync.PendingDeletes
 import com.ncthanhngo.pollmaster.core.sync.RecordChange
 import com.ncthanhngo.pollmaster.core.sync.SyncEngine
 import com.ncthanhngo.pollmaster.core.sync.SyncHooks
+import com.ncthanhngo.pollmaster.core.sync.TemplateSync
 import com.ncthanhngo.pollmaster.core.sync.downloadMedia
 import com.ncthanhngo.pollmaster.core.sync.inspectConflict
 import com.ncthanhngo.pollmaster.core.sync.keepMine
@@ -52,6 +60,7 @@ class SyncService(
     private val cacheDir = File(context.cacheDir, "erp-send")
     private val store = RecordStore(root)
     private val remote = ErpSyncRemote(client)
+    private val templateRemote = ErpTemplateRemote(client)
     private val lock = Any()
     private var queuedAll = false
     private val queued = HashSet<String>()
@@ -117,6 +126,20 @@ class SyncService(
             val removed = engine.prune(userId, prefs.getString(KEY_LAST_USER, null), all.filter { it.archived }.map { it.id }.toSet())
             prefs.edit().putString(KEY_LAST_USER, userId).apply()
             val ids = all.filter { !it.archived && (only.isEmpty() || it.id in only) }.map { it.id }
+            var templatesChanged = false
+            for (pid in ids) { // the project's templates first: records may use a template this device has not got yet
+                try {
+                    if (templateSync().sync(pid, newestRefs(), templates.bundledNewest).changed) templatesChanged = true
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: ErpException) {
+                    if (e.sessionExpired) throw e // any other templates problem of one project never stops its records
+                } catch (e: IOException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+            }
+            if (templatesChanged) { templates.refresh(); projects.refresh() }
             val reports = engine.sync(ids, userId)
             val issues = _issues.value.toMutableMap()
             for ((pid, rep) in reports) {
@@ -134,6 +157,68 @@ class SyncService(
         } catch (_: IOException) {
             // offline or timed out: the next trigger tries again
         }
+    }
+
+    // ---- project templates (schema 10.6, phase 07): need the network and `canManage`; the device follows only what the server confirmed ----
+
+    private fun templateSync() = TemplateSync(ProjectStore(root), TemplateStore(root), templateRemote)
+
+    private fun newestRefs() = newestVersions(templates.templates.value).map { TemplateRef(it.id, it.version) }
+
+    /** May the signed-in user change this project's templates now? (nobody is signed in: the device list is free). */
+    fun canChangeTemplates(project: Project?): Boolean = session.account.value == null || (project?.canManage == true && online())
+
+    private fun managed(t: Template): List<Project> =
+        projects.projects.value.filter { it.canManage && it.templates.contains(TemplateRef(t.id, t.version)) }
+
+    /** May the signed-in user rename / recolour this template version now? */
+    fun canEditTemplate(t: Template): Boolean = session.account.value == null || (online() && managed(t).isNotEmpty())
+
+    /** Runs a server action, then re-reads the device's templates; returns the sentence to show, null when it worked. */
+    private suspend fun templateAction(work: suspend (TemplateSync) -> Unit): String? {
+        val result = try {
+            work(templateSync()); null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ErpException) {
+            if (e.sessionExpired) session.expire()
+            e.message
+        } catch (e: Exception) {
+            failure(e)
+        }
+        templates.refresh(); projects.refresh()
+        return result
+    }
+
+    suspend fun assignTemplates(projectId: String, refs: List<TemplateRef>): String? {
+        if (session.account.value == null) { projects.setTemplates(projectId, (projects.get(projectId)?.templates.orEmpty() + refs).distinct()); return null }
+        return templateAction { it.assign(refs, projectId) }
+    }
+
+    suspend fun removeTemplate(projectId: String, ref: TemplateRef): String? {
+        if (session.account.value == null) { projects.setTemplates(projectId, projects.get(projectId)?.templates.orEmpty() - ref); return null }
+        return templateAction { it.unassign(ref, projectId) }
+    }
+
+    suspend fun useTemplateVersion(projectId: String, ref: TemplateRef): String? {
+        if (session.account.value == null) {
+            projects.setTemplates(projectId, projects.get(projectId)?.templates.orEmpty().map { if (it.id == ref.id) ref else it })
+            return null
+        }
+        return templateAction { it.useVersion(ref, projectId) }
+    }
+
+    /** Name, short name, colour: through the server (whole organisation library), then back as content. Signed out: this device only. */
+    suspend fun editTemplate(t: Template, title: String, shortName: String, color: String): String? {
+        if (session.account.value == null) return try { templates.edit(t.id, title, shortName, color); null } catch (e: TemplateException) { e.message }
+        val project = managed(t).firstOrNull()
+        if (!online() || project == null) return TEMPLATE_NEEDS_MANAGE + "."
+        try {
+            TemplateStore(root).raw(t.id, t.version)?.let { TemplateText.edited(it, title, shortName, color) } // same checks as the server's
+        } catch (e: TemplateException) {
+            return e.message
+        }
+        return templateAction { it.editMeta(TemplateRef(t.id, t.version), project.id, title.trim(), shortName.trim(), color) }
     }
 
     // ---- the user's answers to a conflict (ux-spec N); each returns an error sentence, null when done ----
@@ -203,7 +288,8 @@ class SyncService(
         request(pid)
     }
 
-    private companion object {
-        const val KEY_LAST_USER = "last_user_id"
+    companion object {
+        const val TEMPLATE_NEEDS_MANAGE = "Cần quyền quản lý dự án và có mạng"
+        private const val KEY_LAST_USER = "last_user_id"
     }
 }

@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.ncthanhngo.pollmaster.core.editor.RecordCreator
 import com.ncthanhngo.pollmaster.core.storage.RecordStore
 import com.ncthanhngo.pollmaster.core.storage.TemplateStore
 import com.ncthanhngo.pollmaster.core.project.ProjectStore
@@ -42,6 +43,7 @@ class AppContainer(context: Context) {
     val records: RecordsRepository = RecordsRepository(
         scope, recordStore, templates, settings, visibleProjects = { projects.projects.value.map { it.id }.toSet() },
         me = { erp.account.value?.userId }, projectOf = projects::get,
+        creator = { erp.account.value?.let { RecordCreator(it.userId, it.name) } },
     )
     val backup = BackupService(context, scope, recordStore, templates, records, settings, projects)
     init {

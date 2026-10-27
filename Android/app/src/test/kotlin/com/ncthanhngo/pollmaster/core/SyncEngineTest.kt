@@ -57,6 +57,8 @@ private open class FakeRemote : SyncRemote {
         return SyncPage("T${n + 1}", canPost, false, p[n], if (n == 0) ids else emptyList(), if (n + 1 < p.size) "${n + 1}" else "")
     }
 
+    override suspend fun get(projectId: String, recordId: String): SyncRecord? = server[recordId]
+
     override suspend fun put(projectId: String, recordId: String, body: SyncPutBody): SyncPutResult {
         puts += body
         conflictOnPut?.let { return SyncPutResult.Conflict(it) }
@@ -85,6 +87,7 @@ private open class FakeRemote : SyncRemote {
 /** Answers 409 for a put with base_rev 0 of a record the server has (what the backend does), 200 when the content is the same. */
 private class Conflicting(val inner: FakeRemote) : FakeRemote() {
     override suspend fun pull(projectId: String, since: String?, cursor: String?) = inner.pull(projectId, since, cursor)
+    override suspend fun get(projectId: String, recordId: String): SyncRecord? = inner.get(projectId, recordId)
     override suspend fun put(projectId: String, recordId: String, body: SyncPutBody): SyncPutResult {
         val cur = inner.server[recordId]
         if (body.baseRev == 0 && cur != null) return if (SyncPlanner.sameContent(body.data, cur.data)) SyncPutResult.Ok(cur) else SyncPutResult.Conflict(cur)

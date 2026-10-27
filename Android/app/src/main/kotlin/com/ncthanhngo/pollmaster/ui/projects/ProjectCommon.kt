@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -97,6 +98,9 @@ fun ProjectChoiceDialog(
     message: String? = null,
     confirmLabel: String = stringResource(R.string.action_add),
     dismissLabel: String = stringResource(R.string.action_cancel),
+    /** A project that is not [enabled] is shown dimmed; tapping it calls [onBlocked] instead of choosing it. */
+    enabled: (Project) -> Boolean = { true },
+    onBlocked: () -> Unit = {},
 ) {
     var ticked by remember { mutableStateOf(emptySet<String>()) }
     AlertDialog(
@@ -108,8 +112,9 @@ fun ProjectChoiceDialog(
                 LazyColumn {
                     items(projects, key = { it.id }) { p ->
                         Row(
-                            Modifier.fillMaxWidth().clickable {
-                                if (multi) ticked = if (p.id in ticked) ticked - p.id else ticked + p.id else onConfirm(listOf(p))
+                            Modifier.fillMaxWidth().alpha(if (enabled(p)) 1f else 0.45f).clickable {
+                                if (!enabled(p)) onBlocked()
+                                else if (multi) ticked = if (p.id in ticked) ticked - p.id else ticked + p.id else onConfirm(listOf(p))
                             }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ncthanhngo.pollmaster.LocalContainer
+import com.ncthanhngo.pollmaster.data.SyncService
 import com.ncthanhngo.pollmaster.R
 import com.ncthanhngo.pollmaster.core.storage.newestVersions
 import com.ncthanhngo.pollmaster.core.model.Template
@@ -178,6 +180,7 @@ fun TemplatesScreen(onOpenTemplate: (Template) -> Unit) {
 private fun AddToProjectsDialog(template: Template, projects: List<Project>, onDismiss: () -> Unit) {
     val container = LocalContainer.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val ref = TemplateRef(template.id, template.version)
     ProjectChoiceDialog(
         title = stringResource(R.string.add_to_projects_title),
@@ -186,9 +189,14 @@ private fun AddToProjectsDialog(template: Template, projects: List<Project>, onD
         multi = true,
         dismissLabel = stringResource(R.string.action_skip),
         onDismiss = onDismiss,
+        enabled = { container.sync.canChangeTemplates(it) },
+        onBlocked = { Toast.makeText(context, SyncService.TEMPLATE_NEEDS_MANAGE, Toast.LENGTH_SHORT).show() },
         onConfirm = { chosen ->
             onDismiss()
-            scope.launch { container.projects.addTemplate(ref, chosen.map { it.id }) }
+            scope.launch {
+                val error = chosen.firstNotNullOfOrNull { container.sync.assignTemplates(it.id, listOf(ref)) }
+                if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            }
         },
     )
 }
