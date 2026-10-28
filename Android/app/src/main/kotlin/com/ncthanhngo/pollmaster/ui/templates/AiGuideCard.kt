@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -127,18 +128,18 @@ fun AiGuideCard(onPaste: () -> Unit) {
 private fun Step(n: Int, title: String, detail: String, action: String, icon: ImageVector, onClick: () -> Unit) {
     val ink = if (LocalUiPrefs.current.highContrast) Color.Black else BrandInk
     Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(28.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+        Box(Modifier.sizeIn(minWidth = 28.dp, minHeight = 28.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
             Text("$n", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = ink)
         }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
         }
-        // same-size white pill for both steps, so the two actions line up
-        Surface(onClick = onClick, shape = RoundedCornerShape(50), color = Color.White, contentColor = ink, modifier = Modifier.size(width = 88.dp, height = 48.dp)) {
-            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        // same-size white pill for both steps, so the two actions line up (a minimum: large text widens it, never cuts it)
+        Surface(onClick = onClick, shape = RoundedCornerShape(50), color = Color.White, contentColor = ink, modifier = Modifier.sizeIn(minWidth = 88.dp, minHeight = 48.dp)) {
+            Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(action, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text(action, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
             }
         }
     }

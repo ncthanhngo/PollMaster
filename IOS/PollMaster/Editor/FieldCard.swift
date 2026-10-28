@@ -17,6 +17,7 @@ struct FieldCard: View {
     @State private var editingNote = false
     @State private var addingReview = false
     @Environment(\.pmTheme) private var theme
+    @Environment(\.dynamicTypeSize) private var size
 
     private var notMeasurable: Bool { fv.flag == .notMeasurable }
     private var warnings: [String] { scope.warnings(field, fv) }
@@ -24,7 +25,9 @@ struct FieldCard: View {
     private var showsReview: Bool { scope.tableId == nil && (fv.review != nil || addingReview) }
 
     /// Short single-value fields share one row: label left, input right (~30 %). Only number / integer and `short` text (ux-spec L3).
+    /// Large text gets the full layout: the 132 pt box cut its placeholder and squeezed the label into many lines.
     private var compactRow: Bool {
+        guard size < .xxLarge else { return false }
         let shortKind = field.type == .number || (field.type == .integer && !field.stepper && field.chipsRange == nil) || (field.type == .text && field.short)
         return allowCompact && scope.compact && shortKind && field.samples == nil && (field.parts ?? []).isEmpty
             && !field.attachPhoto && field.lookup == nil && field.prefix == nil && !notMeasurable && field.photoRef == nil

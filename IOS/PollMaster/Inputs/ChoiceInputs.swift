@@ -169,14 +169,16 @@ struct RatingInput: View {
     let field: Field
     @Binding var value: JSONValue?
     @Environment(\.pmTheme) private var theme
+    /// Circle grows with the text, and the row wraps, so large text neither cuts the number nor runs off screen.
+    @ScaledMetric(relativeTo: .headline) private var circle: CGFloat = 40
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+            FlowLayout(spacing: 8) {
                 ForEach(1...max(field.ratingMax, 1), id: \.self) { n in
                     let on = value?.double == Double(n)
                     Button { value = on ? nil : .int(n) } label: {
-                        Text("\(n)").font(.headline).frame(width: 40, height: 40)
+                        Text("\(n)").font(.headline).frame(width: circle, height: circle)
                             .background(on ? Color.accentColor : theme.unselectedChip, in: Circle())
                             .overlay(Circle().stroke(on || !theme.highContrast ? Color.clear : theme.border, lineWidth: theme.borderWidth))
                             .foregroundStyle(on ? Color.white : Color.primary)

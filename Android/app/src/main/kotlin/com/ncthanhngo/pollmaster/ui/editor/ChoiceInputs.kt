@@ -199,12 +199,14 @@ internal fun YesNoInput(field: Field, value: JsonElement?, onValue: (JsonElement
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun RatingInput(field: Field, value: JsonElement?, onValue: (JsonElement?) -> Unit, enabled: Boolean) {
     val max = field.max?.toInt() ?: 5
     val current = value.asDouble()?.toInt()
     Column {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // wraps at large font sizes instead of running off screen
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (i in 1..max) {
                 ChoiceChip(i.toString(), current == i, enabled) { onValue(if (current == i) null else JsonPrimitive(i)) }
             }

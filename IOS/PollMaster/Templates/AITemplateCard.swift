@@ -49,7 +49,7 @@ struct AITemplateCard: View {
     private func step<Action: View>(_ n: Int, _ title: String, _ detail: String, @ViewBuilder action: () -> Action) -> some View {
         HStack(spacing: 12) {
             Text("\(n)").font(.subheadline.weight(.bold)).foregroundStyle(theme.highContrast ? Color.black : brandInk)
-                .frame(width: 28, height: 28).background(.white, in: Circle())
+                .frame(minWidth: 28, minHeight: 28).background(.white, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline.weight(.semibold))
                 Text(detail).font(.footnote).opacity(0.8).fixedSize(horizontal: false, vertical: true)
@@ -63,14 +63,16 @@ struct AITemplateCard: View {
     /// Dark brand green for text on white: fixed (not the dark-mode accent), so it stays readable in both modes.
     private var brandInk: Color { Color(red: 0.08, green: 0.36, blue: 0.30) }
 
-    /// Same-size white action pill for both steps, so the two buttons line up.
+    /// Same-size white action pill for both steps, so the two buttons line up (a minimum: large text widens it, never cuts it).
     private func pill(_ title: String, _ icon: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.subheadline.weight(.semibold))
             Text(title).font(.subheadline.weight(.semibold))
         }
+        .lineLimit(1).fixedSize()
         .foregroundStyle(theme.highContrast ? Color.black : brandInk)
-        .frame(width: 88, height: 40)
+        .padding(.horizontal, 12)
+        .frame(minWidth: 88, minHeight: 40)
         .background(.white, in: Capsule())
         .contentShape(Capsule())
     }

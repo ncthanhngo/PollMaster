@@ -171,19 +171,37 @@ struct SectionView: View {
             if theme.oneHand, !model.isLocked, let t = items.compactMap({ item -> TableDef? in if case .table(let t) = item, !t.isFixed { return t } else { return nil } }).first {
                 AddRowButton(model: model, table: t, sectionId: sectionId)
             }
+            // one line per button at any text size: words when they fit, else icons (large text made each button two lines tall)
             HStack(spacing: 8) {
-                Button { go(index - 1) } label: { Text("‹ Mục trước").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.disabled(index == 0)
+                Button { go(index - 1) } label: {
+                    ViewThatFits(in: .horizontal) {
+                        Text("‹ Mục trước").lineLimit(1)
+                        Image(systemName: "chevron.left")
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .disabled(index == 0).accessibilityLabel("Mục trước")
                 Button {
                     model.showAllErrors = true
                     env.editorPath.append(.review(record: model.record.id))
                 } label: {
-                    VStack(spacing: 0) {
-                        Text("Kiểm tra").lineLimit(1)
-                        Text("\(index + 1)/\(model.sectionTitles.count)").font(.caption2).secondaryText()
+                    let count = Text("\(index + 1)/\(model.sectionTitles.count)").font(.footnote).secondaryText()
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) { Text("Kiểm tra"); count }.lineLimit(1)
+                        HStack(alignment: .firstTextBaseline, spacing: 4) { Image(systemName: "checklist"); count }.lineLimit(1)
+                        count.lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                Button { go(index + 1) } label: { Text("Mục sau ›").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.disabled(index >= model.sectionTitles.count - 1)
+                .accessibilityLabel("Kiểm tra, mục \(index + 1) trên \(model.sectionTitles.count)")
+                Button { go(index + 1) } label: {
+                    ViewThatFits(in: .horizontal) {
+                        Text("Mục sau ›").lineLimit(1)
+                        Image(systemName: "chevron.right")
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .disabled(index >= model.sectionTitles.count - 1).accessibilityLabel("Mục sau")
             }
             .buttonStyle(.bordered).controlSize(theme.oneHand ? .large : .regular)
         }

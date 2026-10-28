@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,9 @@ import com.ncthanhngo.pollmaster.ui.theme.warnColor
 
 /** Fixed width of the input on a compact row, so inputs line up down the section. */
 private val COMPACT_INPUT_WIDTH = 132.dp
+
+/** From this font scale on, compact rows use the full layout (iOS: Dynamic Type xxLarge and up). */
+private const val COMPACT_MAX_FONT_SCALE = 1.2f
 
 /** The round (0-based) being entered and the heading option that groups the round fields. */
 class RoundContext(val index: Int, val entry: RoundEntry)
@@ -71,7 +75,8 @@ fun FieldCard(
     val editable = !field.readonly && field.type != "computed"
     val error = env.error(key)
     val warning = if (error == null && !kdd) env.warning(key) else null
-    val compact = LocalUiPrefs.current.compact && FieldLayoutRules.isCompactable(field) && !quick
+    // large text gets the full layout: the fixed-width box cut its placeholder and squeezed the label into many lines
+    val compact = LocalUiPrefs.current.compact && FieldLayoutRules.isCompactable(field) && !quick && LocalDensity.current.fontScale < COMPACT_MAX_FONT_SCALE
     val oneHand = LocalUiPrefs.current.oneHand
     var menuOpen by remember { mutableStateOf(false) }
     var photoTrigger by remember { mutableIntStateOf(0) }

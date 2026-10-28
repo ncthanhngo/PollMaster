@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,7 @@ import com.ncthanhngo.pollmaster.core.model.Item
 import com.ncthanhngo.pollmaster.core.model.TableItem
 import com.ncthanhngo.pollmaster.core.validation.HEADER_SECTION_ID
 import com.ncthanhngo.pollmaster.ui.common.BackButton
+import com.ncthanhngo.pollmaster.ui.common.FirstFitText
 import com.ncthanhngo.pollmaster.ui.templateeditor.PreviewTopBar
 import com.ncthanhngo.pollmaster.ui.theme.LocalUiPrefs
 import com.ncthanhngo.pollmaster.ui.theme.TOUCH_ONE_HAND
@@ -154,17 +157,18 @@ fun SectionScreen(
                 ) {
                     val touch = Modifier.weight(1f).then(Modifier.heightIn(min = if (LocalUiPrefs.current.oneHand) TOUCH_ONE_HAND else 48.dp))
                     val pad = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), enabled = index > 0, onClick = { onSwitchSection(ids[index - 1]) }) {
-                        Text("‹ " + stringResource(R.string.section_prev), maxLines = 1)
+                    // one line per button at any font size: words when they fit, else the arrow / counter alone
+                    val prev = stringResource(R.string.section_prev)
+                    val next = stringResource(R.string.section_next)
+                    val count = "${index + 1}/${ids.size}"
+                    FilledTonalButton(modifier = touch.semantics { contentDescription = prev }, contentPadding = pad, colors = accentTonalColors(), enabled = index > 0, onClick = { onSwitchSection(ids[index - 1]) }) {
+                        FirstFitText(listOf("‹ $prev", "‹"))
                     }
                     FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), onClick = onReview) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.action_review), maxLines = 1)
-                            Text("${index + 1}/${ids.size}", style = MaterialTheme.typography.labelSmall)
-                        }
+                        FirstFitText(listOf(stringResource(R.string.action_review) + " " + count, count))
                     }
-                    FilledTonalButton(modifier = touch, contentPadding = pad, colors = accentTonalColors(), enabled = index in 0 until ids.lastIndex, onClick = { onSwitchSection(ids[index + 1]) }) {
-                        Text(stringResource(R.string.section_next) + " ›", maxLines = 1)
+                    FilledTonalButton(modifier = touch.semantics { contentDescription = next }, contentPadding = pad, colors = accentTonalColors(), enabled = index in 0 until ids.lastIndex, onClick = { onSwitchSection(ids[index + 1]) }) {
+                        FirstFitText(listOf("$next ›", "›"))
                     }
                 }
             }
