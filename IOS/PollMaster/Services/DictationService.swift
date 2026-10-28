@@ -32,7 +32,7 @@ final class DictationService {
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let input = engine.inputNode
             input.removeTap(onBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in req.append(buffer) }
+            Self.feed(input, to: req)
             engine.prepare()
             try engine.start()
         } catch {
@@ -41,9 +41,7 @@ final class DictationService {
             return
         }
         listening = true
-        task = recognizer.recognitionTask(with: req) { [weak self] result, err in
-            let text = result?.bestTranscription.formattedString
-            let done = result?.isFinal == true || err != nil
+        task = Self.recognize(recognizer, req) { [weak self] text, done in
             Task { @MainActor in
                 guard let self else { return }
                 if let text { onText(text) }
@@ -66,7 +64,24 @@ final class DictationService {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    private static func authorized() async -> Bool {
+    // The system calls these callbacks on its own queues (audio render thread, speech queue). Closures written in this
+    // @MainActor class would be main-actor isolated and Swift 6 traps when they run off the main thread, so they are
+    // made in nonisolated functions.
+
+    /// Microphone buffers go straight to the request, on the audio thread.
+    nonisolated private static func feed(_ input: AVAudioInputNode, to req: SFSpeechAudioBufferRecognitionRequest) {
+        input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in req.append(buffer) }
+    }
+
+    /// `update(text, done)` on the recogniser's queue: the transcription so far, and whether it ended (final or error).
+    nonisolated private static func recognize(_ recognizer: SFSpeechRecognizer, _ req: SFSpeechAudioBufferRecognitionRequest,
+                                              update: @escaping @Sendable (String?, Bool) -> Void) -> SFSpeechRecognitionTask {
+        recognizer.recognitionTask(with: req) { result, err in
+            update(result?.bestTranscription.formattedString, result?.isFinal == true || err != nil)
+        }
+    }
+
+    nonisolated private static func authorized() async -> Bool {
         let speech = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) }
         }
