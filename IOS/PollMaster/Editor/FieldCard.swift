@@ -136,23 +136,19 @@ struct FieldCard: View {
         return round < a.count ? a[round] : .null
     }
 
-    /// OCR (text / multiline with photoRef) and dictation (multiline).
+    private var canAssist: Bool { !notMeasurable && !field.readonly && !scope.locked }
+
+    /// Dictation (multiline). OCR sits on the photo reference's capture row instead (see `photoRef`).
     @ViewBuilder private var assistButtons: some View {
-        if !notMeasurable, !field.readonly, !scope.locked, field.type == .text || field.type == .multiline {
-            let ocr = field.photoRef != nil
-            let mic = field.type == .multiline
-            if ocr || mic {
-                HStack(spacing: 8) {
-                    if ocr { OCRButton(field: field, fv: $fv, scope: scope) }
-                    if mic { DictationButton(fv: $fv) }
-                }
-            }
-        }
+        if canAssist, field.type == .multiline { DictationButton(fv: $fv) }
     }
 
     @ViewBuilder private var photoRef: some View {
         if let ref = field.photoRef, let r = scope.reference(ref) {
-            MediaInput(field: r.field, video: r.field.type == .video, fieldValue: r.value, scope: refScope, captureTitle: "Chụp \(ref)").controlSize(.small)
+            // "Đọc chữ từ ảnh" next to "Chụp <ref>": one row instead of two
+            let ocr = canAssist && (field.type == .text || field.type == .multiline)
+            MediaInput(field: r.field, video: r.field.type == .video, fieldValue: r.value, scope: refScope, captureTitle: "Chụp \(ref)",
+                       accessory: ocr ? AnyView(OCRButton(field: field, fv: $fv, scope: scope)) : nil).controlSize(.small)
                 .disabled(scope.locked)
         }
         let users = field.isMedia ? scope.photoUsers(field.id) : []

@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import androidx.compose.ui.text.style.TextOverflow
+import com.ncthanhngo.pollmaster.ui.common.FieldActionScale
 import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.Manifest
 import android.content.pm.PackageManager
@@ -124,9 +126,11 @@ fun OcrButton(field: Field, env: EditorEnv, enabled: Boolean, onNeedPhoto: () ->
     LaunchedEffect(photos.size) {
         if (waiting && photos.isNotEmpty()) { waiting = false; run++ }
     }
-    FilledTonalButton(enabled = enabled && !busy, colors = accentTonalColors(), onClick = {
-        if (photos.isEmpty()) { waiting = true; onNeedPhoto() } else run++
-    }) { Text(stringResource(if (busy) R.string.ocr_reading else R.string.ocr_read, ref.id)) }
+    FieldActionScale {
+        FilledTonalButton(enabled = enabled && !busy, colors = accentTonalColors(), onClick = {
+            if (photos.isEmpty()) { waiting = true; onNeedPhoto() } else run++
+        }) { Text(stringResource(if (busy) R.string.ocr_reading else R.string.ocr_read, ref.id), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    }
 
     lines?.let { found ->
         AlertDialog(

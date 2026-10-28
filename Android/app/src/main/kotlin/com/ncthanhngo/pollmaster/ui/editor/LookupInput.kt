@@ -1,5 +1,7 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import androidx.compose.ui.text.style.TextOverflow
+import com.ncthanhngo.pollmaster.ui.common.FieldActionScale
 import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -49,8 +51,10 @@ fun LookupInput(field: Field, fv: FieldValue?, scope: ValueScope, env: EditorEnv
             result.onSuccess { choosing = true }
                 .onFailure { Toast.makeText(context, context.getString(R.string.settings_sites_error, it.message.orEmpty()), Toast.LENGTH_LONG).show() }
         }
-        FilledTonalButton(enabled = enabled, colors = accentTonalColors(), onClick = { if (env.sites.isEmpty()) loadCsv() else choosing = true }) {
-            Text(stringResource(if (env.sites.isEmpty()) R.string.lookup_load_csv else R.string.lookup_choose))
+        FieldActionScale {
+            FilledTonalButton(enabled = enabled, colors = accentTonalColors(), onClick = { if (env.sites.isEmpty()) loadCsv() else choosing = true }) {
+                Text(stringResource(if (env.sites.isEmpty()) R.string.lookup_load_csv else R.string.lookup_choose), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
     if (choosing) {

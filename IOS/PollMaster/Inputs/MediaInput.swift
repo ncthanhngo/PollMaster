@@ -36,6 +36,8 @@ struct MediaInput: View {
     let scope: FieldScope
     /// Reduced layout: small thumbnails + one capture button with this title (photoRef, "Quay video lượt này").
     var captureTitle: String?
+    /// Extra action on the capture row ("Đọc chữ từ ảnh" of a photoRef field); drops to its own line when the row is full.
+    var accessory: AnyView?
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var capture: CaptureKind?
     @State private var viewing: Media?
@@ -70,22 +72,28 @@ struct MediaInput: View {
                 }
             }
             let cam = hasCamera
-            HStack {
+            let row = HStack {
                 if cam {
                     Button { capture = video ? .video : .photo } label: {
                         Label(captureTitle ?? "Chụp", systemImage: video ? "video" : "camera").frame(minHeight: captureTitle == nil ? 0 : 44)
                     }
-                    .buttonStyle(.bordered)
+                    .fieldAction()
                 }
                 PhotosPicker(selection: $pickerItems, maxSelectionCount: remaining.map { max($0, 1) },
                              matching: video ? .videos : .images) {
                     if captureTitle != nil, cam { Image(systemName: "photo.on.rectangle").frame(minHeight: 28) }
                     else { Label(captureTitle ?? "Thư viện", systemImage: "photo.on.rectangle").frame(minHeight: captureTitle == nil ? 0 : 28) }
                 }
-                .buttonStyle(.bordered)
+                .fieldAction()
                 if let n = field.minCount { Text("\(list.count)/\(n)").font(.caption).secondaryText() }
             }
             .disabled(remaining == 0)
+            if let accessory {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top) { accessory; row }
+                    VStack(alignment: .leading, spacing: 8) { accessory; row }
+                }
+            } else { row }
             if working > 0 {
                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Đang xử lý…").font(.caption).secondaryText() }
             }

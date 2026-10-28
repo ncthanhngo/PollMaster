@@ -37,7 +37,7 @@ struct DateTimeInput: View {
             }
         } else {
             Button(placeholder, systemImage: type == .time ? "clock" : "calendar") { value = encode(Date()) }
-                .buttonStyle(.bordered)
+                .fieldAction()
         }
     }
 
@@ -82,7 +82,7 @@ struct MonthInput: View {
             }
         } else {
             Button("Chọn tháng", systemImage: "calendar") { set(now.year ?? 2026, now.month ?? 1) }
-                .buttonStyle(.bordered)
+                .fieldAction()
         }
     }
 

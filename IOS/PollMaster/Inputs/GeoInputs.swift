@@ -24,7 +24,7 @@ struct CompassInput: View {
                             catch { self.error = error.localizedDescription }
                         }
                     } label: { Label("Đọc la bàn", systemImage: "location.north.line") }
-                        .buttonStyle(.bordered).disabled(busy)
+                        .fieldAction().disabled(busy)
                 }
             }
             if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }

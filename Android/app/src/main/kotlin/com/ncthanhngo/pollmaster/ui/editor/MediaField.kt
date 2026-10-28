@@ -1,5 +1,9 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
+import com.ncthanhngo.pollmaster.ui.common.FieldActionScale
 import com.ncthanhngo.pollmaster.ui.theme.accentTonalColors
 import android.Manifest
 import android.content.Intent
@@ -67,6 +71,7 @@ import java.io.File
  * Thumbnails plus capture / library buttons. [asValue] = the field is a photo/video field
  * (media stored in `v`); otherwise the media is the field's attached photos.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MediaField(
     field: Field,
@@ -81,6 +86,8 @@ fun MediaField(
     captureLabel: String? = null,
     /** Increment to open the camera from outside (e.g. OCR without photos). */
     captureTrigger: Int = 0,
+    /** Extra action on the capture row ("Đọc chữ từ ảnh" of a photoRef field); wraps to the next line when the row is full. */
+    accessory: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val container = LocalContainer.current
@@ -175,18 +182,22 @@ fun MediaField(
                 }
             }
         }
-        if (canAdd) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = ::requestCapture, colors = accentTonalColors()) {
-                    Text(
-                        if (referenceOnly) stringResource(R.string.media_capture_ref, field.id)
-                        else if (captureLabel != null) captureLabel
-                        else stringResource(if (isVideo) R.string.media_record else R.string.media_capture),
-                    )
+        if (canAdd || accessory != null) FieldActionScale {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                accessory?.invoke()
+                if (canAdd) {
+                    FilledTonalButton(onClick = ::requestCapture, colors = accentTonalColors()) {
+                        Text(
+                            if (referenceOnly) stringResource(R.string.media_capture_ref, field.id)
+                            else if (captureLabel != null) captureLabel
+                            else stringResource(if (isVideo) R.string.media_record else R.string.media_capture),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (!referenceOnly) FilledTonalButton(colors = accentTonalColors(), onClick = {
+                        pick.launch(PickVisualMediaRequest(if (isVideo) ActivityResultContracts.PickVisualMedia.VideoOnly else ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }) { Text(stringResource(R.string.media_library), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                if (!referenceOnly) FilledTonalButton(colors = accentTonalColors(), onClick = {
-                    pick.launch(PickVisualMediaRequest(if (isVideo) ActivityResultContracts.PickVisualMedia.VideoOnly else ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) { Text(stringResource(R.string.media_library)) }
             }
         }
     }

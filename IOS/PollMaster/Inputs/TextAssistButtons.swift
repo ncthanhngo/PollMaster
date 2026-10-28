@@ -18,7 +18,7 @@ struct OCRButton: View {
                 Button { run(r.field, r.value) } label: {
                     if busy { ProgressView() } else { Label("Đọc chữ từ ảnh", systemImage: "text.viewfinder") }
                 }
-                .buttonStyle(.bordered).disabled(busy)
+                .fieldAction().disabled(busy)
                 if let error { Text(error).font(.caption).foregroundStyle(theme.alert) }
             }
             .sheet(isPresented: Binding(get: { lines != nil }, set: { if !$0 { lines = nil } })) {
@@ -95,7 +95,7 @@ struct DictationButton: View {
                     Label(service.listening ? "Dừng" : "Đọc giọng nói", systemImage: service.listening ? "stop.circle.fill" : "mic.fill")
                         .foregroundStyle(service.listening ? Color.red : Color.accentColor)
                 }
-                .buttonStyle(.bordered)
+                .fieldAction()
                 if let e = service.error { Text(e).font(.caption).foregroundStyle(theme.alert) }
             }
             .onDisappear { service.stop() }

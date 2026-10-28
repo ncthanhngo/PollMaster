@@ -144,11 +144,14 @@ fun FieldCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            field.photoRef?.let { PhotoRefRow(it, env, photoTrigger) }
-            if (field.photoRef != null && (field.type == "text" || field.type == "multiline") && !kdd) {
-                OcrButton(field, env, editable, onNeedPhoto = { photoTrigger++ }) { line ->
-                    update { it.copy(v = JsonPrimitive(if (field.type == "multiline") appendText(it.v.asText(), line, "\n") else line)) }
-                }
+            field.photoRef?.let { ref ->
+                // "Đọc chữ từ ảnh" next to "Chụp <ref>": one row instead of two
+                val ocr = (field.type == "text" || field.type == "multiline") && !kdd
+                PhotoRefRow(ref, env, photoTrigger, accessory = if (!ocr) null else ({
+                    OcrButton(field, env, editable, onNeedPhoto = { photoTrigger++ }) { line ->
+                        update { it.copy(v = JsonPrimitive(if (field.type == "multiline") appendText(it.v.asText(), line, "\n") else line)) }
+                    }
+                }))
             }
             if (field.isMedia) PhotoUsers(field.id, env)
             error?.let { Text(it.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

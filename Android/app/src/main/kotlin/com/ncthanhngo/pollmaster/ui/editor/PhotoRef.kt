@@ -9,12 +9,12 @@ import com.ncthanhngo.pollmaster.core.model.findField
 
 /** Under a field with `photoRef`: thumbnails of the referenced photo field and a button that captures into it. */
 @Composable
-fun PhotoRefRow(refId: String, env: EditorEnv, captureTrigger: Int = 0) {
+fun PhotoRefRow(refId: String, env: EditorEnv, captureTrigger: Int = 0, accessory: (@Composable () -> Unit)? = null) {
     val target = env.controller.template.findField(refId) ?: return
     if (!target.isMedia) return
     MediaField(
         target, env.scope.get(target.id), env.scope, env, enabled = true, asValue = true,
-        referenceOnly = true, captureTrigger = captureTrigger,
+        referenceOnly = true, captureTrigger = captureTrigger, accessory = accessory,
     )
 }
 

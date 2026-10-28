@@ -22,7 +22,7 @@ struct LookupButton: View {
                 Label(noSites ? "Nạp danh sách điểm (CSV)" : "Chọn từ danh sách",
                       systemImage: noSites ? "square.and.arrow.down" : "list.bullet.rectangle")
             }
-            .buttonStyle(.bordered)
+            .fieldAction()
             .sheet(isPresented: $picking) { SitePicker(sites: sites, onPick: choose) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.commaSeparatedText, .plainText, .text]) { result in
                 switch result {

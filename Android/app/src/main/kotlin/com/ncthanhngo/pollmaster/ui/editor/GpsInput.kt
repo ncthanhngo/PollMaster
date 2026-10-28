@@ -1,5 +1,6 @@
 package com.ncthanhngo.pollmaster.ui.editor
 
+import com.ncthanhngo.pollmaster.ui.common.FieldActionScale
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -133,8 +134,8 @@ fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: 
             )
         }
         if (failed) Text(stringResource(R.string.gps_unavailable), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(enabled = enabled, onClick = { manual = !manual }) { Text(stringResource(R.string.gps_manual)) }
+        FieldActionScale { Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(enabled = enabled, onClick = { manual = !manual }) { Text(stringResource(R.string.gps_manual), maxLines = 1) }
             val la = lat.toDoubleOrNull()
             val ln = lng.toDoubleOrNull()
             OutlinedButton(
@@ -143,8 +144,8 @@ fun GpsInput(field: Field, value: JsonElement?, enabled: Boolean, planDistance: 
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$la,$ln?q=$la,$ln"))
                     runCatching { context.startActivity(intent) }
                 },
-            ) { Text(stringResource(R.string.gps_open_map)) }
-        }
+            ) { Text(stringResource(R.string.gps_open_map), maxLines = 1) }
+        } }
         if (manual) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(

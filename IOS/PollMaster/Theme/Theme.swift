@@ -149,4 +149,9 @@ extension View {
     /// Replaces `.roundedBorder`: visible fill + border on cards in light, dark and high contrast.
     func inputBox() -> some View { modifier(InputBox()) }
     func cardBox(stroke: Color? = nil, padding: CGFloat = 12) -> some View { modifier(CardBox(stroke: stroke, padding: padding)) }
+    /// Secondary action inside a field card (Chụp, Đọc chữ từ ảnh, Nạp CSV…): one line in a smaller font that stops growing
+    /// at xxLarge, so it never wraps or outweighs the field it serves.
+    func fieldAction() -> some View {
+        buttonStyle(.bordered).font(.subheadline).lineLimit(1).dynamicTypeSize(...DynamicTypeSize.xxLarge)
+    }
 }
